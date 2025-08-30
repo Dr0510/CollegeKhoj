@@ -2,39 +2,26 @@ import os
 import logging
 import pandas as pd
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
-from recommender import CollegeRecommender
+from database import db, init_database
 import io
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
-
 # Create the app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-
-# Configure the database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "postgresql://localhost/college_recommendation")
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
 
-# Initialize the app with the extension
-db.init_app(app)
+# Initialize database
+init_database(app)
 
-# Import models after db initialization
+# Import models and recommender after db initialization
 from models import College
+from recommender import CollegeRecommender
 
 # Initialize recommendation engine
 recommender = CollegeRecommender(db)

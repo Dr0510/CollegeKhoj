@@ -1,4 +1,4 @@
-from app import db
+from database import db
 from sqlalchemy import Column, Integer, String, Float
 
 class College(db.Model):
