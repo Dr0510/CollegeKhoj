@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Recommendation System</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <header class="py-4 mb-4 border-bottom">
+            <div class="container">
+                <h1 class="display-4 text-center">
+                    <i class="fas fa-graduation-cap me-3"></i>
+                    College Recommendation System
+                </h1>
+                <p class="lead text-center text-muted">Find the perfect college based on your preferences and budget</p>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="container mb-4">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="container">
+            <div class="row">
+                <!-- Recommendation Form -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fas fa-search me-2"></i>
+                                Find Colleges
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('recommend') }}">
+                                <div class="mb-3">
+                                    <label for="budget" class="form-label">
+                                        <i class="fas fa-rupee-sign me-1"></i>
+                                        Maximum Budget (₹)
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="budget" 
+                                           name="budget" 
+                                           placeholder="e.g., 200000"
+                                           value="{{ form_data.budget if form_data else '' }}">
+                                    <div class="form-text">Leave empty for no budget limit</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="location" class="form-label">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        Preferred Location
+                                    </label>
+                                    <select class="form-select" id="location" name="location">
+                                        <option value="">Any Location</option>
+                                        {% for loc in locations %}
+                                            <option value="{{ loc }}" 
+                                                    {{ 'selected' if form_data and form_data.location == loc else '' }}>
+                                                {{ loc }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="branch" class="form-label">
+                                        <i class="fas fa-code-branch me-1"></i>
+                                        Preferred Branch
+                                    </label>
+                                    <select class="form-select" id="branch" name="branch">
+                                        <option value="">Any Branch</option>
+                                        {% for br in branches %}
+                                            <option value="{{ br }}" 
+                                                    {{ 'selected' if form_data and form_data.branch == br else '' }}>
+                                                {{ br }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="top_n" class="form-label">
+                                        <i class="fas fa-list-ol me-1"></i>
+                                        Number of Recommendations: <span id="top_n_value">{{ form_data.top_n if form_data else 5 }}</span>
+                                    </label>
+                                    <input type="range" 
+                                           class="form-range" 
+                                           id="top_n" 
+                                           name="top_n" 
+                                           min="1" 
+                                           max="20" 
+                                           value="{{ form_data.top_n if form_data else 5 }}"
+                                           oninput="document.getElementById('top_n_value').textContent = this.value">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-magic me-2"></i>
+                                    Get Recommendations
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- CSV Upload Section -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-upload me-2"></i>
+                                Upload College Data
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('upload_csv') }}" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label for="file" class="form-label">CSV File</label>
+                                    <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+                                    <div class="form-text">
+                                        Required columns: College, Location, Branch, Fees, PlacementRate, NIRFRank, Rating
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-secondary w-100">
+                                    <i class="fas fa-file-upload me-2"></i>
+                                    Upload CSV
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="col-lg-8">
+                    {% if recommendations %}
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="card-title mb-0">
+                                    <i class="fas fa-star me-2"></i>
+                                    Recommended Colleges
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th><i class="fas fa-university me-1"></i>College</th>
+                                                <th><i class="fas fa-map-marker-alt me-1"></i>Location</th>
+                                                <th><i class="fas fa-code-branch me-1"></i>Branch</th>
+                                                <th><i class="fas fa-rupee-sign me-1"></i>Fees</th>
+                                                <th><i class="fas fa-briefcase me-1"></i>Placement %</th>
+                                                <th><i class="fas fa-trophy me-1"></i>NIRF Rank</th>
+                                                <th><i class="fas fa-star me-1"></i>Rating</th>
+                                                <th><i class="fas fa-percent me-1"></i>Match Score</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for college, score in recommendations %}
+                                                <tr>
+                                                    <td>
+                                                        <strong>{{ college.college }}</strong>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">{{ college.location }}</span>
+                                                    </td>
+                                                    <td>{{ college.branch }}</td>
+                                                    <td>
+                                                        <span class="fw-bold text-success">₹{{ "{:,}".format(college.fees|int) }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="progress me-2" style="width: 60px; height: 8px;">
+                                                                <div class="progress-bar bg-info" 
+                                                                     style="width: {{ college.placement_rate }}%"></div>
+                                                            </div>
+                                                            <small>{{ "%.1f"|format(college.placement_rate) }}%</small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-warning text-dark">#{{ college.nirf_rank }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            {% for i in range(5) %}
+                                                                <i class="fas fa-star {{ 'text-warning' if i < college.rating else 'text-muted' }}"></i>
+                                                            {% endfor %}
+                                                            <small class="ms-1">{{ "%.1f"|format(college.rating) }}</small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-primary">{{ "%.1f"|format(score * 100) }}%</span>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="card">
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                                <h4>Find Your Perfect College</h4>
+                                <p class="text-muted mb-4">
+                                    Use the form on the left to get personalized college recommendations based on your preferences and budget.
+                                </p>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="card bg-primary bg-opacity-10 border-primary">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-brain fa-2x text-primary mb-2"></i>
+                                                <h6>AI-Powered</h6>
+                                                <small>Machine learning algorithms analyze your preferences</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card bg-success bg-opacity-10 border-success">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-filter fa-2x text-success mb-2"></i>
+                                                <h6>Smart Filtering</h6>
+                                                <small>Filter by budget, location, and branch preferences</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card bg-info bg-opacity-10 border-info">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                                                <h6>Data-Driven</h6>
+                                                <small>Based on placement rates, rankings, and ratings</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-5 py-4 border-top">
+            <div class="container text-center">
+                <p class="text-muted mb-0">
+                    <i class="fas fa-graduation-cap me-1"></i>
+                    College Recommendation System - Powered by Machine Learning
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
+        // File upload validation
+        document.getElementById('file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && !file.name.toLowerCase().endsWith('.csv')) {
+                alert('Please select a CSV file.');
+                e.target.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
