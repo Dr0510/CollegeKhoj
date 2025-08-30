@@ -31,10 +31,10 @@ mhcet_recommender = MHCETRecommender(db)
 def init_sample_cutoff_data():
     """Initialize sample CAP cutoff data for testing"""
     if CAPCutoff.query.count() == 0:
-        # Get some Maharashtra colleges for cutoff data
+        # Get Maharashtra colleges for cutoff data across different tiers
         maharashtra_colleges = College.query.filter(
             College.location.in_(['Mumbai', 'Pune', 'Nagpur'])
-        ).limit(10).all()
+        ).limit(30).all()
         
         if maharashtra_colleges:
             categories = ['Open', 'OBC', 'SC', 'ST', 'EWS']
@@ -42,17 +42,23 @@ def init_sample_cutoff_data():
             years = [2022, 2023, 2024]
             
             for college in maharashtra_colleges:
-                # Determine base cutoff based on college ranking
-                if 'IIT' in college.college:
-                    base_cutoff = 99.5
-                elif 'NIT' in college.college or college.nirf_rank <= 50:
-                    base_cutoff = 95.0
+                # More realistic and diverse cutoff based on college ranking
+                if 'IIT' in college.college and college.nirf_rank <= 5:
+                    base_cutoff = 99.0
+                elif 'IIT' in college.college or college.nirf_rank <= 10:
+                    base_cutoff = 96.0
+                elif 'NIT' in college.college or college.nirf_rank <= 25:
+                    base_cutoff = 92.0
+                elif college.nirf_rank <= 50:
+                    base_cutoff = 85.0
                 elif college.nirf_rank <= 100:
-                    base_cutoff = 90.0
+                    base_cutoff = 78.0
                 elif college.nirf_rank <= 200:
-                    base_cutoff = 80.0
+                    base_cutoff = 68.0
+                elif college.nirf_rank <= 300:
+                    base_cutoff = 58.0
                 else:
-                    base_cutoff = 70.0
+                    base_cutoff = 45.0
                 
                 for year in years:
                     for category in categories:

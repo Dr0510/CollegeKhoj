@@ -9,9 +9,10 @@ class MHCETRecommender:
     def __init__(self, db):
         self.db = db
         
-    def get_admission_probability(self, student_percentile, cutoff_percentile, safety_margin=5.0):
+    def get_admission_probability(self, student_percentile, cutoff_percentile, safety_margin=2.0):
         """
-        Calculate admission probability based on student percentile vs cutoff
+        Calculate realistic admission probability based on student percentile vs cutoff
+        This mimics the real MSCET portal logic where cutoffs are strict
         
         Args:
             student_percentile: Student's MH-CET percentile
@@ -21,24 +22,30 @@ class MHCETRecommender:
         Returns:
             Probability score (0-1)
         """
-        if student_percentile >= cutoff_percentile + safety_margin:
-            return 0.95  # Very high chance
-        elif student_percentile >= cutoff_percentile:
-            return 0.75  # Good chance
-        elif student_percentile >= cutoff_percentile - 2:
-            return 0.50  # Moderate chance
-        elif student_percentile >= cutoff_percentile - 5:
-            return 0.25  # Low chance
+        percentile_diff = student_percentile - cutoff_percentile
+        
+        if percentile_diff >= 5.0:
+            return 0.90  # Very high chance - well above cutoff
+        elif percentile_diff >= 2.0:
+            return 0.75  # High chance - above cutoff with margin
+        elif percentile_diff >= 0.5:
+            return 0.60  # Good chance - slightly above cutoff
+        elif percentile_diff >= -0.5:
+            return 0.35  # Moderate chance - around cutoff
+        elif percentile_diff >= -2.0:
+            return 0.15  # Low chance - slightly below cutoff
+        elif percentile_diff >= -5.0:
+            return 0.05  # Very low chance - below cutoff
         else:
-            return 0.05  # Very low chance
+            return 0.01  # Almost no chance - well below cutoff
     
     def categorize_recommendation(self, probability):
         """Categorize college recommendation based on admission probability"""
-        if probability >= 0.8:
+        if probability >= 0.70:
             return "Safe"
-        elif probability >= 0.5:
+        elif probability >= 0.40:
             return "Moderate"
-        elif probability >= 0.2:
+        elif probability >= 0.10:
             return "Ambitious"
         else:
             return "Dream"
@@ -181,34 +188,36 @@ class MHCETRecommender:
     
     def _estimate_cutoff(self, college, category):
         """Estimate cutoff percentile based on college ranking and fees"""
-        # Base cutoff estimation based on NIRF rank
-        if college.nirf_rank <= 10:
-            base_cutoff = 98.0
-        elif college.nirf_rank <= 25:
-            base_cutoff = 95.0
-        elif college.nirf_rank <= 50:
-            base_cutoff = 90.0
-        elif college.nirf_rank <= 100:
+        # More realistic base cutoff estimation based on NIRF rank
+        if college.nirf_rank <= 5:  # Top IITs
+            base_cutoff = 99.0
+        elif college.nirf_rank <= 10:  # Other top IITs/NITs
+            base_cutoff = 96.0
+        elif college.nirf_rank <= 25:  # Good NITs/IIITs
+            base_cutoff = 92.0
+        elif college.nirf_rank <= 50:  # Decent engineering colleges
             base_cutoff = 85.0
-        elif college.nirf_rank <= 200:
-            base_cutoff = 75.0
-        elif college.nirf_rank <= 300:
+        elif college.nirf_rank <= 100:  # Average engineering colleges
+            base_cutoff = 78.0
+        elif college.nirf_rank <= 200:  # Below average colleges
             base_cutoff = 65.0
-        else:
-            base_cutoff = 50.0
+        elif college.nirf_rank <= 300:  # Lower tier colleges
+            base_cutoff = 55.0
+        else:  # Bottom tier colleges
+            base_cutoff = 45.0
         
-        # Adjust based on category
+        # Adjust based on category (realistic Maharashtra reservations)
         category_adjustments = {
             'Open': 0,
-            'OBC': -5,
-            'SC': -15,
-            'ST': -20,
-            'NT': -10,
-            'EWS': -3
+            'OBC': -8,
+            'SC': -20,
+            'ST': -25,
+            'NT': -12,
+            'EWS': -5
         }
         
         adjustment = category_adjustments.get(category, 0)
-        estimated_cutoff = max(base_cutoff + adjustment, 30.0)  # Minimum 30th percentile
+        estimated_cutoff = max(base_cutoff + adjustment, 25.0)  # Minimum 25th percentile
         
         return estimated_cutoff
     
