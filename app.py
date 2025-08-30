@@ -20,11 +20,76 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
 init_database(app)
 
 # Import models and recommender after db initialization
-from models import College
+from models import College, CAPCutoff, MHCETStudent
 from recommender import CollegeRecommender
+from mhcet_recommender import MHCETRecommender
 
-# Initialize recommendation engine
+# Initialize recommendation engines
 recommender = CollegeRecommender(db)
+mhcet_recommender = MHCETRecommender(db)
+
+def init_sample_cutoff_data():
+    """Initialize sample CAP cutoff data for testing"""
+    if CAPCutoff.query.count() == 0:
+        # Get some Maharashtra colleges for cutoff data
+        maharashtra_colleges = College.query.filter(
+            College.location.in_(['Mumbai', 'Pune', 'Nagpur'])
+        ).limit(10).all()
+        
+        if maharashtra_colleges:
+            categories = ['Open', 'OBC', 'SC', 'ST', 'EWS']
+            genders = ['Male', 'Female']
+            years = [2022, 2023, 2024]
+            
+            for college in maharashtra_colleges:
+                # Determine base cutoff based on college ranking
+                if 'IIT' in college.college:
+                    base_cutoff = 99.5
+                elif 'NIT' in college.college or college.nirf_rank <= 50:
+                    base_cutoff = 95.0
+                elif college.nirf_rank <= 100:
+                    base_cutoff = 90.0
+                elif college.nirf_rank <= 200:
+                    base_cutoff = 80.0
+                else:
+                    base_cutoff = 70.0
+                
+                for year in years:
+                    for category in categories:
+                        # Category adjustments
+                        if category == 'Open':
+                            cat_adj = 0
+                        elif category == 'OBC':
+                            cat_adj = -8
+                        elif category == 'SC':
+                            cat_adj = -20
+                        elif category == 'ST':
+                            cat_adj = -25
+                        else:  # EWS
+                            cat_adj = -5
+                        
+                        for gender in genders:
+                            cutoff = max(base_cutoff + cat_adj, 30.0)
+                            
+                            cutoff_data = CAPCutoff(
+                                college_id=college.id,
+                                year=year,
+                                round_number=1,
+                                category=category,
+                                gender=gender,
+                                cutoff_percentile=round(cutoff, 2),
+                                opening_rank=1000,
+                                closing_rank=2000,
+                                seats_available=60
+                            )
+                            db.session.add(cutoff_data)
+            
+            try:
+                db.session.commit()
+                logging.info("Sample cutoff data initialized successfully")
+            except Exception as e:
+                db.session.rollback()
+                logging.error(f"Error initializing cutoff data: {e}")
 
 def init_sample_data():
     """Initialize database with sample college data"""
@@ -322,10 +387,146 @@ def list_colleges():
         logging.error(f"Error listing colleges: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/mhcet')
+def mhcet_page():
+    """MH-CET recommendation page"""
+    # Get unique locations and branches for form options
+    locations = db.session.query(College.location).distinct().all()
+    branches = db.session.query(College.branch).distinct().all()
+    
+    locations = [loc[0] for loc in locations]
+    branches = [branch[0] for branch in branches]
+    
+    categories = ['Open', 'OBC', 'SC', 'ST', 'NT', 'EWS']
+    genders = ['Male', 'Female', 'Other']
+    
+    return render_template('mhcet.html', 
+                         locations=locations, 
+                         branches=branches,
+                         categories=categories,
+                         genders=genders)
+
+@app.route('/mhcet/recommend', methods=['POST'])
+def mhcet_recommend():
+    """Get MH-CET based college recommendations"""
+    try:
+        # Get form data
+        percentile = request.form.get('percentile', type=float)
+        category = request.form.get('category', '')
+        gender = request.form.get('gender', '')
+        budget = request.form.get('budget', type=float)
+        locations = request.form.getlist('locations')
+        branches = request.form.getlist('branches')
+        top_n = request.form.get('top_n', 10, type=int)
+        
+        # Validate input
+        if not percentile or percentile < 0 or percentile > 100:
+            flash('Please enter a valid percentile (0-100)', 'error')
+            return redirect(url_for('mhcet_page'))
+        
+        if not category or not gender:
+            flash('Please select category and gender', 'error')
+            return redirect(url_for('mhcet_page'))
+        
+        # Get recommendations
+        recommendations = mhcet_recommender.get_mhcet_recommendations(
+            percentile=percentile,
+            category=category,
+            gender=gender,
+            budget=budget,
+            preferred_locations=locations if locations else None,
+            preferred_branches=branches if branches else None,
+            top_n=top_n
+        )
+        
+        # Get student analysis
+        student_analysis = mhcet_recommender.analyze_student_profile(
+            percentile=percentile,
+            category=category,
+            gender=gender,
+            budget=budget
+        )
+        
+        # Get form options again for redisplay
+        all_locations = db.session.query(College.location).distinct().all()
+        all_branches = db.session.query(College.branch).distinct().all()
+        
+        all_locations = [loc[0] for loc in all_locations]
+        all_branches = [branch[0] for branch in all_branches]
+        
+        categories = ['Open', 'OBC', 'SC', 'ST', 'NT', 'EWS']
+        genders = ['Male', 'Female', 'Other']
+        
+        return render_template('mhcet.html',
+                             recommendations=recommendations,
+                             student_analysis=student_analysis,
+                             locations=all_locations,
+                             branches=all_branches,
+                             categories=categories,
+                             genders=genders,
+                             form_data={
+                                 'percentile': percentile,
+                                 'category': category,
+                                 'gender': gender,
+                                 'budget': budget,
+                                 'locations': locations,
+                                 'branches': branches,
+                                 'top_n': top_n
+                             })
+        
+    except Exception as e:
+        logging.error(f"Error getting MH-CET recommendations: {e}")
+        flash(f'Error getting recommendations: {str(e)}', 'error')
+        return redirect(url_for('mhcet_page'))
+
+@app.route('/mhcet/api', methods=['GET'])
+def mhcet_api():
+    """API endpoint for MH-CET recommendations"""
+    try:
+        percentile = request.args.get('percentile', type=float)
+        category = request.args.get('category', '')
+        gender = request.args.get('gender', '')
+        budget = request.args.get('budget', type=float)
+        top_n = request.args.get('top_n', 10, type=int)
+        
+        if not percentile or not category or not gender:
+            return jsonify({'error': 'Missing required parameters: percentile, category, gender'}), 400
+        
+        recommendations = mhcet_recommender.get_mhcet_recommendations(
+            percentile=percentile,
+            category=category,
+            gender=gender,
+            budget=budget,
+            top_n=top_n
+        )
+        
+        # Convert to JSON format
+        result = []
+        for college, admission_data in recommendations:
+            result.append({
+                'college': college.college,
+                'location': college.location,
+                'branch': college.branch,
+                'fees': college.fees,
+                'placement_rate': college.placement_rate,
+                'nirf_rank': college.nirf_rank,
+                'rating': college.rating,
+                'admission_probability': admission_data['probability'],
+                'category_type': admission_data['category_type'],
+                'cutoff_info': admission_data
+            })
+        
+        return jsonify({'recommendations': result})
+        
+    except Exception as e:
+        logging.error(f"Error in MH-CET API: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # Initialize database and sample data
 with app.app_context():
     db.create_all()
     init_sample_data()
+    init_sample_cutoff_data()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

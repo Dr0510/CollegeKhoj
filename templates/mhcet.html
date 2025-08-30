@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MH-CET College Recommendations</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <header class="py-4 mb-4 border-bottom">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="display-5">
+                            <i class="fas fa-calculator me-3"></i>
+                            MH-CET College Recommendations
+                        </h1>
+                        <p class="lead text-muted">Find the best colleges based on your MH-CET score, category, and preferences</p>
+                    </div>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to General Search
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="container mb-4">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="container">
+            <div class="row">
+                <!-- MH-CET Form -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">
+                                <i class="fas fa-user-graduate me-2"></i>
+                                Your MH-CET Profile
+                            </h4>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('mhcet_recommend') }}">
+                                <div class="mb-3">
+                                    <label for="percentile" class="form-label">
+                                        <i class="fas fa-percent me-1"></i>
+                                        MH-CET Percentile <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="percentile" 
+                                           name="percentile" 
+                                           placeholder="e.g., 85.5"
+                                           min="0" 
+                                           max="100" 
+                                           step="0.1"
+                                           value="{{ form_data.percentile if form_data else '' }}"
+                                           required>
+                                    <div class="form-text">Enter your MH-CET percentile (0-100)</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="category" class="form-label">
+                                        <i class="fas fa-tags me-1"></i>
+                                        Category <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="category" name="category" required>
+                                        <option value="">Select Category</option>
+                                        {% for cat in categories %}
+                                            <option value="{{ cat }}" 
+                                                    {{ 'selected' if form_data and form_data.category == cat else '' }}>
+                                                {{ cat }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="gender" class="form-label">
+                                        <i class="fas fa-user me-1"></i>
+                                        Gender <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="gender" name="gender" required>
+                                        <option value="">Select Gender</option>
+                                        {% for g in genders %}
+                                            <option value="{{ g }}" 
+                                                    {{ 'selected' if form_data and form_data.gender == g else '' }}>
+                                                {{ g }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="budget" class="form-label">
+                                        <i class="fas fa-rupee-sign me-1"></i>
+                                        Maximum Budget (₹)
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="budget" 
+                                           name="budget" 
+                                           placeholder="e.g., 200000"
+                                           value="{{ form_data.budget if form_data else '' }}">
+                                    <div class="form-text">Leave empty for no budget limit</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="locations" class="form-label">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        Preferred Locations
+                                    </label>
+                                    <select class="form-select" id="locations" name="locations" multiple>
+                                        {% for loc in locations %}
+                                            <option value="{{ loc }}" 
+                                                    {{ 'selected' if form_data and form_data.locations and loc in form_data.locations else '' }}>
+                                                {{ loc }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Hold Ctrl/Cmd to select multiple locations</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="branches" class="form-label">
+                                        <i class="fas fa-code-branch me-1"></i>
+                                        Preferred Branches
+                                    </label>
+                                    <select class="form-select" id="branches" name="branches" multiple>
+                                        {% for br in branches %}
+                                            <option value="{{ br }}" 
+                                                    {{ 'selected' if form_data and form_data.branches and br in form_data.branches else '' }}>
+                                                {{ br }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Hold Ctrl/Cmd to select multiple branches</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="top_n" class="form-label">
+                                        <i class="fas fa-list-ol me-1"></i>
+                                        Number of Recommendations: <span id="top_n_value">{{ form_data.top_n if form_data else 10 }}</span>
+                                    </label>
+                                    <input type="range" 
+                                           class="form-range" 
+                                           id="top_n" 
+                                           name="top_n" 
+                                           min="5" 
+                                           max="20" 
+                                           value="{{ form_data.top_n if form_data else 10 }}"
+                                           oninput="document.getElementById('top_n_value').textContent = this.value">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-magic me-2"></i>
+                                    Get MH-CET Recommendations
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Student Analysis -->
+                    {% if student_analysis %}
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    Your Profile Analysis
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <strong>Performance Level:</strong>
+                                    <span class="badge bg-info ms-2">{{ student_analysis.percentile_category }}</span>
+                                </div>
+                                <div class="mb-3">
+                                    <strong>Competitive Level:</strong>
+                                    <span class="badge bg-warning text-dark ms-2">{{ student_analysis.competitive_level }}</span>
+                                </div>
+                                {% if student_analysis.budget_category %}
+                                <div class="mb-3">
+                                    <strong>Budget Category:</strong>
+                                    <span class="badge bg-secondary ms-2">{{ student_analysis.budget_category }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="mb-3">
+                                    <strong>Strategy:</strong>
+                                    <p class="small mb-0">{{ student_analysis.recommendations.strategy }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Results Section -->
+                <div class="col-lg-8">
+                    {% if recommendations %}
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="card-title mb-0">
+                                    <i class="fas fa-graduation-cap me-2"></i>
+                                    MH-CET Based Recommendations
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th><i class="fas fa-university me-1"></i>College</th>
+                                                <th><i class="fas fa-map-marker-alt me-1"></i>Location</th>
+                                                <th><i class="fas fa-code-branch me-1"></i>Branch</th>
+                                                <th><i class="fas fa-rupee-sign me-1"></i>Fees</th>
+                                                <th><i class="fas fa-percentage me-1"></i>Admission Chance</th>
+                                                <th><i class="fas fa-trophy me-1"></i>NIRF Rank</th>
+                                                <th><i class="fas fa-star me-1"></i>Rating</th>
+                                                <th><i class="fas fa-bullseye me-1"></i>Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for college, data in recommendations %}
+                                                <tr>
+                                                    <td>
+                                                        <strong>{{ college.college }}</strong>
+                                                        {% if data.has_real_data %}
+                                                            <i class="fas fa-database text-success ms-1" title="Real cutoff data available"></i>
+                                                        {% else %}
+                                                            <i class="fas fa-calculator text-warning ms-1" title="Estimated cutoff"></i>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">{{ college.location }}</span>
+                                                    </td>
+                                                    <td>{{ college.branch }}</td>
+                                                    <td>
+                                                        <span class="fw-bold text-success">₹{{ "{:,}".format(college.fees|int) }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="progress me-2" style="width: 60px; height: 8px;">
+                                                                <div class="progress-bar 
+                                                                    {% if data.probability >= 0.8 %}bg-success
+                                                                    {% elif data.probability >= 0.5 %}bg-warning
+                                                                    {% elif data.probability >= 0.2 %}bg-info
+                                                                    {% else %}bg-danger{% endif %}" 
+                                                                     style="width: {{ (data.probability * 100)|round }}%"></div>
+                                                            </div>
+                                                            <small>{{ (data.probability * 100)|round }}%</small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-warning text-dark">#{{ college.nirf_rank }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            {% for i in range(5) %}
+                                                                <i class="fas fa-star {{ 'text-warning' if i < college.rating else 'text-muted' }}"></i>
+                                                            {% endfor %}
+                                                            <small class="ms-1">{{ "%.1f"|format(college.rating) }}</small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge 
+                                                            {% if data.category_type == 'Safe' %}bg-success
+                                                            {% elif data.category_type == 'Moderate' %}bg-warning text-dark
+                                                            {% elif data.category_type == 'Ambitious' %}bg-info
+                                                            {% else %}bg-primary{% endif %}">
+                                                            {{ data.category_type }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Legend -->
+                                <div class="mt-3">
+                                    <h6>Recommendation Types:</h6>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        <span><span class="badge bg-success me-1">Safe</span>Very high admission chances</span>
+                                        <span><span class="badge bg-warning text-dark me-1">Moderate</span>Good admission chances</span>
+                                        <span><span class="badge bg-info me-1">Ambitious</span>Moderate chances, worth trying</span>
+                                        <span><span class="badge bg-primary me-1">Dream</span>Low chances, backup option</span>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-3 mt-2">
+                                        <span><i class="fas fa-database text-success me-1"></i>Real CAP cutoff data</span>
+                                        <span><i class="fas fa-calculator text-warning me-1"></i>Estimated cutoff</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="card">
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
+                                <h4>MH-CET College Recommendations</h4>
+                                <p class="text-muted mb-4">
+                                    Enter your MH-CET percentile, category, and preferences to get personalized college recommendations based on historical CAP cutoff data.
+                                </p>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="card bg-primary bg-opacity-10 border-primary">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                                                <h6>CAP Cutoff Analysis</h6>
+                                                <small>Based on 3 years of historical cutoff data</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card bg-success bg-opacity-10 border-success">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-users fa-2x text-success mb-2"></i>
+                                                <h6>Category Specific</h6>
+                                                <small>Recommendations based on your category and gender</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card bg-info bg-opacity-10 border-info">
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-bullseye fa-2x text-info mb-2"></i>
+                                                <h6>Smart Classification</h6>
+                                                <small>Safe, Moderate, Ambitious, and Dream colleges</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-5 py-4 border-top">
+            <div class="container text-center">
+                <p class="text-muted mb-0">
+                    <i class="fas fa-calculator me-1"></i>
+                    MH-CET College Recommendations - Based on Historical CAP Data
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    </script>
+</body>
+</html>
