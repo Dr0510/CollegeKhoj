@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import logging
 import json
+from sqlalchemy import or_
 
 class MHCETRecommender:
     """MH-CET specific recommendation system using CAP cutoff data"""
@@ -83,14 +84,14 @@ class MHCETRecommender:
                 for location in preferred_locations:
                     location_filters.append(College.location.ilike(f'%{location}%'))
                 if location_filters:
-                    college_query = college_query.filter(self.db.or_(*location_filters))
+                    college_query = college_query.filter(or_(*location_filters))
             
             if preferred_branches:
                 branch_filters = []
                 for branch in preferred_branches:
                     branch_filters.append(College.branch.ilike(f'%{branch}%'))
                 if branch_filters:
-                    college_query = college_query.filter(self.db.or_(*branch_filters))
+                    college_query = college_query.filter(or_(*branch_filters))
             
             colleges = college_query.all()
             
@@ -150,35 +151,8 @@ class MHCETRecommender:
                 
                 recommendations.append((college, admission_data))
             
-            # Sort by probability (descending) and then by college rating
-            recommendations.sort(key=lambda x: (x[1]['probability'], x[0].rating), reverse=True)
-            
-            # Ensure we have a good mix of recommendations
-            safe_count = sum(1 for _, data in recommendations if data['category_type'] == 'Safe')
-            moderate_count = sum(1 for _, data in recommendations if data['category_type'] == 'Moderate')
-            
-            # If too many safe options, include some ambitious ones
-            if safe_count > top_n * 0.7:
-                final_recommendations = []
-                safe_added = 0
-                moderate_added = 0
-                ambitious_added = 0
-                
-                for college, data in recommendations:
-                    if len(final_recommendations) >= top_n:
-                        break
-                        
-                    if data['category_type'] == 'Safe' and safe_added < top_n * 0.5:
-                        final_recommendations.append((college, data))
-                        safe_added += 1
-                    elif data['category_type'] == 'Moderate' and moderate_added < top_n * 0.3:
-                        final_recommendations.append((college, data))
-                        moderate_added += 1
-                    elif data['category_type'] == 'Ambitious' and ambitious_added < top_n * 0.2:
-                        final_recommendations.append((college, data))
-                        ambitious_added += 1
-                
-                return final_recommendations
+            # Sort by NIRF rank best first (like real MSCET portal: shows top colleges first with their chances)
+            recommendations.sort(key=lambda x: x[0].nirf_rank)
             
             return recommendations[:top_n]
             
