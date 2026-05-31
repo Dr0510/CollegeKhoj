@@ -1,0 +1,8 @@
+flask
+flask-sqlalchemy
+werkzeug
+psycopg2-binary
+pandas
+numpy
+scikit-learn
+python-dotenv
