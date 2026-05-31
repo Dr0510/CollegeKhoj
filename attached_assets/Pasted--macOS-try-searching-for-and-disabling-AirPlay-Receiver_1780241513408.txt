@@ -1,0 +1,52 @@
+ macOS, try searching for and disabling 'AirPlay Receiver' in System Settings.
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % export $(cat .env | xargs)
+gunicorn --bind 0.0.0.0:5000 --reload main:app
+[2026-05-31 20:59:45 +0530] [74562] [INFO] Starting gunicorn 26.0.0
+[2026-05-31 20:59:45 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:45 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:46 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:46 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:47 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:47 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:48 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:48 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:49 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:49 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:50 +0530] [74562] [ERROR] Can't connect to ('0.0.0.0', 5000)
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % lsof -i :5000
+COMMAND     PID      USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+ControlCe   624 dattaraut   11u  IPv4 0xa9347aa838648fa2      0t0  TCP *:commplex-main (LISTEN)
+ControlCe   624 dattaraut   12u  IPv6  0xc1bfcf674c1b518      0t0  TCP *:commplex-main (LISTEN)
+ControlCe   624 dattaraut   22u  IPv6  0x763b3f5b40ac290      0t0  TCP localhost:commplex-main->localhost:51815 (ESTABLISHED)
+ControlCe   624 dattaraut   23u  IPv6 0x6c2a90ebc09ff626      0t0  TCP localhost:commplex-main->localhost:51816 (ESTABLISHED)
+Google    36128 dattaraut  101u  IPv6 0xe61f193b38727880      0t0  TCP localhost:51815->localhost:commplex-main (ESTABLISHED)
+Google    36128 dattaraut  102u  IPv6 0x502485509331b489      0t0  TCP localhost:51816->localhost:commplex-main (ESTABLISHED)
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % COMMAND   PID
+Python   12345
+/usr/bin/COMMAND: line 4: PID: command not found
+/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python: can't open file '/Users/dattaraut/Downloads/CollegeMatchmaker 2/12345': [Errno 2] No such file or directory
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % kill -9 12345
+kill: kill 12345 failed: no such process
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % pkill -f python
+pkill -f gunicorn
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % python main.py
+ * Serving Flask app 'app'
+ * Debug mode: on
+Address already in use
+Port 5000 is in use by another program. Either identify and stop that program, or start the server with a different port.
+On macOS, try searching for and disabling 'AirPlay Receiver' in System Settings.
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % export $(cat .env | xargs)
+gunicorn --bind 0.0.0.0:5000 --reload main:app
+[2026-05-31 21:01:22 +0530] [75223] [INFO] Starting gunicorn 26.0.0
+[2026-05-31 21:01:22 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:22 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:23 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:23 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:24 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:24 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:25 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:25 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:26 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:26 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:27 +0530] [75223] [ERROR] Can't connect to ('0.0.0.0', 5000)
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % 
