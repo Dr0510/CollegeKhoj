@@ -118,6 +118,21 @@
         .range-val { display: inline-block; background: var(--brand); color: #fff; border-radius: 20px; padding: 2px 10px; font-size: .77rem; font-weight: 700; }
         hr.divider { border-color: var(--card-border); margin: 14px 0; }
 
+        /* ── Checkbox pill group ── */
+        .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
+        .pill-group input[type=checkbox] { display: none; }
+        .pill-group label {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: var(--input-bg); border: 1px solid var(--input-border);
+            border-radius: 20px; padding: 4px 11px; font-size: .76rem;
+            color: var(--text-muted); cursor: pointer; user-select: none;
+            transition: all .15s;
+        }
+        .pill-group label:hover { border-color: var(--brand); color: var(--brand); }
+        .pill-group input[type=checkbox]:checked + label {
+            background: var(--brand); border-color: var(--brand); color: #fff;
+        }
+
         /* Percentile input */
         .percentile-wrap { position: relative; }
         .percentile-wrap input { padding-right: 50px; font-size: 1.05rem; font-weight: 700; }
@@ -288,22 +303,28 @@
 
                             <div class="mb-3">
                                 <label class="form-label"><i class="fas fa-map-marker-alt me-1"></i>Preferred Locations</label>
-                                <select class="form-select" name="locations" multiple>
+                                <div class="pill-group">
                                     {% for loc in locations %}
-                                        <option value="{{ loc }}" {{ 'selected' if form_data and form_data.locations and loc in form_data.locations }}>{{ loc }}</option>
+                                    {% set loc_id = "loc_" ~ loop.index %}
+                                    <input type="checkbox" name="locations" value="{{ loc }}" id="{{ loc_id }}"
+                                           {{ 'checked' if form_data and form_data.locations and loc in form_data.locations }}>
+                                    <label for="{{ loc_id }}"><i class="fas fa-map-marker-alt" style="font-size:.65rem;"></i>{{ loc }}</label>
                                     {% endfor %}
-                                </select>
-                                <div class="form-text">Ctrl/Cmd + click to select multiple</div>
+                                </div>
+                                <div class="form-text">Click to select one or more cities</div>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label"><i class="fas fa-code-branch me-1"></i>Preferred Branches</label>
-                                <select class="form-select" name="branches" multiple>
+                                <div class="pill-group">
                                     {% for br in branches %}
-                                        <option value="{{ br }}" {{ 'selected' if form_data and form_data.branches and br in form_data.branches }}>{{ br }}</option>
+                                    {% set br_id = "br_" ~ loop.index %}
+                                    <input type="checkbox" name="branches" value="{{ br }}" id="{{ br_id }}"
+                                           {{ 'checked' if form_data and form_data.branches and br in form_data.branches }}>
+                                    <label for="{{ br_id }}">{{ br }}</label>
                                     {% endfor %}
-                                </select>
-                                <div class="form-text">Ctrl/Cmd + click to select multiple</div>
+                                </div>
+                                <div class="form-text">Click to filter by branch — leave blank to show all</div>
                             </div>
 
                             <div class="mb-4">

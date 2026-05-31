@@ -162,6 +162,20 @@
         .feature-chip { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 30px; padding: 7px 16px; font-size: .82rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
         .feature-chip i { color: var(--brand); }
 
+        /* ── Pill group (radio / checkbox) ── */
+        .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
+        .pill-group input[type=radio],
+        .pill-group input[type=checkbox] { display: none; }
+        .pill-group label {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: var(--input-bg); border: 1px solid var(--input-border);
+            border-radius: 20px; padding: 4px 12px; font-size: .76rem;
+            color: var(--text-muted); cursor: pointer; user-select: none;
+            transition: all .15s;
+        }
+        .pill-group label:hover { border-color: var(--brand); color: var(--brand); }
+        .pill-group input:checked + label { background: var(--brand); border-color: var(--brand); color: #fff; }
+
         /* ── Footer ── */
         footer { border-top: 1px solid var(--card-border); padding: 26px 0; margin-top: 60px; text-align: center; color: var(--footer); font-size: .82rem; }
     </style>
@@ -223,21 +237,31 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label"><i class="fas fa-map-marker-alt me-1"></i>Location</label>
-                                <select class="form-select" name="location">
-                                    <option value="">Any Location</option>
+                                <div class="pill-group">
+                                    <input type="radio" name="location" value="" id="loc_any"
+                                           {{ 'checked' if not form_data or not form_data.location }}>
+                                    <label for="loc_any">Any</label>
                                     {% for loc in locations %}
-                                        <option value="{{ loc }}" {{ 'selected' if form_data and form_data.location == loc }}>{{ loc }}</option>
+                                    {% set lid = "loc_" ~ loop.index %}
+                                    <input type="radio" name="location" value="{{ loc }}" id="{{ lid }}"
+                                           {{ 'checked' if form_data and form_data.location == loc }}>
+                                    <label for="{{ lid }}">{{ loc }}</label>
                                     {% endfor %}
-                                </select>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label"><i class="fas fa-code-branch me-1"></i>Branch</label>
-                                <select class="form-select" name="branch">
-                                    <option value="">Any Branch</option>
+                                <div class="pill-group">
+                                    <input type="radio" name="branch" value="" id="br_any"
+                                           {{ 'checked' if not form_data or not form_data.branch }}>
+                                    <label for="br_any">Any</label>
                                     {% for br in branches %}
-                                        <option value="{{ br }}" {{ 'selected' if form_data and form_data.branch == br }}>{{ br }}</option>
+                                    {% set bid = "br_" ~ loop.index %}
+                                    <input type="radio" name="branch" value="{{ br }}" id="{{ bid }}"
+                                           {{ 'checked' if form_data and form_data.branch == br }}>
+                                    <label for="{{ bid }}">{{ br }}</label>
                                     {% endfor %}
-                                </select>
+                                </div>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label">

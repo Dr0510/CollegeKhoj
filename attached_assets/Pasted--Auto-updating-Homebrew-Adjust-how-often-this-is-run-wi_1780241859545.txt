@@ -1,0 +1,254 @@
+> Auto-updating Homebrew...
+Adjust how often this is run with `$HOMEBREW_AUTO_UPDATE_SECS` or disable with
+`$HOMEBREW_NO_AUTO_UPDATE=1`. Hide these hints with `$HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
+
+
+
+==> Auto-updated Homebrew!
+Updated 3 taps (mongodb/brew, homebrew/core and homebrew/cask).
+==> New Formulae
+btdu: Sampling disk usage profiler for btrfs
+bumblebee: Read-only developer endpoint scanner for supply-chain exposure
+cc-switch-cli: All-in-one assistant tool for Claude Code, Codex, Gemini, OpenCode and OpenClaw
+cozypkg: CLI for managing Cozystack packages
+ghcitty: Fast, friendly GHCi
+libredwg: DWG utilities
+mongodb/brew/mongodb-community@8.2
+mongodb/brew/mongodb-enterprise@8.2
+mongodb/brew/mongodb-mongocryptd@8.2
+quien: Better WHOIS and domain intelligence toolkit
+ratty: GPU-rendered terminal emulator with inline 3D graphics
+sanity: Command-line interface for Sanity
+tdf: TUI-based PDF viewer
+telegram-send: Command-line tool to send Telegram messages
+==> New Casks
+activitywatch@beta: Time tracker
+atomcode: Open-source terminal AI coding agent
+auto-subs: Subtitle generator for audio and video files
+dbx: Database management tool
+devin-cli: Coding agent with Devin Cloud integration
+facescreen: Camera and text overlay for presentations and screen sharing
+font-montenegrin-gothic-one
+ghostvm: Native macOS Virtual Machines for Apple Silicon
+grok-build: Extensible coding agent for the terminal
+harvest: Time tracking application
+meetily: Meeting transcription and analysis application
+openpencil: Open-source design editor compatible with Figma
+speechify-ai-assistant: AI-powered reading and voice assistant
+yojam: Open links in selected browser, profiles, or apps
+
+You have 18 outdated formulae and 1 outdated cask installed.
+
+Inspect the formula dependency plan before installing with `brew install --ask`.
+Enable ask mode by setting `HOMEBREW_ASK=1`.
+Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
+==> Fetching downloads for: postgresql@15
+✔︎ Bottle Manifest postgresql@15 (15.18)                                                 Downloaded   27.5KB/ 27.5KB
+✔︎ Bottle Manifest icu4c@78 (78.3)                                                       Downloaded    9.7KB/  9.7KB
+✔︎ Bottle Manifest krb5 (1.22.2)                                                         Downloaded   16.3KB/ 16.3KB
+✔︎ Bottle Manifest zstd (1.5.7_1)                                                        Downloaded   13.2KB/ 13.2KB
+✔︎ Bottle Manifest libunistring (1.4.2)                                                  Downloaded    7.3KB/  7.3KB
+✔︎ Bottle Manifest gettext (1.0)                                                         Downloaded   13.7KB/ 13.7KB
+✔︎ Bottle zstd (1.5.7_1)                                                                 Downloaded  793.6KB/793.6KB
+✔︎ Bottle krb5 (1.22.2)                                                                  Downloaded    1.3MB/  1.3MB
+✔︎ Bottle libunistring (1.4.2)                                                           Downloaded    1.9MB/  1.9MB
+✔︎ Bottle gettext (1.0)                                                                  Downloaded   10.2MB/ 10.2MB
+✔︎ Bottle postgresql@15 (15.18)                                                          Downloaded   17.4MB/ 17.4MB
+✔︎ Bottle icu4c@78 (78.3)                                                                Downloaded   31.8MB/ 31.8MB
+==> Installing dependencies for postgresql@15: icu4c@78, krb5, zstd, libunistring and gettext
+==> Installing postgresql@15 dependency: icu4c@78
+==> Pouring icu4c@78--78.3.arm64_tahoe.bottle.tar.gz
+🍺  /opt/homebrew/Cellar/icu4c@78/78.3: 279 files, 87.7MB
+==> Installing postgresql@15 dependency: krb5
+==> Pouring krb5--1.22.2.arm64_tahoe.bottle.tar.gz
+🍺  /opt/homebrew/Cellar/krb5/1.22.2: 163 files, 5.9MB
+==> Installing postgresql@15 dependency: zstd
+==> Pouring zstd--1.5.7_1.arm64_tahoe.bottle.tar.gz
+🍺  /opt/homebrew/Cellar/zstd/1.5.7_1: 32 files, 2.3MB
+==> Installing postgresql@15 dependency: libunistring
+==> Pouring libunistring--1.4.2.arm64_tahoe.bottle.tar.gz
+🍺  /opt/homebrew/Cellar/libunistring/1.4.2: 59 files, 5.8MB
+==> Installing postgresql@15 dependency: gettext
+==> Pouring gettext--1.0.arm64_tahoe.bottle.tar.gz
+🍺  /opt/homebrew/Cellar/gettext/1.0: 2,499 files, 35.3MB
+==> Installing postgresql@15
+==> Pouring postgresql@15--15.18.arm64_tahoe.bottle.tar.gz
+
+
+
+==> /opt/homebrew/Cellar/postgresql@15/15.18/bin/initdb --locale=en_US.UTF-8 -E UTF-8 /opt/homebrew/var/postgresql@
+==> Caveats
+This formula has created a default database cluster with:
+  initdb --locale=en_US.UTF-8 -E UTF-8 /opt/homebrew/var/postgresql@15
+
+To start postgresql@15 now and restart at login:
+  brew services start postgresql@15
+Or, if you don't want/need a background service you can just run:
+  LC_ALL="en_US.UTF-8" /opt/homebrew/opt/postgresql@15/bin/postgres -D /opt/homebrew/var/postgresql@15
+==> Summary
+🍺  /opt/homebrew/Cellar/postgresql@15/15.18: 3,720 files, 66.4MB
+==> Running `brew cleanup postgresql@15`...
+Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`.
+Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
+==> Caveats
+==> postgresql@15
+This formula has created a default database cluster with:
+  initdb --locale=en_US.UTF-8 -E UTF-8 /opt/homebrew/var/postgresql@15
+
+To start postgresql@15 now and restart at login:
+  brew services start postgresql@15
+Or, if you don't want/need a background service you can just run:
+  LC_ALL="en_US.UTF-8" /opt/homebrew/opt/postgresql@15/bin/postgres -D /opt/homebrew/var/postgresql@15
+dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % python3 -m venv venv
+dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % source venv/bin/activate
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % pip install flask flask-sqlalchemy gunicorn werkzeug psycopg2-binary \
+            pandas numpy scikit-learn
+Collecting flask
+  Using cached flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)
+Collecting flask-sqlalchemy
+  Using cached flask_sqlalchemy-3.1.1-py3-none-any.whl.metadata (3.4 kB)
+Collecting gunicorn
+  Using cached gunicorn-26.0.0-py3-none-any.whl.metadata (5.4 kB)
+Collecting werkzeug
+  Using cached werkzeug-3.1.8-py3-none-any.whl.metadata (4.0 kB)
+Collecting psycopg2-binary
+  Using cached psycopg2_binary-2.9.12-cp312-cp312-macosx_11_0_arm64.whl.metadata (4.9 kB)
+Collecting pandas
+  Using cached pandas-3.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (79 kB)
+Collecting numpy
+  Using cached numpy-2.4.6-cp312-cp312-macosx_14_0_arm64.whl.metadata (6.6 kB)
+Collecting scikit-learn
+  Using cached scikit_learn-1.8.0-cp312-cp312-macosx_12_0_arm64.whl.metadata (11 kB)
+Collecting blinker>=1.9.0 (from flask)
+  Using cached blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)
+Collecting click>=8.1.3 (from flask)
+  Using cached click-8.4.1-py3-none-any.whl.metadata (2.6 kB)
+Collecting itsdangerous>=2.2.0 (from flask)
+  Using cached itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)
+Collecting jinja2>=3.1.2 (from flask)
+  Using cached jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting markupsafe>=2.1.1 (from flask)
+  Using cached markupsafe-3.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (2.7 kB)
+Collecting sqlalchemy>=2.0.16 (from flask-sqlalchemy)
+  Using cached sqlalchemy-2.0.50-cp312-cp312-macosx_11_0_arm64.whl.metadata (9.5 kB)
+Collecting packaging (from gunicorn)
+  Using cached packaging-26.2-py3-none-any.whl.metadata (3.5 kB)
+Collecting python-dateutil>=2.8.2 (from pandas)
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting scipy>=1.10.0 (from scikit-learn)
+  Using cached scipy-1.17.1-cp312-cp312-macosx_14_0_arm64.whl.metadata (62 kB)
+Collecting joblib>=1.3.0 (from scikit-learn)
+  Using cached joblib-1.5.3-py3-none-any.whl.metadata (5.5 kB)
+Collecting threadpoolctl>=3.2.0 (from scikit-learn)
+  Using cached threadpoolctl-3.6.0-py3-none-any.whl.metadata (13 kB)
+Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas)
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting typing-extensions>=4.6.0 (from sqlalchemy>=2.0.16->flask-sqlalchemy)
+  Using cached typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Using cached flask-3.1.3-py3-none-any.whl (103 kB)
+Using cached flask_sqlalchemy-3.1.1-py3-none-any.whl (25 kB)
+Using cached gunicorn-26.0.0-py3-none-any.whl (212 kB)
+Using cached werkzeug-3.1.8-py3-none-any.whl (226 kB)
+Using cached psycopg2_binary-2.9.12-cp312-cp312-macosx_11_0_arm64.whl (3.8 MB)
+Using cached pandas-3.0.3-cp312-cp312-macosx_11_0_arm64.whl (9.9 MB)
+Using cached numpy-2.4.6-cp312-cp312-macosx_14_0_arm64.whl (5.2 MB)
+Using cached scikit_learn-1.8.0-cp312-cp312-macosx_12_0_arm64.whl (8.1 MB)
+Using cached blinker-1.9.0-py3-none-any.whl (8.5 kB)
+Using cached click-8.4.1-py3-none-any.whl (116 kB)
+Using cached itsdangerous-2.2.0-py3-none-any.whl (16 kB)
+Using cached jinja2-3.1.6-py3-none-any.whl (134 kB)
+Using cached joblib-1.5.3-py3-none-any.whl (309 kB)
+Using cached markupsafe-3.0.3-cp312-cp312-macosx_11_0_arm64.whl (12 kB)
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Using cached scipy-1.17.1-cp312-cp312-macosx_14_0_arm64.whl (20.3 MB)
+Using cached sqlalchemy-2.0.50-cp312-cp312-macosx_11_0_arm64.whl (2.2 MB)
+Using cached threadpoolctl-3.6.0-py3-none-any.whl (18 kB)
+Using cached packaging-26.2-py3-none-any.whl (100 kB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Installing collected packages: typing-extensions, threadpoolctl, six, psycopg2-binary, packaging, numpy, markupsafe, joblib, itsdangerous, click, blinker, werkzeug, sqlalchemy, scipy, python-dateutil, jinja2, gunicorn, scikit-learn, pandas, flask, flask-sqlalchemy
+Successfully installed blinker-1.9.0 click-8.4.1 flask-3.1.3 flask-sqlalchemy-3.1.1 gunicorn-26.0.0 itsdangerous-2.2.0 jinja2-3.1.6 joblib-1.5.3 markupsafe-3.0.3 numpy-2.4.6 packaging-26.2 pandas-3.0.3 psycopg2-binary-2.9.12 python-dateutil-2.9.0.post0 scikit-learn-1.8.0 scipy-1.17.1 six-1.17.0 sqlalchemy-2.0.50 threadpoolctl-3.6.0 typing-extensions-4.15.0 werkzeug-3.1.8
+
+[notice] A new release of pip is available: 24.3.1 -> 26.1.1
+[notice] To update, run: pip install --upgrade pip
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % pip install python-dotenv
+Collecting python-dotenv
+  Using cached python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+Using cached python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+Installing collected packages: python-dotenv
+Successfully installed python-dotenv-1.2.2
+
+[notice] A new release of pip is available: 24.3.1 -> 26.1.1
+[notice] To update, run: pip install --upgrade pip
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % export $(cat .env | xargs)
+python main.py
+ * Serving Flask app 'app'
+ * Debug mode: on
+Address already in use
+Port 5000 is in use by another program. Either identify and stop that program, or start the server with a different port.
+On macOS, try searching for and disabling 'AirPlay Receiver' in System Settings.
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % export $(cat .env | xargs)
+gunicorn --bind 0.0.0.0:5000 --reload main:app
+[2026-05-31 20:59:45 +0530] [74562] [INFO] Starting gunicorn 26.0.0
+[2026-05-31 20:59:45 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:45 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:46 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:46 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:47 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:47 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:48 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:48 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:49 +0530] [74562] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 20:59:49 +0530] [74562] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 20:59:50 +0530] [74562] [ERROR] Can't connect to ('0.0.0.0', 5000)
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % lsof -i :5000
+COMMAND     PID      USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+ControlCe   624 dattaraut   11u  IPv4 0xa9347aa838648fa2      0t0  TCP *:commplex-main (LISTEN)
+ControlCe   624 dattaraut   12u  IPv6  0xc1bfcf674c1b518      0t0  TCP *:commplex-main (LISTEN)
+ControlCe   624 dattaraut   22u  IPv6  0x763b3f5b40ac290      0t0  TCP localhost:commplex-main->localhost:51815 (ESTABLISHED)
+ControlCe   624 dattaraut   23u  IPv6 0x6c2a90ebc09ff626      0t0  TCP localhost:commplex-main->localhost:51816 (ESTABLISHED)
+Google    36128 dattaraut  101u  IPv6 0xe61f193b38727880      0t0  TCP localhost:51815->localhost:commplex-main (ESTABLISHED)
+Google    36128 dattaraut  102u  IPv6 0x502485509331b489      0t0  TCP localhost:51816->localhost:commplex-main (ESTABLISHED)
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % COMMAND   PID
+Python   12345
+/usr/bin/COMMAND: line 4: PID: command not found
+/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python: can't open file '/Users/dattaraut/Downloads/CollegeMatchmaker 2/12345': [Errno 2] No such file or directory
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % kill -9 12345
+kill: kill 12345 failed: no such process
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % pkill -f python
+pkill -f gunicorn
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % python main.py
+ * Serving Flask app 'app'
+ * Debug mode: on
+Address already in use
+Port 5000 is in use by another program. Either identify and stop that program, or start the server with a different port.
+On macOS, try searching for and disabling 'AirPlay Receiver' in System Settings.
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % export $(cat .env | xargs)
+gunicorn --bind 0.0.0.0:5000 --reload main:app
+[2026-05-31 21:01:22 +0530] [75223] [INFO] Starting gunicorn 26.0.0
+[2026-05-31 21:01:22 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:22 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:23 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:23 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:24 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:24 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:25 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:25 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:26 +0530] [75223] [ERROR] Connection in use: ('0.0.0.0', 5000)
+[2026-05-31 21:01:26 +0530] [75223] [ERROR] connection to ('0.0.0.0', 5000) failed: [Errno 48] Address already in use
+[2026-05-31 21:01:27 +0530] [75223] [ERROR] Can't connect to ('0.0.0.0', 5000)
+(venv) dattaraut@dattas-MacBook-Air CollegeMatchmaker 2 % export $(cat .env | xargs)
+gunicorn --bind 0.0.0.0:5000 --reload main:app
+[2026-05-31 21:02:52 +0530] [75420] [INFO] Starting gunicorn 26.0.0
+[2026-05-31 21:02:52 +0530] [75420] [INFO] Listening at: http://0.0.0.0:5000 (75420)
+[2026-05-31 21:02:52 +0530] [75420] [INFO] Using worker: sync
+[2026-05-31 21:02:52 +0530] [75421] [INFO] Booting worker with pid: 75421
+[2026-05-31 21:02:52 +0530] [75421] [WARNING] Reloader is on. Use in development only!
+[2026-05-31 21:02:52 +0530] [75420] [INFO] Control socket listening at /Users/dattaraut/.gunicorn/gunicorn.ctl
+WARNING:root:No colleges found matching the criteria
+WARNING:root:No colleges found matching the criteria
+WARNING:root:No colleges found matching the criteria
+WARNING:root:No colleges found matching the criteria
+WARNING:root:No colleges found matching the criteria
+WARNING:root:No colleges found matching the criteria
+WARNING:root:No colleges found matching the criteria
