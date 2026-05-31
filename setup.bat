@@ -27,17 +27,17 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+call venv\Scripts\activate.bat
 echo Done.
 echo.
 
-REM ── Install packages ───────────────────────────
-echo [3/4] Installing packages (may take 2-3 minutes)...
-call venv\Scripts\activate.bat
-pip install -r requirements.txt --quiet
+REM ── Install uv (fast installer) then packages ──
+echo [3/4] Installing packages with uv (much faster than pip)...
+pip install uv --quiet
+uv pip install -r requirements.txt
 if errorlevel 1 (
-    echo ERROR: Package installation failed.
-    pause
-    exit /b 1
+    echo Trying fallback with pip...
+    pip install -r requirements.txt
 )
 echo Done.
 echo.
