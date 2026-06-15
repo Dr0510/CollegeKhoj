@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — CollegeFind</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script>
         (function(){
@@ -14,27 +13,232 @@
         })();
     </script>
     <style>
-        :root { --brand:#4f8ef7; }
-        [data-theme="dark"]  { --bg:#0b1019; --card-bg:#161b27; --card-border:rgba(255,255,255,.07); --text:#e2e8f0; --text-muted:#8892a4; }
-        [data-theme="light"] { --bg:#f0f4ff; --card-bg:#ffffff; --card-border:rgba(0,0,0,.09); --text:#1a202c; --text-muted:#4a5568; }
-        *, *::before, *::after { box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .login-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 40px; max-width: 420px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
-        .brand { font-weight: 800; font-size: 1.6rem; color: var(--brand); margin-bottom: 6px; }
-        .brand span { color: var(--text); }
-        .subtitle { color: var(--text-muted); font-size: .92rem; margin-bottom: 32px; }
-        #clerk-sign-in { display: flex; justify-content: center; }
-        .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: .82rem; text-decoration: none; margin-top: 24px; transition: color .2s; }
-        .back-link:hover { color: var(--brand); }
-        .loading { color: var(--text-muted); font-size: .88rem; padding: 20px; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            background: #080d18;
+            color: #e2e8f0;
+        }
+
+        /* ── LEFT BRANDING PANEL ── */
+        .left-panel {
+            width: 52%;
+            background: linear-gradient(145deg, #0e1628 0%, #0b1220 50%, #091020 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px 64px;
+            position: relative;
+            overflow: hidden;
+        }
+        .left-panel::before {
+            content: '';
+            position: absolute;
+            top: -120px; left: -80px;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(79,142,247,.18) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .left-panel::after {
+            content: '';
+            position: absolute;
+            bottom: -100px; right: -60px;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(129,140,248,.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .brand {
+            display: flex; align-items: center; gap: 12px;
+            font-size: 1.8rem; font-weight: 900;
+            color: #4f8ef7;
+            margin-bottom: 12px;
+            text-decoration: none;
+        }
+        .brand span { color: #e2e8f0; }
+        .brand-icon {
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, #4f8ef7, #818cf8);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; color: #fff;
+            flex-shrink: 0;
+        }
+        .tagline {
+            font-size: 2.2rem; font-weight: 800; line-height: 1.25;
+            color: #f1f5f9;
+            margin-bottom: 16px;
+        }
+        .tagline em { color: #4f8ef7; font-style: normal; }
+        .tagline-sub {
+            font-size: .97rem; color: #8892a4; line-height: 1.6;
+            margin-bottom: 44px; max-width: 380px;
+        }
+
+        .features { display: flex; flex-direction: column; gap: 20px; }
+        .feature { display: flex; align-items: flex-start; gap: 16px; }
+        .feature-icon {
+            width: 40px; height: 40px; flex-shrink: 0;
+            background: rgba(79,142,247,.12);
+            border: 1px solid rgba(79,142,247,.22);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .9rem; color: #4f8ef7;
+        }
+        .feature-text strong { display: block; font-size: .93rem; color: #e2e8f0; margin-bottom: 2px; }
+        .feature-text span { font-size: .83rem; color: #6b7a99; }
+
+        .stats-row {
+            display: flex; gap: 32px;
+            margin-top: 48px;
+            padding-top: 36px;
+            border-top: 1px solid rgba(255,255,255,.07);
+        }
+        .stat strong { display: block; font-size: 1.4rem; font-weight: 800; color: #4f8ef7; }
+        .stat span { font-size: .78rem; color: #6b7a99; text-transform: uppercase; letter-spacing: .05em; }
+
+        /* ── RIGHT SIGN-IN PANEL ── */
+        .right-panel {
+            width: 48%;
+            background: #0b1220;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 48px;
+            border-left: 1px solid rgba(255,255,255,.06);
+            position: relative;
+        }
+        .right-panel::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 340px; height: 340px;
+            background: radial-gradient(circle, rgba(79,142,247,.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .sign-in-wrap {
+            width: 100%; max-width: 420px;
+            position: relative; z-index: 1;
+        }
+        .sign-in-header { text-align: center; margin-bottom: 24px; }
+        .sign-in-header h2 { font-size: 1.4rem; font-weight: 800; color: #f1f5f9; margin-bottom: 6px; }
+        .sign-in-header p { font-size: .87rem; color: #6b7a99; }
+
+        /* Clerk component container */
+        #clerk-sign-in {
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Override Clerk's white background to blend with dark theme */
+        #clerk-sign-in .cl-card,
+        #clerk-sign-in .cl-rootBox {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .loading-state {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            padding: 48px 24px;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 16px;
+            color: #6b7a99; font-size: .88rem;
+        }
+
+        .error-state {
+            padding: 20px;
+            background: rgba(239,68,68,.08);
+            border: 1px solid rgba(239,68,68,.2);
+            border-radius: 12px;
+            color: #fc8181; font-size: .85rem; text-align: center;
+        }
+
+        .back-link {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            margin-top: 20px;
+            color: #3d4a62; font-size: .82rem; text-decoration: none;
+            transition: color .2s;
+        }
+        .back-link:hover { color: #4f8ef7; }
+
+        /* Responsive — stack on mobile */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .left-panel { width: 100%; padding: 36px 28px 32px; }
+            .tagline { font-size: 1.6rem; }
+            .tagline-sub, .features, .stats-row { display: none; }
+            .right-panel { width: 100%; padding: 32px 24px 40px; border-left: none; border-top: 1px solid rgba(255,255,255,.06); }
+        }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <div class="brand"><i class="fas fa-graduation-cap me-2"></i>College<span>Find</span></div>
-        <div class="subtitle">Sign in to save colleges, compare, and access your results anywhere</div>
-        <div id="clerk-sign-in"><div class="loading"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div></div>
-        <a href="{{ url_for('mhcet_page') }}" class="back-link"><i class="fas fa-arrow-left"></i> Continue without login</a>
+
+    <!-- LEFT BRANDING PANEL -->
+    <div class="left-panel">
+        <a class="brand" href="/">
+            <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
+            College<span>Find</span>
+        </a>
+
+        <h1 class="tagline">Find your <em>dream college</em><br>with confidence</h1>
+        <p class="tagline-sub">Maharashtra's most comprehensive MH-CET college predictor — real CAP cutoff data from 2022–2024, personalised to your percentile and category.</p>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="feature-text">
+                    <strong>Accurate Predictions</strong>
+                    <span>3 years of CAP round cutoff data across all categories &amp; genders</span>
+                </div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon"><i class="fas fa-bookmark"></i></div>
+                <div class="feature-text">
+                    <strong>Save &amp; Compare</strong>
+                    <span>Bookmark colleges and compare up to 4 side-by-side</span>
+                </div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon"><i class="fas fa-share-alt"></i></div>
+                <div class="feature-text">
+                    <strong>Share Results</strong>
+                    <span>Share your personalised college list with family and counsellors</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat"><strong>500+</strong><span>Colleges</span></div>
+            <div class="stat"><strong>2022–24</strong><span>CAP Data</span></div>
+            <div class="stat"><strong>Free</strong><span>Always</span></div>
+        </div>
+    </div>
+
+    <!-- RIGHT SIGN-IN PANEL -->
+    <div class="right-panel">
+        <div class="sign-in-wrap">
+            <div class="sign-in-header">
+                <h2>Welcome back</h2>
+                <p>Sign in to save colleges, compare, and share results</p>
+            </div>
+
+            <div id="clerk-sign-in">
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i> Loading sign-in…
+                </div>
+            </div>
+
+            <a href="{{ url_for('mhcet_page') }}" class="back-link">
+                <i class="fas fa-arrow-left fa-xs"></i> Continue without login
+            </a>
+        </div>
     </div>
 
     <script>
@@ -46,9 +250,9 @@
     </script>
     <script>
         window.addEventListener('load', async () => {
+            const div = document.getElementById('clerk-sign-in');
             try {
                 await window.Clerk.load();
-                const div = document.getElementById('clerk-sign-in');
                 div.innerHTML = '';
 
                 if (window.Clerk.user) {
@@ -62,8 +266,7 @@
                     afterSignUpUrl: '/auth/sync?next={{ next_url or url_for("mhcet_page") }}'
                 });
             } catch (e) {
-                document.getElementById('clerk-sign-in').innerHTML =
-                    '<p style="color:#ef4444;font-size:.85rem;">Could not load sign-in. Check that CLERK_PUBLISHABLE_KEY is set correctly.</p>';
+                div.innerHTML = '<div class="error-state"><i class="fas fa-exclamation-circle me-2"></i>Could not load sign-in. Please refresh the page or check your internet connection.</div>';
             }
         });
 

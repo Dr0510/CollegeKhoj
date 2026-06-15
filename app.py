@@ -663,15 +663,6 @@ def login_page():
     return render_template('login.html', next_url=next_url)
 
 
-@app.route('/login-preview-a')
-def login_preview_a():
-    return render_template('login_preview_a.html')
-
-
-@app.route('/login-preview-b')
-def login_preview_b():
-    return render_template('login_preview_b.html')
-
 
 @app.route('/auth/sync', methods=['GET', 'POST'])
 def auth_sync():
