@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — CollegeFind</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            background: #080d18;
+            color: #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated mesh background */
+        .bg-mesh {
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 20%, rgba(79,142,247,.13) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, rgba(129,140,248,.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 50% 50%, rgba(16,24,48,.9) 0%, transparent 80%),
+                #080d18;
+        }
+
+        /* Floating orbs */
+        .orb {
+            position: fixed; border-radius: 50%; filter: blur(60px); pointer-events: none; z-index: 0;
+            animation: drift 12s ease-in-out infinite alternate;
+        }
+        .orb-1 { width: 340px; height: 340px; background: rgba(79,142,247,.09); top: -80px; left: -60px; animation-duration: 14s; }
+        .orb-2 { width: 260px; height: 260px; background: rgba(129,140,248,.08); bottom: -60px; right: -40px; animation-duration: 18s; animation-delay: -5s; }
+        .orb-3 { width: 180px; height: 180px; background: rgba(99,179,237,.06); top: 40%; right: 20%; animation-duration: 10s; animation-delay: -3s; }
+        @keyframes drift { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(30px,20px) scale(1.08); } }
+
+        /* Grid dots */
+        .bg-dots {
+            position: fixed; inset: 0; z-index: 0; opacity: .35;
+            background-image: radial-gradient(circle, rgba(79,142,247,.25) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Main card */
+        .card-wrap { position: relative; z-index: 1; width: 100%; max-width: 460px; padding: 24px; }
+
+        .glass-card {
+            background: rgba(14,20,40,.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 24px;
+            padding: 40px 36px 32px;
+            box-shadow: 0 32px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(79,142,247,.07);
+        }
+
+        .brand-row {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin-bottom: 6px;
+        }
+        .brand-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, #4f8ef7, #818cf8);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; color: #fff;
+            box-shadow: 0 4px 16px rgba(79,142,247,.35);
+        }
+        .brand-name { font-size: 1.5rem; font-weight: 900; color: #4f8ef7; }
+        .brand-name span { color: #f1f5f9; }
+
+        .card-title { text-align: center; margin-bottom: 28px; }
+        .card-title h2 { font-size: 1.25rem; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+        .card-title p { font-size: .84rem; color: #6b7a99; }
+
+        /* Badges */
+        .trust-badges {
+            display: flex; justify-content: center; gap: 12px;
+            margin-bottom: 24px; flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 4px 10px; border-radius: 20px;
+            background: rgba(79,142,247,.1);
+            border: 1px solid rgba(79,142,247,.2);
+            font-size: .74rem; color: #7db3f8;
+        }
+
+        /* Provider buttons */
+        .mock-provider-btn {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; padding: 11px 16px;
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 10px; background: rgba(255,255,255,.04);
+            color: #c8d3e6; font-size: .87rem; font-weight: 500;
+            cursor: pointer; transition: all .2s;
+            margin-bottom: 10px;
+        }
+        .mock-provider-btn:hover { background: rgba(255,255,255,.08); border-color: rgba(79,142,247,.4); transform: translateY(-1px); }
+        .divider {
+            display: flex; align-items: center; gap: 12px;
+            margin: 20px 0; color: #4a5568; font-size: .8rem;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1;
+            height: 1px; background: rgba(255,255,255,.08);
+        }
+        .mock-input {
+            width: 100%; padding: 11px 14px;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 10px; color: #c8d3e6; font-size: .87rem;
+            margin-bottom: 14px; outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .mock-input:focus { border-color: #4f8ef7; box-shadow: 0 0 0 3px rgba(79,142,247,.15); }
+        .mock-input::placeholder { color: #3d4a62; }
+        .mock-cta {
+            width: 100%; padding: 12px;
+            background: linear-gradient(135deg, #3b7de0, #5c67f2);
+            border: none; border-radius: 10px;
+            color: #fff; font-size: .9rem; font-weight: 700;
+            cursor: pointer; letter-spacing: .03em;
+            box-shadow: 0 4px 20px rgba(79,142,247,.35);
+            transition: transform .15s, box-shadow .2s;
+        }
+        .mock-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(79,142,247,.45); }
+        .mock-footer { text-align: center; margin-top: 16px; font-size: .8rem; color: #4a5568; }
+        .mock-footer a { color: #4f8ef7; text-decoration: none; font-weight: 600; }
+
+        .divider-line { height: 1px; background: rgba(255,255,255,.06); margin: 20px 0; }
+
+        .back-link {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            margin-top: 16px;
+            color: #3d4a62; font-size: .8rem; text-decoration: none;
+            transition: color .2s;
+        }
+        .back-link:hover { color: #4f8ef7; }
+
+        /* Bottom secured label */
+        .secured {
+            text-align: center; margin-top: 16px;
+            font-size: .76rem; color: #2d3a52;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+
+        .g-icon { font-weight: 900; font-size: 1rem; }
+        .g-blue { color: #4285F4; }
+        .g-red { color: #EA4335; }
+        .g-yellow { color: #FBBC05; }
+        .g-green { color: #34A853; }
+    </style>
+</head>
+<body>
+    <div class="bg-mesh"></div>
+    <div class="bg-dots"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="card-wrap">
+        <div class="glass-card">
+            <div class="brand-row">
+                <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
+                <div class="brand-name">College<span>Find</span></div>
+            </div>
+
+            <div class="card-title">
+                <h2>Sign in to your account</h2>
+                <p>Access your college shortlist from anywhere</p>
+            </div>
+
+            <div class="trust-badges">
+                <span class="badge"><i class="fas fa-bookmark"></i> Save Colleges</span>
+                <span class="badge"><i class="fas fa-balance-scale"></i> Compare</span>
+                <span class="badge"><i class="fas fa-share-alt"></i> Share</span>
+            </div>
+
+            <button class="mock-provider-btn">
+                <span class="g-icon"><span class="g-blue">G</span><span class="g-red">o</span><span class="g-yellow">o</span><span class="g-blue">g</span><span class="g-green">l</span><span class="g-red">e</span></span>
+                Continue with Google
+            </button>
+            <button class="mock-provider-btn">
+                <i class="fab fa-microsoft" style="color:#00a4ef;font-size:1rem;"></i>
+                Continue with Microsoft
+            </button>
+
+            <div class="divider">or</div>
+
+            <input class="mock-input" type="email" placeholder="Email address or username">
+            <button class="mock-cta">CONTINUE</button>
+
+            <div class="mock-footer">No account? <a href="#">Sign up</a></div>
+
+            <div class="divider-line"></div>
+            <a href="#" class="back-link"><i class="fas fa-arrow-left fa-xs"></i> Continue without login</a>
+        </div>
+        <div class="secured"><i class="fas fa-lock fa-xs"></i> Secured by Clerk</div>
+    </div>
+</body>
+</html>
