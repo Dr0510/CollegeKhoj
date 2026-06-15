@@ -6,3 +6,7 @@ pandas
 numpy
 scikit-learn
 python-dotenv
+cryptography
+PyJWT
+requests
+sqlalchemy

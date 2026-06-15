@@ -190,6 +190,25 @@
         <div class="nav-right">
             <a href="{{ url_for('index') }}" class="nav-pill active">General Search</a>
             <a href="{{ url_for('mhcet_page') }}" class="nav-pill">MH-CET Portal</a>
+
+            {% if current_user %}
+            <a href="/profile" style="display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:20px;padding:4px 12px 4px 4px;text-decoration:none;transition:border-color .2s;" title="My Profile">
+                {% if current_user.profile_image_url %}
+                <img src="{{ current_user.profile_image_url }}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;" alt="">
+                {% else %}
+                <span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#4f8ef7,#818cf8);display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;color:#fff;">{{ current_user.initials() }}</span>
+                {% endif %}
+                <span style="font-size:.82rem;font-weight:600;color:var(--text);">{{ current_user.first_name or 'Me' }}</span>
+            </a>
+            <button class="nav-pill" onclick="doSignOut()" style="cursor:pointer;" title="Sign out">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+            {% else %}
+            <a href="/login" class="nav-pill" style="border-color:#4f8ef7;color:#4f8ef7;">
+                <i class="fas fa-user me-1"></i>Login
+            </a>
+            {% endif %}
+
             <button class="theme-btn" id="themeToggle" title="Toggle light/dark mode">
                 <i class="fas fa-sun" id="themeIcon"></i>
             </button>
@@ -393,6 +412,34 @@
                 }
             });
         }
+
+        /* ── Sign out ── */
+        async function doSignOut() {
+            try { if (window.Clerk) await window.Clerk.signOut(); } catch(e) {}
+            window.location.href = '/logout';
+        }
     </script>
+
+    {% if clerk_publishable_key %}
+    <script async crossorigin="anonymous"
+            src="https://{{ clerk_frontend_api }}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+            data-clerk-publishable-key="{{ clerk_publishable_key }}">
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await window.Clerk.load();
+                if (window.Clerk.user && !{{ 'true' if current_user else 'false' }}) {
+                    const token = await window.Clerk.session.getToken();
+                    const resp = await fetch('/auth/sync', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (resp.ok) location.reload();
+                }
+            } catch(e) {}
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

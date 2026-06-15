@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile — CollegeFind</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function(){
+            const t = localStorage.getItem('cf-theme') || 'dark';
+            document.documentElement.setAttribute('data-bs-theme', t);
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <style>
+        :root { --brand:#4f8ef7; --brand-glow:rgba(79,142,247,.18); --safe:#22c55e; --moderate:#f59e0b; }
+        [data-theme="dark"]  { --bg:#0b1019; --navbar-bg:rgba(11,16,25,.96); --card-bg:#161b27; --card-border:rgba(255,255,255,.07); --text:#e2e8f0; --text-muted:#8892a4; --text-faint:#5a677d; --stat-bg:rgba(255,255,255,.03); --meta-bg:rgba(255,255,255,.05); }
+        [data-theme="light"] { --bg:#f0f4ff; --navbar-bg:rgba(255,255,255,.95); --card-bg:#ffffff; --card-border:rgba(0,0,0,.09); --text:#1a202c; --text-muted:#4a5568; --text-faint:#718096; --stat-bg:#f7f9ff; --meta-bg:#f0f4ff; }
+        *, *::before, *::after { box-sizing: border-box; transition: background-color .25s, color .15s; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; }
+        .navbar { background: var(--navbar-bg); border-bottom: 1px solid var(--card-border); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; }
+        .navbar-brand { font-weight: 800; font-size: 1.3rem; color: var(--brand) !important; text-decoration: none; }
+        .navbar-brand span { color: var(--text); }
+        .nav-right { display: flex; gap: 8px; align-items: center; }
+        .nav-pill { background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); border-radius: 8px; padding: 6px 14px; font-size: .84rem; transition: all .2s; text-decoration: none; }
+        .nav-pill:hover, .nav-pill.active { border-color: var(--brand); color: var(--brand); }
+        .theme-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--card-border); background: var(--stat-bg); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .9rem; transition: all .2s; }
+        .theme-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+        .page-hero { padding: 36px 0 24px; }
+        .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: .83rem; text-decoration: none; margin-bottom: 18px; transition: color .2s; }
+        .back-link:hover { color: var(--brand); }
+
+        .profile-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 32px; display: flex; align-items: center; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+        .avatar-wrap { flex-shrink: 0; }
+        .avatar-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--brand); }
+        .avatar-initials { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), #818cf8); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 800; color: #fff; border: 3px solid var(--brand); }
+        .profile-info { flex: 1; }
+        .profile-name { font-size: 1.6rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+        .profile-email { color: var(--text-muted); font-size: .9rem; margin-bottom: 10px; }
+        .profile-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+        .badge-pill { background: var(--meta-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 4px 12px; font-size: .75rem; color: var(--text-muted); }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 20px; text-align: center; }
+        .stat-icon { font-size: 1.4rem; margin-bottom: 8px; }
+        .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--text); }
+        .stat-lbl { font-size: .72rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: .4px; margin-top: 4px; }
+
+        .section-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 22px; margin-bottom: 20px; }
+        .section-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--card-border); }
+        .info-row:last-child { border: none; }
+        .info-label { font-size: .78rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: .3px; }
+        .info-val { font-size: .88rem; color: var(--text); font-weight: 600; }
+
+        .btn-danger-sm { background: transparent; border: 1px solid rgba(239,68,68,.35); color: #ef4444; border-radius: 8px; padding: 8px 18px; font-size: .83rem; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-danger-sm:hover { background: rgba(239,68,68,.08); }
+
+        .bookmarked-empty { text-align: center; padding: 30px; color: var(--text-faint); font-size: .88rem; }
+
+        footer { border-top: 1px solid var(--card-border); padding: 20px 0; margin-top: 40px; text-align: center; color: var(--text-faint); font-size: .82rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a class="navbar-brand" href="/"><i class="fas fa-graduation-cap me-2"></i>College<span>Find</span></a>
+        <div class="nav-right">
+            <a href="/" class="nav-pill">General Search</a>
+            <a href="/mhcet" class="nav-pill">MH-CET Portal</a>
+            <a href="/profile" class="nav-pill active">Profile</a>
+            <button class="theme-btn" id="themeToggle"><i class="fas fa-sun" id="themeIcon"></i></button>
+        </div>
+    </nav>
+
+    <div class="container-lg px-3 px-md-4">
+        <div class="page-hero">
+            <a href="/mhcet" class="back-link"><i class="fas fa-arrow-left"></i> Back to MH-CET Portal</a>
+
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <div class="avatar-wrap">
+                    {% if user.profile_image_url %}
+                    <img src="{{ user.profile_image_url }}" class="avatar-img" alt="Profile"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                    <div class="avatar-initials" style="display:none;">{{ user.initials() }}</div>
+                    {% else %}
+                    <div class="avatar-initials">{{ user.initials() }}</div>
+                    {% endif %}
+                </div>
+                <div class="profile-info">
+                    <div class="profile-name">{{ user.display_name() }}</div>
+                    <div class="profile-email">{{ user.email or 'No email on record' }}</div>
+                    <div class="profile-badges">
+                        <span class="badge-pill"><i class="fas fa-shield-check me-1" style="color:var(--safe);"></i>Verified Account</span>
+                        <span class="badge-pill"><i class="fas fa-calendar me-1"></i>Joined {{ user.created_at.strftime('%b %Y') if user.created_at else 'Recently' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="color:var(--moderate);">★</div>
+                    <div class="stat-num" id="bookmarkCount">—</div>
+                    <div class="stat-lbl">Saved Colleges</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="color:var(--brand);"><i class="fas fa-columns"></i></div>
+                    <div class="stat-num" id="compareCount">—</div>
+                    <div class="stat-lbl">In Compare List</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="color:var(--safe);"><i class="fas fa-user-check"></i></div>
+                    <div class="stat-num">DB</div>
+                    <div class="stat-lbl">Synced to Neon</div>
+                </div>
+            </div>
+
+            <!-- Account Details -->
+            <div class="section-card">
+                <div class="section-title"><i class="fas fa-id-card" style="color:var(--brand);"></i>Account Details</div>
+                <div class="info-row">
+                    <span class="info-label">Full Name</span>
+                    <span class="info-val">{{ user.display_name() }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-val">{{ user.email or '—' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Member Since</span>
+                    <span class="info-val">{{ user.created_at.strftime('%d %B %Y') if user.created_at else '—' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Login</span>
+                    <span class="info-val">{{ user.last_login.strftime('%d %b %Y, %I:%M %p') if user.last_login else '—' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Clerk User ID</span>
+                    <span class="info-val" style="font-size:.75rem;color:var(--text-faint);font-family:monospace;">{{ user.clerk_id }}</span>
+                </div>
+            </div>
+
+            <!-- Saved Colleges (from localStorage) -->
+            <div class="section-card">
+                <div class="section-title"><i class="fas fa-bookmark" style="color:var(--moderate);"></i>Saved Colleges</div>
+                <div id="bookmarkedList"><div class="bookmarked-empty">Loading saved colleges...</div></div>
+                <div style="margin-top:12px;">
+                    <a href="#" onclick="viewBookmarks()" style="color:var(--brand);font-size:.84rem;text-decoration:none;"><i class="fas fa-external-link-alt me-1"></i>View all saved colleges</a>
+                </div>
+            </div>
+
+            <!-- Sign Out -->
+            <div class="section-card">
+                <div class="section-title"><i class="fas fa-sign-out-alt" style="color:#ef4444;"></i>Account Actions</div>
+                <button class="btn-danger-sm" onclick="doSignOut()">
+                    <i class="fas fa-sign-out-alt"></i> Sign Out
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <i class="fas fa-graduation-cap me-2"></i>CollegeFind · Maharashtra MH-CET College Finder
+    </footer>
+
+    <script>
+        /* Theme */
+        const html = document.documentElement;
+        const btn = document.getElementById('themeToggle');
+        const icon = document.getElementById('themeIcon');
+        function applyTheme(t) {
+            html.setAttribute('data-bs-theme', t);
+            html.setAttribute('data-theme', t);
+            icon.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            localStorage.setItem('cf-theme', t);
+        }
+        applyTheme(localStorage.getItem('cf-theme') || 'dark');
+        btn.addEventListener('click', () => applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+        /* Load bookmarks from localStorage */
+        const bookmarks = JSON.parse(localStorage.getItem('cf-bookmarks') || '{}');
+        const compare   = JSON.parse(localStorage.getItem('cf-compare')   || '{}');
+        document.getElementById('bookmarkCount').textContent = Object.keys(bookmarks).length;
+        document.getElementById('compareCount').textContent  = Object.keys(compare).length;
+
+        const bList = document.getElementById('bookmarkedList');
+        const bKeys = Object.keys(bookmarks);
+        if (bKeys.length === 0) {
+            bList.innerHTML = '<div class="bookmarked-empty">No saved colleges yet. Hit the ★ Save button on any college card.</div>';
+        } else {
+            bList.innerHTML = bKeys.slice(0, 5).map(id =>
+                `<div style="padding:9px 0;border-bottom:1px solid var(--card-border);display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:.87rem;color:var(--text);">${bookmarks[id]}</span>
+                    <a href="/college/${id}" style="color:var(--brand);font-size:.76rem;text-decoration:none;">Details →</a>
+                </div>`
+            ).join('') + (bKeys.length > 5 ? `<div style="padding:8px 0;font-size:.78rem;color:var(--text-faint);">+${bKeys.length - 5} more</div>` : '');
+        }
+
+        function viewBookmarks() {
+            const ids = Object.keys(bookmarks);
+            if (ids.length === 0) { alert('No saved colleges.'); return; }
+            window.location.href = '/bookmarks?' + ids.map(i => 'ids=' + i).join('&');
+        }
+
+        /* Sign out via Clerk JS */
+        async function doSignOut() {
+            try {
+                if (window.Clerk) await window.Clerk.signOut();
+            } catch (e) {}
+            window.location.href = '/logout';
+        }
+    </script>
+
+    {% if clerk_publishable_key %}
+    <script async crossorigin="anonymous"
+            src="https://{{ clerk_frontend_api }}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+            data-clerk-publishable-key="{{ clerk_publishable_key }}">
+    </script>
+    {% endif %}
+</body>
+</html>

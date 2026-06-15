@@ -1,6 +1,7 @@
 from database import db
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime
 
 class College(db.Model):
     """College model for storing college information"""
@@ -119,4 +120,42 @@ class MHCETStudent(db.Model):
             'budget_max': self.budget_max,
             'preferred_locations': self.preferred_locations,
             'preferred_branches': self.preferred_branches
+        }
+
+
+class User(db.Model):
+    """User model — stores Clerk-authenticated user details in Neon DB."""
+
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True)
+    clerk_id = Column(String(120), unique=True, nullable=False, index=True)
+    email = Column(String(200), nullable=True)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
+    profile_image_url = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_login = Column(DateTime, default=datetime.utcnow, nullable=True)
+
+    def display_name(self):
+        parts = [self.first_name or '', self.last_name or '']
+        name = ' '.join(p for p in parts if p).strip()
+        return name if name else (self.email or 'User')
+
+    def initials(self):
+        fn = (self.first_name or '')[:1].upper()
+        ln = (self.last_name or '')[:1].upper()
+        return (fn + ln) or (self.email or 'U')[:1].upper()
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'clerk_id': self.clerk_id,
+            'email': self.email,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'profile_image_url': self.profile_image_url,
+            'display_name': self.display_name(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_login': self.last_login.isoformat() if self.last_login else None,
         }

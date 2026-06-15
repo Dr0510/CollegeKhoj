@@ -248,6 +248,15 @@
         /* ── Toast notification ── */
         .toast-notif { position: fixed; top: 70px; right: 18px; background: var(--card-bg); border: 1px solid var(--brand); border-radius: 10px; padding: 10px 16px; font-size: .82rem; color: var(--text); z-index: 9999; box-shadow: 0 4px 16px rgba(0,0,0,.15); display: flex; align-items: center; gap: 8px; transform: translateX(120%); transition: transform .3s; }
         .toast-notif.show { transform: translateX(0); }
+
+        /* ── User chip (navbar) ── */
+        .user-chip { display: inline-flex; align-items: center; gap: 7px; background: var(--stat-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 4px 12px 4px 4px; text-decoration: none; transition: border-color .2s; }
+        .user-chip:hover { border-color: var(--brand); }
+        .user-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+        .user-initials { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), #818cf8); display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: #fff; }
+        .user-chip-name { font-size: .82rem; font-weight: 600; color: var(--text); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .login-btn { border-color: var(--brand) !important; color: var(--brand) !important; }
+        .login-btn:hover { background: var(--brand) !important; color: #fff !important; }
     </style>
 </head>
 <body>
@@ -262,6 +271,25 @@
             <a href="{{ url_for('mhcet_page') }}" class="nav-pill active">MH-CET Portal</a>
             <a href="#" class="nav-pill" id="navCompare" onclick="goCompare(event)">Compare</a>
             <a href="#" class="nav-pill" id="navBookmarks" onclick="goBookmarks(event)">Bookmarks</a>
+
+            {% if current_user %}
+            <a href="/profile" class="user-chip" title="My Profile">
+                {% if current_user.profile_image_url %}
+                <img src="{{ current_user.profile_image_url }}" class="user-avatar" alt="">
+                {% else %}
+                <span class="user-initials">{{ current_user.initials() }}</span>
+                {% endif %}
+                <span class="user-chip-name">{{ current_user.first_name or current_user.email or 'Me' }}</span>
+            </a>
+            <button class="nav-pill" onclick="doSignOut()" title="Sign out" style="cursor:pointer;">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+            {% else %}
+            <a href="/login" class="nav-pill login-btn">
+                <i class="fas fa-user me-1"></i>Login
+            </a>
+            {% endif %}
+
             <button class="theme-btn" id="themeToggle" title="Toggle light/dark mode">
                 <i class="fas fa-sun" id="themeIcon"></i>
             </button>
@@ -716,6 +744,35 @@
             Object.keys(cmp).forEach(id => updateCompareUI(id));
             updateCompareBar();
         })();
+
+        /* ── Sign out ── */
+        async function doSignOut() {
+            try { if (window.Clerk) await window.Clerk.signOut(); } catch(e) {}
+            window.location.href = '/logout';
+        }
     </script>
+
+    {% if clerk_publishable_key %}
+    <script async crossorigin="anonymous"
+            src="https://{{ clerk_frontend_api }}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+            data-clerk-publishable-key="{{ clerk_publishable_key }}">
+    </script>
+    <script>
+        /* Auto-sync user to DB after Clerk sign-in (client-side) */
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await window.Clerk.load();
+                if (window.Clerk.user && !{{ 'true' if current_user else 'false' }}) {
+                    const token = await window.Clerk.session.getToken();
+                    const resp = await fetch('/auth/sync', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (resp.ok) location.reload();
+                }
+            } catch(e) { /* Clerk not loaded or user not signed in */ }
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

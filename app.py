@@ -1,7 +1,8 @@
 import os
 import logging
 import pandas as pd
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session, g
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from database import db, init_database
@@ -20,9 +21,57 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
 init_database(app)
 
 # Import models and recommender after db initialization
-from models import College, CAPCutoff, MHCETStudent
+from models import College, CAPCutoff, MHCETStudent, User
 from recommender import CollegeRecommender
 from mhcet_recommender import MHCETRecommender
+from clerk_auth import verify_token, get_clerk_user_data, extract_primary_email, CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY
+
+# ── Clerk frontend API (derived from publishable key) ─────────────────────────
+def _clerk_frontend_api():
+    key = CLERK_PUBLISHABLE_KEY
+    if not key:
+        return ''
+    # pk_test_abc123... → abc123.clerk.accounts.dev
+    # pk_live_abc123... → abc123.clerk.accounts.dev
+    try:
+        b64 = key.split('_')[2]        # third segment after pk_test_ or pk_live_
+        import base64
+        decoded = base64.b64decode(b64 + '==').decode('utf-8').rstrip('$')
+        return decoded
+    except Exception:
+        return 'accounts.clerk.dev'
+
+CLERK_FRONTEND_API = _clerk_frontend_api()
+
+# ── Auth middleware ────────────────────────────────────────────────────────────
+@app.before_request
+def load_current_user():
+    """Verify Clerk session token from cookie and load user into g.user."""
+    g.user = None
+    # Try Authorization header first (for AJAX calls), then cookie
+    auth_header = request.headers.get('Authorization', '')
+    token = None
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+    else:
+        token = request.cookies.get('__session') or request.cookies.get('__client_uat')
+
+    if token and CLERK_SECRET_KEY:
+        claims = verify_token(token)
+        if claims:
+            clerk_id = claims.get('sub', '')
+            if clerk_id:
+                user = User.query.filter_by(clerk_id=clerk_id).first()
+                g.user = user
+
+@app.context_processor
+def inject_user():
+    """Make current user and Clerk keys available in every template."""
+    return {
+        'current_user': g.get('user'),
+        'clerk_publishable_key': CLERK_PUBLISHABLE_KEY,
+        'clerk_frontend_api': CLERK_FRONTEND_API,
+    }
 
 # Initialize recommendation engines
 recommender = CollegeRecommender(db)
@@ -602,6 +651,99 @@ def mhcet_api():
     except Exception as e:
         logging.error(f"Error in MH-CET API: {e}")
         return jsonify({'error': str(e)}), 500
+
+# ── Auth routes ───────────────────────────────────────────────────────────────
+
+@app.route('/login')
+def login_page():
+    next_url = request.args.get('next', url_for('mhcet_page'))
+    if not CLERK_PUBLISHABLE_KEY:
+        flash('Clerk keys not configured. Please set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY.', 'error')
+        return redirect(url_for('mhcet_page'))
+    return render_template('login.html', next_url=next_url)
+
+
+@app.route('/auth/sync', methods=['GET', 'POST'])
+def auth_sync():
+    """Called by Clerk JS after sign-in to sync user into Neon DB."""
+    next_url = request.args.get('next', url_for('mhcet_page'))
+
+    auth_header = request.headers.get('Authorization', '')
+    token = auth_header[7:] if auth_header.startswith('Bearer ') else None
+
+    if not token:
+        return redirect(url_for('login_page'))
+
+    claims = verify_token(token)
+    if not claims:
+        logging.warning("Auth sync: invalid token")
+        return redirect(url_for('login_page'))
+
+    clerk_id = claims.get('sub', '')
+    if not clerk_id:
+        return redirect(url_for('login_page'))
+
+    try:
+        user = User.query.filter_by(clerk_id=clerk_id).first()
+
+        # Fetch fresh profile data from Clerk API
+        clerk_data = get_clerk_user_data(clerk_id) or {}
+        email      = extract_primary_email(clerk_data) if clerk_data else ''
+        first_name = clerk_data.get('first_name') or ''
+        last_name  = clerk_data.get('last_name') or ''
+        image_url  = clerk_data.get('image_url') or ''
+
+        if user:
+            # Update existing user
+            user.email             = email or user.email
+            user.first_name        = first_name or user.first_name
+            user.last_name         = last_name or user.last_name
+            user.profile_image_url = image_url or user.profile_image_url
+            user.last_login        = datetime.utcnow()
+        else:
+            user = User(
+                clerk_id=clerk_id,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                profile_image_url=image_url,
+                created_at=datetime.utcnow(),
+                last_login=datetime.utcnow(),
+            )
+            db.session.add(user)
+
+        db.session.commit()
+        logging.info(f"User synced: {clerk_id} ({email})")
+
+        if request.method == 'POST':
+            return jsonify({'ok': True, 'user': user.to_dict()})
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Auth sync error: {e}")
+        if request.method == 'POST':
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return redirect(next_url)
+
+
+@app.route('/logout')
+def logout():
+    """Clear server-side session and redirect to Clerk-signed-out page."""
+    session.clear()
+    return redirect(url_for('mhcet_page'))
+
+
+@app.route('/profile')
+def profile_page():
+    """User profile page — shows saved data from Neon DB."""
+    user = g.get('user')
+    if not user:
+        return redirect(url_for('login_page', next=url_for('profile_page')))
+    return render_template('profile.html', user=user)
+
+
+# ── Initialize database and sample data ───────────────────────────────────────
 
 # Initialize database and sample data
 with app.app_context():
