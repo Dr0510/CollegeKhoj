@@ -1,0 +1,7 @@
+[2026-06-15 08:23:29 +0000] [389] [INFO] Starting gunicorn 23.0.0
+[2026-06-15 08:23:29 +0000] [389] [INFO] Listening at: http://0.0.0.0:5000 (389)
+[2026-06-15 08:23:29 +0000] [389] [INFO] Using worker: sync
+[2026-06-15 08:23:29 +0000] [400] [INFO] Booting worker with pid: 400
+[2026-06-15 08:26:04 +0000] [389] [INFO] Handling signal: term
+[2026-06-15 08:26:04 +0000] [400] [INFO] Worker exiting (pid: 400)
+[2026-06-15 08:26:04 +0000] [389] [INFO] Shutting down: Master

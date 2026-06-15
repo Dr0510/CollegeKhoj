@@ -1,0 +1,11 @@
+[2026-06-15 08:26:04 +0000] [777] [INFO] Starting gunicorn 23.0.0
+[2026-06-15 08:26:04 +0000] [777] [INFO] Listening at: http://0.0.0.0:5000 (777)
+[2026-06-15 08:26:04 +0000] [777] [INFO] Using worker: sync
+[2026-06-15 08:26:04 +0000] [788] [INFO] Booting worker with pid: 788
+[2026-06-15 08:38:39 +0000] [788] [INFO] Worker reloading: /home/runner/workspace/models.py modified
+[2026-06-15 08:38:39 +0000] [788] [INFO] Worker exiting (pid: 788)
+[2026-06-15 08:38:40 +0000] [1227] [INFO] Booting worker with pid: 1227
+[2026-06-15 08:38:51 +0000] [1227] [INFO] Worker reloading: /home/runner/workspace/models.py modified
+[2026-06-15 08:38:51 +0000] [1227] [INFO] Worker exiting (pid: 1227)
+[2026-06-15 08:38:52 +0000] [1255] [INFO] Booting worker with pid: 1255
+[2026-06-15 08:38:52 +0000] [777] [INFO] Handling signal: term

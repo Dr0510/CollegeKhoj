@@ -1,0 +1,10 @@
+[2026-06-15 08:16:44 +0000] [138] [INFO] Starting gunicorn 23.0.0
+[2026-06-15 08:16:44 +0000] [138] [INFO] Listening at: http://0.0.0.0:5000 (138)
+[2026-06-15 08:16:44 +0000] [138] [INFO] Using worker: sync
+[2026-06-15 08:16:44 +0000] [175] [INFO] Booting worker with pid: 175
+[2026-06-15 08:21:09 +0000] [175] [INFO] Worker reloading: /home/runner/workspace/app.py modified
+[2026-06-15 08:21:09 +0000] [175] [INFO] Worker exiting (pid: 175)
+[2026-06-15 08:21:09 +0000] [327] [INFO] Booting worker with pid: 327
+[2026-06-15 08:23:29 +0000] [138] [INFO] Handling signal: term
+[2026-06-15 08:23:29 +0000] [327] [INFO] Worker exiting (pid: 327)
+[2026-06-15 08:23:29 +0000] [138] [INFO] Shutting down: Master

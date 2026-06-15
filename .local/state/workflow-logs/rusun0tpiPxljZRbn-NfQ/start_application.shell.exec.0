@@ -1,0 +1,11 @@
+[2026-06-15 09:35:15 +0000] [2545] [INFO] Starting gunicorn 23.0.0
+[2026-06-15 09:35:15 +0000] [2545] [INFO] Listening at: http://0.0.0.0:5000 (2545)
+[2026-06-15 09:35:15 +0000] [2545] [INFO] Using worker: sync
+[2026-06-15 09:35:15 +0000] [2556] [INFO] Booting worker with pid: 2556
+[2026-06-15 09:35:33 +0000] [2556] [INFO] Worker reloading: /home/runner/workspace/app.py modified
+[2026-06-15 09:35:33 +0000] [2556] [INFO] Worker exiting (pid: 2556)
+[2026-06-15 09:35:34 +0000] [2638] [INFO] Booting worker with pid: 2638
+[2026-06-15 09:37:19 +0000] [2638] [INFO] Worker reloading: /home/runner/workspace/app.py modified
+[2026-06-15 09:37:19 +0000] [2638] [INFO] Worker exiting (pid: 2638)
+[2026-06-15 09:37:19 +0000] [2956] [INFO] Booting worker with pid: 2956
+DEBUG:root:Token verification failed: Not enough segments

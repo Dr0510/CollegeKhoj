@@ -1,0 +1,7 @@
+[2026-06-15 08:42:29 +0000] [1668] [INFO] Starting gunicorn 23.0.0
+[2026-06-15 08:42:29 +0000] [1668] [INFO] Listening at: http://0.0.0.0:5000 (1668)
+[2026-06-15 08:42:29 +0000] [1668] [INFO] Using worker: sync
+[2026-06-15 08:42:29 +0000] [1679] [INFO] Booting worker with pid: 1679
+[2026-06-15 09:31:07 +0000] [1668] [INFO] Handling signal: term
+[2026-06-15 09:31:07 +0000] [1679] [INFO] Worker exiting (pid: 1679)
+[2026-06-15 09:31:09 +0000] [1668] [INFO] Shutting down: Master

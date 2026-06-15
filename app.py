@@ -663,6 +663,15 @@ def login_page():
     return render_template('login.html', next_url=next_url)
 
 
+@app.route('/signup')
+def signup_page():
+    """Sign-up page with Clerk's SignUp component."""
+    next_url = request.args.get('next', url_for('mhcet_page'))
+    if not CLERK_PUBLISHABLE_KEY:
+        flash('Clerk keys not configured. Please set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY.', 'error')
+        return redirect(url_for('mhcet_page'))
+    return render_template('signup.html', next_url=next_url)
+
 
 @app.route('/auth/sync', methods=['GET', 'POST'])
 def auth_sync():
