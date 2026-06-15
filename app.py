@@ -485,6 +485,81 @@ def mhcet_recommend():
         flash(f'Error getting recommendations: {str(e)}', 'error')
         return redirect(url_for('mhcet_page'))
 
+@app.route('/college/<int:college_id>')
+def college_profile(college_id):
+    """Detailed college profile page"""
+    college = College.query.get_or_404(college_id)
+    cutoffs = CAPCutoff.query.filter_by(college_id=college_id).order_by(
+        CAPCutoff.year.desc(), CAPCutoff.category, CAPCutoff.gender
+    ).all()
+    years = sorted(set(c.year for c in cutoffs), reverse=True)
+    categories = sorted(set(c.category for c in cutoffs))
+    return render_template('college_profile.html',
+                           college=college, cutoffs=cutoffs,
+                           years=years, categories=categories)
+
+
+@app.route('/compare')
+def compare_page():
+    """Side-by-side college comparison page"""
+    ids = request.args.getlist('ids', type=int)
+    colleges = College.query.filter(College.id.in_(ids)).all() if ids else []
+    return render_template('compare.html', colleges=colleges)
+
+
+@app.route('/bookmarks')
+def bookmarks_page():
+    """Bookmarked colleges page"""
+    ids = request.args.getlist('ids', type=int)
+    colleges = College.query.filter(College.id.in_(ids)).all() if ids else []
+    return render_template('bookmarks.html', colleges=colleges)
+
+
+@app.route('/mhcet/recommend', methods=['GET'])
+def mhcet_recommend_get():
+    """GET handler for shareable MH-CET results links"""
+    try:
+        percentile = request.args.get('percentile', type=float)
+        category   = request.args.get('category', '')
+        gender     = request.args.get('gender', '')
+        budget     = request.args.get('budget', type=float)
+        locations  = request.args.getlist('locations')
+        branches   = request.args.getlist('branches')
+        top_n      = request.args.get('top_n', 10, type=int)
+
+        recommendations = student_analysis = None
+        if percentile and category and gender:
+            recommendations = mhcet_recommender.get_mhcet_recommendations(
+                percentile=percentile, category=category, gender=gender,
+                budget=budget,
+                preferred_locations=locations if locations else None,
+                preferred_branches=branches if branches else None,
+                top_n=top_n
+            )
+            student_analysis = mhcet_recommender.analyze_student_profile(
+                percentile=percentile, category=category, gender=gender, budget=budget
+            )
+
+        all_locations = [l[0] for l in db.session.query(College.location).distinct().all()]
+        all_branches  = [b[0] for b in db.session.query(College.branch).distinct().all()]
+
+        return render_template('mhcet.html',
+                               recommendations=recommendations,
+                               student_analysis=student_analysis,
+                               locations=all_locations, branches=all_branches,
+                               categories=['Open','OBC','SC','ST','NT','EWS'],
+                               genders=['Male','Female','Other'],
+                               form_data={
+                                   'percentile': percentile, 'category': category,
+                                   'gender': gender, 'budget': budget,
+                                   'locations': locations, 'branches': branches,
+                                   'top_n': top_n
+                               })
+    except Exception as e:
+        logging.error(f"Error in MH-CET GET recommend: {e}")
+        return redirect(url_for('mhcet_page'))
+
+
 @app.route('/mhcet/api', methods=['GET'])
 def mhcet_api():
     """API endpoint for MH-CET recommendations"""
