@@ -47,6 +47,11 @@
                         <a class="ck-user-dropdown-item" href="{{ url_for('profile_page') }}" role="menuitem">
                             <i class="fas fa-user"></i> Profile
                         </a>
+                        {% if current_user.is_admin() %}
+                        <a class="ck-user-dropdown-item" href="/admin/dashboard" role="menuitem" style="color: var(--brand-primary);">
+                            <i class="fas fa-shield-alt"></i> Admin Dashboard
+                        </a>
+                        {% endif %}
                         <a class="ck-user-dropdown-item" href="{{ url_for('settings_page') }}" role="menuitem">
                             <i class="fas fa-cog"></i> Settings
                         </a>
@@ -87,6 +92,9 @@
         <div class="ck-navbar-mobile-divider"></div>
         {% if current_user %}
             <a class="ck-nav-link mobile" href="{{ url_for('profile_page') }}">Profile</a>
+            {% if current_user.is_admin() %}
+            <a class="ck-nav-link mobile" href="/admin/dashboard" style="color: var(--brand-primary);">🔐 Admin Dashboard</a>
+            {% endif %}
             <a class="ck-nav-link mobile" href="{{ url_for('settings_page') }}">Settings</a>
             <a class="ck-nav-link mobile" href="{{ url_for('bookmarks_page') }}">Bookmarks</a>
             <a class="ck-nav-link mobile ck-logout-mobile" href="#" id="logout-btn-mobile">Sign out</a>

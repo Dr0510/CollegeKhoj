@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block title %}Users — Admin{% endblock %}
+{% block heading %}Users{% endblock %}
+{% block content %}
+<div class="stat-card" style="margin-bottom: 20px;">
+    <form method="GET" style="display: flex; gap: 12px;">
+        <input type="text" name="q" placeholder="Search by name or email…" value="{{ q }}" style="max-width: 400px;">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Search</button>
+    </form>
+</div>
+<div class="table-wrap">
+    <table>
+        <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Verified</th><th>Joined</th><th>Actions</th></tr>
+        {% for u in users %}
+        <tr>
+            <td>{{ u.id }}</td><td>{{ u.display_name() }}</td><td>{{ u.email }}</td>
+            <td><span class="badge badge-{{ 'success' if u.role == 'admin' else 'info' }}">{{ u.role }}</span></td>
+            <td><span class="badge badge-{{ 'success' if u.is_verified else 'warning' }}">{{ 'Yes' if u.is_verified else 'No' }}</span></td>
+            <td>{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+            <td><button class="btn btn-outline btn-sm" onclick="toggleAdmin({{ u.id }})"><i class="fas fa-shield"></i> Toggle Admin</button></td>
+        </tr>
+        {% else %}<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);">No users found</td></tr>{% endfor %}
+    </table>
+</div>
+{% if pagination.pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}<a href="?page={{ pagination.prev_num }}&q={{ q }}">← Prev</a>{% endif %}
+    {% for p in pagination.iter_pages() %}{% if p %}<a href="?page={{ p }}&q={{ q }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>{% endif %}{% endfor %}
+    {% if pagination.has_next %}<a href="?page={{ pagination.next_num }}&q={{ q }}">Next →</a>{% endif %}
+</div>{% endif %}
+<script>
+function toggleAdmin(id) {
+    if (!confirm('Toggle admin role for this user?')) return;
+    fetch('/admin/users/' + id + '/toggle-admin', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(d.ok){ showToast('Role updated to ' + d.role, 'success'); location.reload(); } else { showToast(d.error, 'error'); }});
+}
+</script>
+{% endblock %}

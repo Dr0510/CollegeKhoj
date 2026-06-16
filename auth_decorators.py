@@ -51,3 +51,23 @@ def api_login_required(f):
             }), 401
         return f(*args, **kwargs)
     return decorated
+
+
+def admin_required(f):
+    """Require an admin user. Redirects to admin login for HTML requests."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user = g.get('user')
+        if not user or not user.is_admin():
+            if (request.is_json or
+                request.accept_mimetypes.best == 'application/json' or
+                request.path.startswith('/api/')):
+                return jsonify({
+                    'error': 'Admin access required',
+                    'code': 'admin_required',
+                    'message': 'You need admin privileges to access this resource.'
+                }), 403
+            # Preserve the original URL so we can redirect back after login
+            return redirect(url_for('admin_bp.admin_login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated

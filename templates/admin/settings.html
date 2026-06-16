@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+{% block title %}Settings — Admin{% endblock %}
+{% block heading %}Admin Settings{% endblock %}
+{% block content %}
+<div class="stat-card" style="max-width: 500px;">
+    <h3 style="font-size:1rem; margin-bottom:16px;">Change Password</h3>
+    <form method="POST" id="settings-form">
+        <div style="margin-bottom:12px;">
+            <label style="font-size:0.82rem;color:var(--text-secondary);">Current Password</label>
+            <input type="password" name="current_password" required>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:0.82rem;color:var(--text-secondary);">New Password (min 8 chars)</label>
+            <input type="password" name="new_password" required minlength="8">
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Password</button>
+    </form>
+</div>
+
+<div class="stat-card" style="max-width: 500px; margin-top: 20px;">
+    <h3 style="font-size:1rem; margin-bottom:8px;">Account Info</h3>
+    <p style="font-size:0.85rem;color:var(--text-secondary);">
+        <strong>Email:</strong> {{ admin.email }}<br>
+        <strong>Role:</strong> {{ admin.role }}<br>
+        <strong>Joined:</strong> {{ admin.created_at.strftime('%d %b %Y') if admin.created_at else '—' }}
+    </p>
+</div>
+{% endblock %}

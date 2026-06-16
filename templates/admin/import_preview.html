@@ -1,0 +1,100 @@
+{% extends "admin/base.html" %}
+{% block title %}Import Preview — Admin{% endblock %}
+{% block heading %}Import Preview{% endblock %}
+{% block content %}
+<div class="stat-grid">
+    <div class="stat-card"><div class="label">File</div><div class="value" style="font-size:1.2rem;">{{ upload.filename }}</div><div class="sub">{{ upload.created_at.strftime('%d %b %Y %H:%M') if upload.created_at else '' }}</div></div>
+    <div class="stat-card"><div class="label">Valid Rows</div><div class="value" style="color: var(--success);">{{ upload.valid_rows }}</div></div>
+    <div class="stat-card"><div class="label">Rejected</div><div class="value" style="color: var(--danger);">{{ upload.rejected_rows }}</div></div>
+    <div class="stat-card"><div class="label">Duplicates</div><div class="value" style="color: var(--warning);">{{ upload.duplicate_rows }}</div></div>
+</div>
+
+{% if upload.preview_data %}
+    {% set preview = upload.preview_data %}
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px;">
+        <p style="font-size:0.85rem; color: var(--text-secondary);">
+            <strong>Year:</strong> {{ preview.year or 'Auto-detect' }} |
+            <strong>Round:</strong> {{ preview.round_number or 'Auto-detect' }} |
+            <strong>Method:</strong> {{ preview.method }} |
+            <strong>Confidence:</strong> {{ '%.1f'|format(preview.confidence|default(0)) }}%
+        </p>
+    </div>
+
+    {% if preview.rows|length > 0 %}
+    <div class="table-wrap" style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">
+        <table>
+            <tr>
+                <th>Code</th><th>College</th><th>Branch</th><th>Category</th><th>Percentile</th>
+            </tr>
+            {% for row in preview.rows[:100] %}
+            <tr>
+                <td>{{ row.college_code }}</td>
+                <td>{{ row.college_name[:30] }}</td>
+                <td>{{ row.branch[:25] }}</td>
+                <td><span class="badge badge-info">{{ row.category }}</span></td>
+                <td>{{ '%.2f'|format(row.cutoff_percentile) }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% if preview.rows|length > 100 %}<p style="text-align:center; padding:8px; color:var(--text-tertiary); font-size:0.85rem;">Showing first 100 of {{ preview.rows|length }} rows</p>{% endif %}
+    </div>
+
+    {% if preview.rejected and preview.rejected|length > 0 %}
+    <div class="stat-card" style="margin-bottom: 20px;">
+        <h3 style="font-size:1rem; margin-bottom:12px; color:var(--danger);">Rejected Rows ({{ preview.rejected|length }})</h3>
+        <div class="table-wrap">
+            <table>
+                <tr><th>Code</th><th>Reason</th></tr>
+                {% for r in preview.rejected[:20] %}
+                <tr>
+                    <td>{{ r.row.college_code or '?' }}</td>
+                    <td style="color: var(--danger);">{{ r.reason }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <button class="btn btn-success" onclick="commitImport({{ upload.id }})"><i class="fas fa-check"></i> Approve & Import ({{ upload.valid_rows }} rows)</button>
+        <button class="btn btn-danger" onclick="cancelImport({{ upload.id }})"><i class="fas fa-times"></i> Cancel</button>
+    </div>
+    {% else %}
+    <div class="stat-card"><p style="color:var(--warning);">No valid rows to import.</p></div>
+    {% endif %}
+{% else %}
+    <div class="stat-card"><p style="color:var(--text-tertiary);">No preview data available. The PDF may have failed to parse.</p></div>
+{% endif %}
+
+<script>
+function commitImport(id) {
+    var btn = event.target;
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing…';
+    fetch('/admin/upload-cutoff/' + id + '/commit', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) {
+            showToast(d.message || 'Import successful!', 'success');
+            setTimeout(function(){ window.location.href = '/admin/cutoffs'; }, 1000);
+        } else {
+            showToast(d.error || 'Import failed', 'error');
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Approve & Import';
+        }
+    })
+    .catch(function(){
+        showToast('Network error', 'error');
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Approve & Import';
+    });
+}
+function cancelImport(id) {
+    if (!confirm('Cancel this import?')) return;
+    fetch('/admin/upload-cutoff/' + id + '/cancel', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) { showToast('Import cancelled', 'info'); window.location.href = '/admin/upload-cutoff'; }
+        else { showToast(d.error || 'Failed to cancel', 'error'); }
+    });
+}
+</script>
+{% endblock %}

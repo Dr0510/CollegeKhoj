@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+{% block title %}Backups — Admin{% endblock %}
+{% block heading %}Backups{% endblock %}
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <button class="btn btn-success" onclick="createBackup()"><i class="fas fa-cloud-arrow-up"></i> Create Backup</button>
+</div>
+<div class="table-wrap">
+    <table>
+        <tr><th>ID</th><th>Date</th><th>File</th><th>Size</th><th>DB Type</th><th>Records</th><th>Status</th><th>Actions</th></tr>
+        {% for b in backups %}
+        <tr>
+            <td>{{ b.id }}</td>
+            <td>{{ b.backup_date.strftime('%d %b %Y %H:%M') if b.backup_date else '—' }}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">{{ b.backup_file.split('/')[-1] }}</td>
+            <td>{{ '{:,}'.format(b.file_size|default(0)) }} bytes</td>
+            <td>{{ b.db_type or '—' }}</td>
+            <td>{{ b.record_count or '—' }}</td>
+            <td><span class="badge badge-{{ 'success' if b.status == 'success' else 'danger' }}">{{ b.status }}</span></td>
+            <td><button class="btn btn-danger btn-sm" onclick="restoreBackup({{ b.id }})"><i class="fas fa-rotate-left"></i> Restore</button></td>
+        </tr>
+        {% else %}<tr><td colspan="8" style="text-align:center;color:var(--text-tertiary);">No backups yet</td></tr>{% endfor %}
+    </table>
+</div>
+{% if pagination.pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}<a href="?page={{ pagination.prev_num }}">← Prev</a>{% endif %}
+    {% for p in pagination.iter_pages() %}{% if p %}<a href="?page={{ p }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>{% endif %}{% endfor %}
+    {% if pagination.has_next %}<a href="?page={{ pagination.next_num }}">Next →</a>{% endif %}
+</div>{% endif %}
+<script>
+function createBackup() {
+    fetch('/admin/backups/create', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(d.ok){ showToast('Backup created!', 'success'); location.reload(); } else { showToast(d.error, 'error'); }})
+    .catch(function(){ showToast('Network error', 'error'); });
+}
+function restoreBackup(id) {
+    if (!confirm('WARNING: This will overwrite ALL current data with the backup. Continue?')) return;
+    if (!confirm('Are you sure? This cannot be undone.')) return;
+    fetch('/admin/backups/' + id + '/restore', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(d.ok){ showToast(d.message, 'success'); } else { showToast(d.error, 'error'); }})
+    .catch(function(){ showToast('Network error', 'error'); });
+}
+</script>
+{% endblock %}

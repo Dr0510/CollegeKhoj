@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin — CollegeKhoj{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        (function(){
+            var t = localStorage.getItem('cf-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
+    <style>
+        :root {
+            --brand-primary: #4f8ef7;
+            --brand-primary-hover: #3b7de6;
+            --brand-secondary: #6c5ce7;
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d28;
+            --bg-card: #222639;
+            --text-primary: #e8edf5;
+            --text-secondary: #8892a8;
+            --text-tertiary: #5a6278;
+            --border: #2a2e3f;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --radius: 10px;
+            --radius-sm: 6px;
+            --sidebar-w: 250px;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f4f6f9;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --text-primary: #1a1d28;
+            --text-secondary: #5a6278;
+            --text-tertiary: #8892a8;
+            --border: #e2e6ef;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            min-height: 100vh;
+        }
+        /* ── Sidebar ── */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 100;
+        }
+        .sidebar-brand {
+            display: flex; align-items: center; gap: 10px;
+            padding: 20px 18px;
+            font-size: 1.2rem; font-weight: 800;
+            border-bottom: 1px solid var(--border);
+            text-decoration: none; color: var(--text-primary);
+        }
+        .sidebar-brand span { color: var(--brand-primary); }
+        .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+        .sidebar-nav a {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 18px; margin: 2px 8px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.88rem; font-weight: 500;
+            transition: all 0.15s;
+        }
+        .sidebar-nav a:hover { background: var(--bg-card); color: var(--text-primary); }
+        .sidebar-nav a.active { background: var(--brand-primary); color: #fff; }
+        .sidebar-nav a i { width: 20px; text-align: center; }
+        .sidebar-footer {
+            padding: 12px 18px;
+            border-top: 1px solid var(--border);
+        }
+        .sidebar-footer a {
+            display: flex; align-items: center; gap: 12px;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            font-size: 0.82rem;
+            padding: 8px;
+            border-radius: var(--radius-sm);
+        }
+        .sidebar-footer a:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+        /* ── Main ── */
+        .main { margin-left: var(--sidebar-w); flex: 1; padding: 24px 32px; min-height: 100vh; }
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 28px; padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .topbar h1 { font-size: 1.5rem; font-weight: 700; }
+        .topbar .user-badge {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.85rem; color: var(--text-secondary);
+        }
+        .topbar .user-badge i { font-size: 1.2rem; }
+        /* ── Cards ── */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+        .stat-card .label { font-size: 0.8rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; margin: 4px 0 2px; }
+        .stat-card .sub { font-size: 0.8rem; color: var(--text-secondary); }
+        /* ── Table ── */
+        .table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+        th { background: var(--bg-secondary); color: var(--text-tertiary); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.3px; }
+        tr:hover td { background: rgba(79,142,247,0.03); }
+        /* ── Forms ── */
+        input, select, textarea {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--brand-primary); }
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+        .btn-primary { background: var(--brand-primary); color: #fff; }
+        .btn-primary:hover { background: var(--brand-primary-hover); }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+        .btn-outline:hover { border-color: var(--text-primary); color: var(--text-primary); }
+        .btn-sm { padding: 4px 12px; font-size: 0.8rem; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* ── Badges ── */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-success { background: rgba(34,197,94,0.15); color: var(--success); }
+        .badge-warning { background: rgba(245,158,11,0.15); color: var(--warning); }
+        .badge-danger { background: rgba(239,68,68,0.15); color: var(--danger); }
+        .badge-info { background: rgba(59,130,246,0.15); color: var(--info); }
+        /* ── Messages ── */
+        .flash { padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 0.85rem; }
+        .flash-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); }
+        .flash-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: var(--success); }
+        /* ── Pagination ── */
+        .pagination { display: flex; align-items: center; gap: 8px; justify-content: center; margin-top: 20px; }
+        .pagination a, .pagination span { padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; text-decoration: none; color: var(--text-secondary); }
+        .pagination a:hover { background: var(--bg-card); }
+        .pagination .current { background: var(--brand-primary); color: #fff; }
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .sidebar { width: 60px; }
+            .sidebar-brand span, .sidebar-nav a span, .sidebar-footer a span { display: none; }
+            .main { margin-left: 60px; padding: 16px; }
+            .stat-grid { grid-template-columns: 1fr 1fr; }
+        }
+        /* ── Toast ── */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 18px; border-radius: var(--radius-sm); color: #fff; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; min-width: 280px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .toast-success { background: var(--success); }
+        .toast-error { background: var(--danger); }
+        .toast-info { background: var(--info); }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/admin/dashboard" class="sidebar-brand">
+            <i class="fas fa-graduation-cap" style="color: var(--brand-primary);"></i>
+            <span>College<span style="color: var(--brand-primary);">Khoj</span></span>
+        </a>
+        <nav class="sidebar-nav">
+            <a href="/admin/dashboard" class="{{ 'active' if request.path == '/admin/dashboard' else '' }}">
+                <i class="fas fa-chart-simple"></i> <span>Dashboard</span>
+            </a>
+            <a href="/admin/upload-cutoff" class="{{ 'active' if request.path.startswith('/admin/upload-cutoff') else '' }}">
+                <i class="fas fa-upload"></i> <span>Upload Cutoff</span>
+            </a>
+            <a href="/admin/cutoffs" class="{{ 'active' if request.path == '/admin/cutoffs' else '' }}">
+                <i class="fas fa-table"></i> <span>Cutoff Records</span>
+            </a>
+            <a href="/admin/colleges" class="{{ 'active' if request.path == '/admin/colleges' else '' }}">
+                <i class="fas fa-building"></i> <span>Colleges</span>
+            </a>
+            <a href="/admin/users" class="{{ 'active' if request.path == '/admin/users' else '' }}">
+                <i class="fas fa-users"></i> <span>Users</span>
+            </a>
+            <a href="/admin/trends" class="{{ 'active' if request.path == '/admin/trends' else '' }}">
+                <i class="fas fa-chart-line"></i> <span>Trends</span>
+            </a>
+            <a href="/admin/backups" class="{{ 'active' if request.path == '/admin/backups' else '' }}">
+                <i class="fas fa-database"></i> <span>Backups</span>
+            </a>
+            <a href="/admin/audit-logs" class="{{ 'active' if request.path == '/admin/audit-logs' else '' }}">
+                <i class="fas fa-clipboard-list"></i> <span>Audit Logs</span>
+            </a>
+            <a href="/admin/settings" class="{{ 'active' if request.path == '/admin/settings' else '' }}">
+                <i class="fas fa-gear"></i> <span>Settings</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/" target="_blank"><i class="fas fa-globe"></i> <span>View Site</span></a>
+            <a href="/admin/logout"><i class="fas fa-right-from-bracket"></i> <span>Logout</span></a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="topbar">
+            <h1>{% block heading %}Admin{% endblock %}</h1>
+            <div class="user-badge">
+                <i class="fas fa-user-shield"></i>
+                <span>{{ g.user.display_name() if g.user else 'Admin' }}</span>
+            </div>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for cat, msg in messages %}
+                    <div class="flash flash-{{ cat }}">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Toast container for JS -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script>
+        function showToast(msg, type) {
+            type = type || 'info';
+            var c = document.getElementById('toast-container');
+            if (!c) return;
+            var t = document.createElement('div');
+            t.className = 'toast toast-' + type;
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ if(t.parentElement) t.remove(); }, 300); }, 4000);
+        }
+        // Check for flash messages and convert to toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.flash').forEach(function(f) {
+                var type = f.classList.contains('flash-error') ? 'error' : 'success';
+                showToast(f.textContent.trim(), type);
+            });
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

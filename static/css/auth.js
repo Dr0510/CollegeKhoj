@@ -286,10 +286,11 @@
           return;
         }
 
-        // Success
-        showToast(result.data.message || 'Welcome back! Redirecting…', 'success');
+        // Success — use redirect_url if provided (role-based routing)
+        var redirectTo = result.data.redirect_url || getNextUrl();
+        showToast(result.data.message || 'Welcome back!', 'success');
         setTimeout(function () {
-          window.location.href = getNextUrl();
+          window.location.href = redirectTo;
         }, 800);
       } catch (err) {
         btn.classList.remove('loading');

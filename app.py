@@ -10,10 +10,8 @@ import pandas as pd
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session, g
 from werkzeug.middleware.proxy_fix import ProxyFix
-from werkzeug.utils import secure_filename
 from database import db, init_database
 import io
-import secrets
 import re
 
 # Configure logging
@@ -31,11 +29,15 @@ app.config["SESSION_TYPE"] = "filesystem"
 init_database(app)
 
 # Import models and recommender after db initialization
-from models import College, CAPCutoff, MHCETStudent, User
+from models import College, CAPCutoff, MHCETStudent, User, UploadedFile, BackupHistory, AuditLog
 from recommender import CollegeRecommender
 from mhcet_recommender import MHCETRecommender
 from auth_decorators import login_required, api_login_required
 from email_service import send_verification_email as resend_verify, send_password_reset_email
+from admin import admin_bp
+
+# Register admin blueprint
+app.register_blueprint(admin_bp)
 
 # ── Auth helpers ───────────────────────────────────────────────────────────────
 
@@ -835,17 +837,23 @@ def auth_login():
                 'email': user.email,
             }), 403
 
-        # Login successful
+        # Login successful — store both user_id and role in session
         user.last_login = datetime.utcnow()
         db.session.commit()
 
         session['user_id'] = user.id
+        session['role'] = user.role
         session.permanent = False
+
+        # Role-based redirect + message
+        is_admin = user.role == 'admin'
+        redirect_url = url_for('admin_bp.admin_dashboard') if is_admin else url_for('mhcet_page')
 
         return jsonify({
             'ok': True,
             'user': user.to_dict(),
-            'message': 'Welcome back! Redirecting…'
+            'redirect_url': redirect_url,
+            'message': 'Welcome Admin' if is_admin else 'Welcome Back',
         })
 
     except Exception as e:
@@ -966,8 +974,65 @@ with app.app_context():
         pass  # Fresh DB — no migration needed
 
     db.create_all()
+
+    # ── Migrate existing tables if needed ──
+    try:
+        inspector = db.inspect(db.engine)
+        cap_columns = [c['name'] for c in inspector.get_columns('cap_cutoffs')]
+        user_columns = [c['name'] for c in inspector.get_columns('users')]
+
+        # Add new columns to cap_cutoffs
+        if 'college_code' not in cap_columns:
+            db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN college_code VARCHAR(20)'))
+        if 'source_file_id' not in cap_columns:
+            db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN source_file_id INTEGER REFERENCES uploaded_files(id)'))
+        if 'is_auto_generated' not in cap_columns:
+            db.session.execute(db.text("ALTER TABLE cap_cutoffs ADD COLUMN is_auto_generated BOOLEAN DEFAULT FALSE"))
+        if 'validation_status' not in cap_columns:
+            db.session.execute(db.text("ALTER TABLE cap_cutoffs ADD COLUMN validation_status VARCHAR(20) DEFAULT 'validated'"))
+        if 'raw_pdf_text' not in cap_columns:
+            db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN raw_pdf_text TEXT'))
+        if 'imported_at' not in cap_columns:
+            db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
+
+        # Add role column to users
+        if 'role' not in user_columns:
+            db.session.execute(db.text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user'"))
+
+        db.session.commit()
+        logging.info("✅ Database migration applied successfully")
+    except Exception as e:
+        db.session.rollback()
+        logging.warning(f"Migration note (may be OK): {e}")
+
     init_sample_data()
     init_sample_cutoff_data()
+
+    # Seed admin user from environment variables (if configured)
+    admin_email = os.environ.get('ADMIN_EMAIL', '').strip().lower()
+    admin_password = os.environ.get('ADMIN_PASSWORD', '').strip()
+    if admin_email and admin_password and len(admin_password) >= 8:
+        existing_admin = User.query.filter_by(email=admin_email).first()
+        if not existing_admin:
+            admin_user = User(
+                email=admin_email,
+                first_name='Admin',
+                last_name='User',
+                password_hash=hash_password(admin_password),
+                role='admin',
+                is_verified=True,
+                created_at=datetime.utcnow(),
+            )
+            db.session.add(admin_user)
+            db.session.commit()
+            logging.info(f"✅ Admin user seeded: {admin_email}")
+        elif not existing_admin.is_admin():
+            existing_admin.role = 'admin'
+            existing_admin.is_verified = True
+            if not existing_admin.password_hash:
+                existing_admin.password_hash = hash_password(admin_password)
+            db.session.commit()
+            logging.info(f"✅ Existing user {admin_email} promoted to admin")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

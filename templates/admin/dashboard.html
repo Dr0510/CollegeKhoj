@@ -1,0 +1,79 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard — Admin{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block content %}
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="label">Total Colleges</div>
+        <div class="value">{{ total_colleges }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Cutoff Records</div>
+        <div class="value">{{ total_cutoffs }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Total Users</div>
+        <div class="value">{{ total_users }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Uploaded Files</div>
+        <div class="value">{{ total_uploads }}</div>
+        <div class="sub">Backups: {{ backup_count }}</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div class="stat-card">
+        <h3 style="font-size: 1rem; margin-bottom: 16px;">Recent Uploads</h3>
+        {% if recent_uploads %}
+        <table>
+            <tr><th>File</th><th>Status</th><th>Date</th></tr>
+            {% for u in recent_uploads %}
+            <tr>
+                <td>{{ u.filename[:40] }}{% if u.filename|length > 40 %}…{% endif %}</td>
+                <td><span class="badge badge-{{ 'success' if u.processed_status == 'committed' else ('info' if u.processed_status == 'preview' else 'warning') }}">{{ u.processed_status }}</span></td>
+                <td>{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="color: var(--text-tertiary); font-size: 0.85rem;">No uploads yet</p>
+        {% endif %}
+        <div style="margin-top: 12px;"><a href="/admin/upload-cutoff" class="btn btn-primary btn-sm"><i class="fas fa-upload"></i> Upload PDF</a></div>
+    </div>
+
+    <div class="stat-card">
+        <h3 style="font-size: 1rem; margin-bottom: 16px;">Quick Actions</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="/admin/upload-cutoff" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-file-pdf"></i> Upload Cutoff PDF</a>
+            <a href="/admin/cutoffs" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-search"></i> Browse Cutoffs</a>
+            <a href="/admin/backups" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-database"></i> Manage Backups</a>
+            <a href="/admin/trends" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-chart-line"></i> View Trends</a>
+            <button class="btn btn-success" style="justify-content: center;" onclick="createBackup()"><i class="fas fa-cloud-arrow-up"></i> Create Backup Now</button>
+        </div>
+    </div>
+</div>
+
+{% if last_upload %}
+<div class="stat-card" style="margin-top: 20px;">
+    <h3 style="font-size: 1rem; margin-bottom: 8px;">Last Upload</h3>
+    <p style="color: var(--text-secondary); font-size: 0.85rem;">
+        <strong>{{ last_upload.filename }}</strong> — {{ last_upload.processed_status }}
+        ({{ last_upload.valid_rows }} valid, {{ last_upload.rejected_rows }} rejected)
+        <br>Uploaded {{ last_upload.created_at.strftime('%d %b %Y at %H:%M') if last_upload.created_at else '' }}
+    </p>
+</div>
+{% endif %}
+
+<script>
+function createBackup() {
+    fetch('/admin/backups/create', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) { showToast('Backup created successfully!', 'success'); }
+        else { showToast(d.error || 'Backup failed', 'error'); }
+    })
+    .catch(function(){ showToast('Network error', 'error'); });
+}
+</script>
+{% endblock %}

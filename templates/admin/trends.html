@@ -1,0 +1,68 @@
+{% extends "admin/base.html" %}
+{% block title %}Trends — Admin{% endblock %}
+{% block heading %}Cutoff Trends{% endblock %}
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div class="stat-card">
+        <h3 style="font-size:1rem; margin-bottom:16px;">College Cutoff Trends</h3>
+        <form method="GET" style="margin-bottom:12px;">
+            <input type="text" name="college_code" placeholder="Filter by college code…" value="{{ college_code }}" style="max-width:200px;">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i></button>
+        </form>
+        {% if trends %}
+        <div class="table-wrap" style="max-height:400px;overflow-y:auto;">
+            <table>
+                <tr><th>College</th><th>Branch</th><th>Cat</th><th>Trend</th><th>Dir</th></tr>
+                {% for t in trends %}
+                <tr>
+                    <td>{{ t.college_name[:20] }}</td>
+                    <td>{{ t.branch[:15] }}</td>
+                    <td><span class="badge badge-info">{{ t.category }}</span></td>
+                    <td>{% for y in t.years %}{{ y }}: {{ t.trends[y] }}{% if not loop.last %} → {% endif %}{% endfor %}</td>
+                    <td><span class="badge badge-{{ 'success' if t.direction == 'increasing' else ('danger' if t.direction == 'decreasing' else 'warning') }}">{{ t.direction }}</span></td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% else %}<p style="color:var(--text-tertiary);">No trend data available. Import cutoff data first.</p>{% endif %}
+    </div>
+
+    <div class="stat-card">
+        <h3 style="font-size:1rem; margin-bottom:16px;">Branch Popularity</h3>
+        {% if branch_popularity %}
+        <div class="table-wrap">
+            <table>
+                <tr><th>Branch</th><th>Avg Cutoff</th><th>Colleges</th></tr>
+                {% for b in branch_popularity %}
+                <tr>
+                    <td>{{ b.branch[:25] }}</td>
+                    <td><strong>{{ b.avg_cutoff }}</strong></td>
+                    <td>{{ b.college_count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% else %}<p style="color:var(--text-tertiary);">No data yet</p>{% endif %}
+    </div>
+</div>
+
+<div class="stat-card" style="margin-top:20px;">
+    <button class="btn btn-primary" onclick="recalculateTrends()"><i class="fas fa-arrows-rotate"></i> Recalculate Trends</button>
+    <span id="recalc-status" style="margin-left:12px;font-size:0.85rem;color:var(--text-secondary);"></span>
+</div>
+
+<script>
+function recalculateTrends() {
+    var btn = event.target; btn.disabled = true;
+    document.getElementById('recalc-status').textContent = 'Recalculating…';
+    fetch('/admin/api/trends/recalculate', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if(d.ok){ showToast('Trends recalculated: ' + d.trends_count + ' colleges', 'success'); location.reload(); }
+        else { showToast('Error: ' + (d.error || 'unknown'), 'error'); }
+        btn.disabled = false;
+    })
+    .catch(function(){ showToast('Network error', 'error'); btn.disabled = false; });
+}
+</script>
+{% endblock %}

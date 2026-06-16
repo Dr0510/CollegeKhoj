@@ -1,0 +1,29 @@
+{% extends "admin/base.html" %}
+{% block title %}Colleges — Admin{% endblock %}
+{% block heading %}Colleges{% endblock %}
+{% block content %}
+<div class="stat-card" style="margin-bottom: 20px;">
+    <form method="GET" style="display: flex; gap: 12px;">
+        <input type="text" name="q" placeholder="Search college name, location, branch…" value="{{ q }}" style="max-width: 400px;">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Search</button>
+        <a href="/admin/colleges" class="btn btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</a>
+    </form>
+</div>
+<div class="table-wrap">
+    <table>
+        <tr><th>ID</th><th>Name</th><th>Location</th><th>Branch</th><th>Fees</th><th>NIRF</th><th>Rating</th><th>Placement</th></tr>
+        {% for c in colleges %}
+        <tr>
+            <td>{{ c.id }}</td><td>{{ c.college[:40] }}</td><td>{{ c.location }}</td><td>{{ c.branch[:20] }}</td>
+            <td>₹{{ '{:,.0f}'.format(c.fees) }}</td><td>{{ c.nirf_rank }}</td><td>{{ c.rating }}</td><td>{{ c.placement_rate }}%</td>
+        </tr>
+        {% else %}<tr><td colspan="8" style="text-align:center;color:var(--text-tertiary);">No colleges found</td></tr>{% endfor %}
+    </table>
+</div>
+{% if pagination.pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}<a href="?page={{ pagination.prev_num }}&q={{ q }}">← Prev</a>{% endif %}
+    {% for p in pagination.iter_pages() %}{% if p %}<a href="?page={{ p }}&q={{ q }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>{% endif %}{% endfor %}
+    {% if pagination.has_next %}<a href="?page={{ pagination.next_num }}&q={{ q }}">Next →</a>{% endif %}
+</div>{% endif %}
+{% endblock %}

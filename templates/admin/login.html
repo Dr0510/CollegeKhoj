@@ -1,0 +1,30 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin Login — CollegeKhoj{% endblock %}
+{% block heading %}Admin Login{% endblock %}
+{% block content %}
+<div style="max-width: 420px; margin: 60px auto;">
+    <div class="stat-card" style="padding: 32px;">
+        <h2 style="margin-bottom: 8px; font-size: 1.3rem;">Sign in</h2>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 24px;">Enter your admin credentials</p>
+        {% if error %}
+            <div class="flash flash-error">{{ error }}</div>
+        {% endif %}
+        <form method="POST">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 4px;">Email</label>
+                <input type="email" name="email" placeholder="admin@collegekhoj.com" required>
+            </div>
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 4px;">Password</label>
+                <input type="password" name="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;">
+                <i class="fas fa-lock"></i> Sign in
+            </button>
+        </form>
+        <p style="margin-top: 16px; font-size: 0.8rem; color: var(--text-tertiary); text-align: center;">
+            Set ADMIN_EMAIL and ADMIN_PASSWORD in .env to create admin account
+        </p>
+    </div>
+</div>
+{% endblock %}

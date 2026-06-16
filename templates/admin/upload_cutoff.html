@@ -1,0 +1,84 @@
+{% extends "admin/base.html" %}
+{% block title %}Upload Cutoff PDF — Admin{% endblock %}
+{% block heading %}Upload Cutoff PDF{% endblock %}
+{% block content %}
+<div class="stat-card" style="max-width: 600px; margin-bottom: 20px;">
+    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
+        Upload an MHT CET CAP Round cutoff PDF. The system will automatically extract table data, validate it, and let you preview before importing.
+    </p>
+    <div id="dropzone" style="border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s;">
+        <i class="fas fa-file-pdf" style="font-size: 3rem; color: var(--brand-primary); margin-bottom: 12px; display: block;"></i>
+        <p style="font-weight: 600; margin-bottom: 4px;">Drop your PDF here or click to browse</p>
+        <p style="font-size: 0.8rem; color: var(--text-tertiary);">Supports MHT CET CAP Round PDFs</p>
+        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+    </div>
+    <div id="upload-progress" style="display: none; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+            <span id="progress-text">Processing PDF…</span>
+            <span id="progress-pct">0%</span>
+        </div>
+        <div style="height: 6px; background: var(--border); border-radius: 4px;">
+            <div id="progress-bar" style="height: 100%; width: 0%; background: var(--brand-primary); border-radius: 4px; transition: width 0.3s;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="result-area"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var dropzone = document.getElementById('dropzone');
+    var fileInput = document.getElementById('file-input');
+    var progress = document.getElementById('upload-progress');
+    var progressBar = document.getElementById('progress-bar');
+    var progressText = document.getElementById('progress-text');
+    var progressPct = document.getElementById('progress-pct');
+    var resultArea = document.getElementById('result-area');
+
+    dropzone.addEventListener('click', function() { fileInput.click(); });
+    dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.style.borderColor = 'var(--brand-primary)'; });
+    dropzone.addEventListener('dragleave', function() { dropzone.style.borderColor = 'var(--border)'; });
+    dropzone.addEventListener('drop', function(e) { e.preventDefault(); dropzone.style.borderColor = 'var(--border)'; if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', function() { if (this.files.length) uploadFile(this.files[0]); });
+
+    function uploadFile(file) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) { showToast('Only PDF files are supported', 'error'); return; }
+
+        var formData = new FormData();
+        formData.append('file', file);
+        progress.style.display = 'block';
+        resultArea.innerHTML = '';
+        setProgress(10, 'Uploading…');
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/admin/upload-cutoff');
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                var data = JSON.parse(xhr.responseText);
+                if (data.ok) {
+                    window.location.href = data.redirect || '/admin/upload-cutoff/' + data.upload_id + '/preview';
+                } else {
+                    setProgress(0, '');
+                    showToast(data.error || 'Upload failed', 'error');
+                }
+            } else {
+                setProgress(0, '');
+                try { var d = JSON.parse(xhr.responseText); showToast(d.error || 'Upload failed', 'error'); }
+                catch(e) { showToast('Upload failed: server error', 'error'); }
+            }
+        };
+        xhr.onerror = function() { setProgress(0, ''); showToast('Network error', 'error'); };
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) setProgress(Math.round(10 + (e.loaded / e.total * 40)), 'Uploading…');
+        };
+        xhr.send(formData);
+    }
+
+    function setProgress(pct, text) {
+        progressBar.style.width = pct + '%';
+        progressText.textContent = text || 'Processing…';
+        progressPct.textContent = pct + '%';
+    }
+});
+</script>
+{% endblock %}

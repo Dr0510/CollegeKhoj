@@ -1,0 +1,58 @@
+{% extends "admin/base.html" %}
+{% block title %}Cutoff Records — Admin{% endblock %}
+{% block heading %}Cutoff Records{% endblock %}
+{% block content %}
+<div class="stat-card" style="margin-bottom: 20px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap;">
+        <div><label style="font-size:0.8rem;color:var(--text-tertiary);">Year</label>
+            <select name="year"><option value="">All</option>{% for y in years %}<option value="{{ y }}" {{ 'selected' if filters.year==y }}>{{ y }}</option>{% endfor %}</select></div>
+        <div><label style="font-size:0.8rem;color:var(--text-tertiary);">Category</label>
+            <select name="category"><option value="">All</option>{% for c in categories %}<option value="{{ c }}" {{ 'selected' if filters.category==c }}>{{ c }}</option>{% endfor %}</select></div>
+        <div><label style="font-size:0.8rem;color:var(--text-tertiary);">Search</label>
+            <input type="text" name="q" placeholder="College name or code…" value="{{ filters.q }}"></div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Filter</button>
+        <a href="/admin/cutoffs" class="btn btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</a>
+    </form>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <tr><th>Code</th><th>College</th><th>Year</th><th>Round</th><th>Branch</th><th>Category</th><th>Percentile</th><th>Status</th><th>Actions</th></tr>
+        {% for c in cutoffs %}
+        <tr>
+            <td>{{ c.college_code or '—' }}</td>
+            <td>{{ c.college.college[:35] if c.college else '—' }}</td>
+            <td>{{ c.year }}</td>
+            <td>R{{ c.round_number }}</td>
+            <td>{{ c.college.branch[:20] if c.college else '—' }}</td>
+            <td><span class="badge badge-info">{{ c.category }}</span></td>
+            <td><strong>{{ '%.2f'|format(c.cutoff_percentile) }}</strong></td>
+            <td><span class="badge badge-{{ 'success' if c.validation_status == 'validated' else 'warning' }}">{{ c.validation_status }}</span></td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteCutoff({{ c.id }})"><i class="fas fa-trash"></i></button></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" style="text-align:center;color:var(--text-tertiary);">No cutoff records found</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+{% if pagination.pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}<a href="?page={{ pagination.prev_num }}&year={{ filters.year }}&category={{ filters.category }}&q={{ filters.q }}">← Prev</a>{% endif %}
+    {% for p in pagination.iter_pages() %}
+        {% if p %}<a href="?page={{ p }}&year={{ filters.year }}&category={{ filters.category }}&q={{ filters.q }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>{% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}<a href="?page={{ pagination.next_num }}&year={{ filters.year }}&category={{ filters.category }}&q={{ filters.q }}">Next →</a>{% endif %}
+</div>
+{% endif %}
+
+<script>
+function deleteCutoff(id) {
+    if (!confirm('Delete this cutoff record?')) return;
+    fetch('/admin/cutoffs/' + id + '/delete', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(d.ok){ showToast('Deleted', 'success'); location.reload(); } else { showToast(d.error, 'error'); }})
+    .catch(function(){ showToast('Network error', 'error'); });
+}
+</script>
+{% endblock %}
