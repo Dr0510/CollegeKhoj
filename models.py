@@ -1,7 +1,8 @@
 from database import db
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, Boolean
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets
 
 class College(db.Model):
     """College model for storing college information"""
@@ -124,16 +125,21 @@ class MHCETStudent(db.Model):
 
 
 class User(db.Model):
-    """User model — stores Clerk-authenticated user details in Neon DB."""
-
+    """User model — stores user accounts with custom auth."""
+    
     __tablename__ = 'users'
-
+    
     id = Column(Integer, primary_key=True)
-    clerk_id = Column(String(120), unique=True, nullable=False, index=True)
-    email = Column(String(200), nullable=True)
+    email = Column(String(200), unique=True, nullable=False, index=True)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
+    password_hash = Column(String(255), nullable=True)
     profile_image_url = Column(Text, nullable=True)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    verification_code = Column(String(6), nullable=True)
+    verification_code_expiry = Column(DateTime, nullable=True)
+    reset_token = Column(String(100), nullable=True)
+    reset_token_expiry = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_login = Column(DateTime, default=datetime.utcnow, nullable=True)
 
@@ -147,15 +153,38 @@ class User(db.Model):
         ln = (self.last_name or '')[:1].upper()
         return (fn + ln) or (self.email or 'U')[:1].upper()
 
+    def generate_verification_code(self):
+        """Generate a 6-digit verification code valid for 10 minutes."""
+        self.verification_code = ''.join(secrets.choice('0123456789') for _ in range(6))
+        self.verification_code_expiry = datetime.utcnow() + timedelta(minutes=10)
+        return self.verification_code
+
+    def verify_code(self, code: str) -> bool:
+        """Check if the provided verification code is valid and not expired."""
+        if not self.verification_code or not self.verification_code_expiry:
+            return False
+        if self.verification_code != code:
+            return False
+        if datetime.utcnow() > self.verification_code_expiry:
+            return False
+        return True
+
+    def generate_reset_token(self):
+        """Generate a password reset token valid for 1 hour."""
+        self.reset_token = secrets.token_urlsafe(32)
+        self.reset_token_expiry = datetime.utcnow() + timedelta(hours=1)
+        return self.reset_token
+
     def to_dict(self):
         return {
             'id': self.id,
-            'clerk_id': self.clerk_id,
             'email': self.email,
             'first_name': self.first_name,
             'last_name': self.last_name,
             'profile_image_url': self.profile_image_url,
             'display_name': self.display_name(),
+            'initials': self.initials(),
+            'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
         }

@@ -4,426 +4,373 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Account — CollegeKhoj</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <meta name="description" content="Create your free CollegeKhoj account — AI-powered MH-CET predictions, college comparison, and CAP cutoff analysis.">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Theme initialization (prevents flash) -->
     <script>
         (function(){
-            const t = localStorage.getItem('cf-theme') || 'dark';
-            document.documentElement.setAttribute('data-bs-theme', t);
+            var t = localStorage.getItem('cf-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.setAttribute('data-bs-theme', t);
         })();
     </script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            background: #080d18;
-            color: #e2e8f0;
-            overflow-x: hidden;
+        /* Verification code step */
+        .verify-section {
+            display: none;
         }
-
-        /* ── LEFT BRANDING PANEL ── */
-        .left-panel {
-            width: 52%;
-            background: linear-gradient(160deg, #0e1628 0%, #0b1220 40%, #091020 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: 60px 64px;
-            position: relative;
-            overflow: hidden;
-        }
-        .left-panel::before {
-            content: '';
-            position: absolute;
-            top: -160px; left: -100px;
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(79,142,247,.13) 0%, transparent 65%);
-            pointer-events: none;
-        }
-        .left-panel::after {
-            content: '';
-            position: absolute;
-            bottom: -120px; right: -80px;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(129,140,248,.08) 0%, transparent 65%);
-            pointer-events: none;
-        }
-        .left-panel .orb {
-            position: absolute;
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        .orb-1 {
-            top: 20%; right: 10%;
-            width: 200px; height: 200px;
-            background: radial-gradient(circle, rgba(79,142,247,.06) 0%, transparent 70%);
-            animation: float 8s ease-in-out infinite;
-        }
-        .orb-2 {
-            bottom: 30%; left: 5%;
-            width: 160px; height: 160px;
-            background: radial-gradient(circle, rgba(129,140,248,.05) 0%, transparent 70%);
-            animation: float 10s ease-in-out infinite reverse;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.05); }
-        }
-
-        .brand {
-            display: flex; align-items: center; gap: 12px;
-            font-size: 1.8rem; font-weight: 900;
-            color: #4f8ef7;
-            margin-bottom: 28px;
-            text-decoration: none;
-            position: relative; z-index: 1;
-        }
-        .brand span { color: #e2e8f0; }
-        .brand-icon {
-            width: 46px; height: 46px;
-            background: linear-gradient(135deg, #4f8ef7, #818cf8);
-            border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; color: #fff;
-            flex-shrink: 0;
-            box-shadow: 0 4px 16px rgba(79,142,247,.3);
-        }
-
-        .tagline {
-            font-size: 2.4rem; font-weight: 800; line-height: 1.25;
-            color: #f1f5f9;
-            margin-bottom: 6px;
-            position: relative; z-index: 1;
-        }
-        .tagline em { color: #4f8ef7; font-style: normal; }
-        .tagline-sub {
-            font-size: .97rem; color: #8892a4; line-height: 1.6;
-            margin-bottom: 40px; max-width: 420px;
-            position: relative; z-index: 1;
-        }
-
-        .benefits-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            position: relative; z-index: 1;
-        }
-        .benefit-item {
-            background: rgba(255,255,255,.03);
-            border: 1px solid rgba(255,255,255,.06);
-            border-radius: 12px;
-            padding: 16px 18px;
-            transition: all .25s;
-        }
-        .benefit-item:hover {
-            background: rgba(255,255,255,.05);
-            border-color: rgba(79,142,247,.2);
-            transform: translateY(-2px);
-        }
-        .benefit-icon {
-            width: 32px; height: 32px;
-            border-radius: 8px;
-            background: rgba(79,142,247,.12);
-            display: flex; align-items: center; justify-content: center;
-            font-size: .8rem; color: #4f8ef7;
-            margin-bottom: 8px;
-        }
-        .benefit-item strong {
+        .verify-section.active {
             display: block;
-            font-size: .84rem; color: #e2e8f0;
-            margin-bottom: 2px;
+            animation: fadeIn 0.4s var(--ease-out);
         }
-        .benefit-item span {
-            font-size: .75rem; color: #6b7a99;
-            line-height: 1.4;
-        }
-
-        .trust-row {
-            display: flex; gap: 28px;
-            margin-top: 36px;
-            padding-top: 28px;
-            border-top: 1px solid rgba(255,255,255,.06);
-            position: relative; z-index: 1;
-        }
-        .trust-item { display: flex; align-items: center; gap: 10px; }
-        .trust-icon {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            background: rgba(79,142,247,.1);
-            display: flex; align-items: center; justify-content: center;
-            font-size: .75rem; color: #4f8ef7;
-            flex-shrink: 0;
-        }
-        .trust-text strong { display: block; font-size: .82rem; font-weight: 700; color: #4f8ef7; }
-        .trust-text span { font-size: .72rem; color: #6b7a99; }
-
-        /* ── RIGHT SIGN-UP PANEL ── */
-        .right-panel {
-            width: 48%;
-            background: #0b1220;
+        .verify-section .code-inputs {
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            gap: 8px;
             justify-content: center;
-            padding: 40px 48px;
-            border-left: 1px solid rgba(255,255,255,.06);
-            position: relative;
+            margin: var(--space-6) 0;
         }
-        .right-panel::before {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 420px; height: 420px;
-            background: radial-gradient(circle, rgba(79,142,247,.05) 0%, transparent 70%);
-            pointer-events: none;
+        .verify-section .code-input {
+            width: 48px;
+            height: 56px;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 700;
+            font-family: var(--font-family);
+            color: var(--text-primary);
+            background: var(--input-bg);
+            border: 1.5px solid var(--input-border);
+            border-radius: var(--radius-md);
+            outline: none;
+            transition: all var(--duration-fast) var(--ease-out);
+            -moz-appearance: textfield;
         }
-
-        .sign-up-wrap {
-            width: 100%; max-width: 420px;
-            position: relative; z-index: 1;
+        .verify-section .code-input::-webkit-outer-spin-button,
+        .verify-section .code-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
-        .sign-up-header { text-align: center; margin-bottom: 28px; }
-        .sign-up-header h2 {
-            font-size: 1.5rem; font-weight: 800; color: #f1f5f9; margin-bottom: 6px;
-            letter-spacing: -.02em;
+        .verify-section .code-input:focus {
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.15);
         }
-        .sign-up-header p { font-size: .87rem; color: #6b7a99; }
-
-        /* Clerk component container */
-        #clerk-sign-up {
-            display: flex;
-            justify-content: center;
-            min-height: 320px;
+        .verify-section .code-input.filled {
+            border-color: var(--brand-primary);
+            background: rgba(79, 142, 247, 0.05);
         }
-
-        /* Override Clerk's white background to blend with dark theme */
-        #clerk-sign-up .cl-card,
-        #clerk-sign-up .cl-rootBox {
-            background: transparent !important;
-            box-shadow: none !important;
+        .verify-section .verify-email {
+            font-size: 0.87rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: var(--space-2);
         }
-        #clerk-sign-up .cl-card {
-            width: 100% !important;
+        .verify-section .verify-email strong {
+            color: var(--text-primary);
         }
-
-        .loading-state {
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-            padding: 56px 24px;
-            background: rgba(255,255,255,.03);
-            border: 1px solid rgba(255,255,255,.07);
-            border-radius: 16px;
-            color: #6b7a99; font-size: .88rem;
-            width: 100%;
+        .verify-section .resend-link {
+            display: block;
+            text-align: center;
+            font-size: 0.82rem;
+            color: var(--brand-primary);
+            text-decoration: none;
+            font-weight: 500;
+            margin-top: var(--space-4);
+            cursor: pointer;
+            transition: color var(--duration-fast) var(--ease-out);
         }
-        .loading-state .spinner {
-            width: 32px; height: 32px;
-            border: 3px solid rgba(79,142,247,.15);
-            border-top-color: #4f8ef7;
-            border-radius: 50%;
-            animation: spin .8s linear infinite;
+        .verify-section .resend-link:hover {
+            color: var(--brand-primary-hover);
+            text-decoration: underline;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .error-state {
-            padding: 20px;
-            background: rgba(239,68,68,.08);
-            border: 1px solid rgba(239,68,68,.2);
-            border-radius: 12px;
-            color: #fc8181; font-size: .85rem; text-align: center;
-            width: 100%;
-        }
-
-        .auth-divider {
-            display: flex; align-items: center; gap: 12px;
-            margin: 24px 0 0;
-            color: #3d4a62; font-size: .8rem;
-        }
-        .auth-divider::before, .auth-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: rgba(255,255,255,.06);
-        }
-
-        .switch-auth {
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-            margin-top: 16px;
-            color: #3d4a62; font-size: .84rem;
-        }
-        .switch-auth a {
-            color: #4f8ef7; text-decoration: none; font-weight: 600;
-            transition: color .2s;
-        }
-        .switch-auth a:hover { color: #6ba3f9; }
-
-        .back-link {
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-            margin-top: 16px;
-            color: #3d4a62; font-size: .82rem; text-decoration: none;
-            transition: color .2s;
-        }
-        .back-link:hover { color: #4f8ef7; }
-
-        /* ── RESPONSIVE ── */
-        @media (max-width: 992px) {
-            .left-panel { width: 45%; padding: 48px 36px; }
-            .right-panel { width: 55%; padding: 36px 32px; }
-            .tagline { font-size: 1.8rem; }
-            .benefits-grid { grid-template-columns: 1fr; }
-        }
-
-        @media (max-width: 768px) {
-            body { flex-direction: column; }
-            .left-panel { width: 100%; padding: 36px 28px 28px; min-height: auto; }
-            .tagline { font-size: 1.5rem; }
-            .tagline-sub, .benefits-grid, .trust-row { display: none; }
-            .right-panel { width: 100%; padding: 28px 20px 40px; border-left: none; border-top: 1px solid rgba(255,255,255,.06); }
-            .brand { margin-bottom: 0; }
-        }
-
-        /* ── ANIMATIONS ── */
-        .fade-in {
-            animation: fadeIn .5s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in-delay {
-            animation: fadeIn .5s ease-out .15s both;
-        }
-        .fade-in-delay-2 {
-            animation: fadeIn .5s ease-out .3s both;
+        .form-section.hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
 
-    <!-- LEFT BRANDING PANEL -->
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <i class="fas fa-sun icon-sun"></i>
+        <i class="fas fa-moon icon-moon"></i>
+    </button>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- ===== LEFT BRANDING PANEL ===== -->
     <div class="left-panel">
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
 
-        <a class="brand" href="/">
+        <a class="brand" href="/" aria-label="CollegeKhoj Home">
             <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
             College<span>Khoj</span>
         </a>
 
-        <h1 class="tagline fade-in">Your <em>college journey</em><br>starts here</h1>
-        <p class="tagline-sub fade-in-delay">Create your free account to unlock MH-CET predictions, save favourites, and compare colleges side-by-side.</p>
+        <div class="left-content">
+            <h1 class="tagline fade-in">
+                Your <em>college journey</em><br>
+                starts here
+            </h1>
+            <p class="tagline-sub fade-in-delay">
+                Create your free account to unlock MH-CET predictions, save favourites, and compare colleges side-by-side.
+            </p>
 
-        <div class="benefits-grid fade-in-delay-2">
-            <div class="benefit-item">
-                <div class="benefit-icon"><i class="fas fa-robot"></i></div>
-                <strong>AI-Powered Predictions</strong>
-                <span>Personalised CAP cutoff analysis based on your percentile</span>
-            </div>
-            <div class="benefit-item">
-                <div class="benefit-icon"><i class="fas fa-bookmark"></i></div>
-                <strong>Save & Compare</strong>
-                <span>Bookmark colleges and compare up to 4 side-by-side</span>
-            </div>
-            <div class="benefit-item">
-                <div class="benefit-icon"><i class="fas fa-history"></i></div>
-                <strong>3 Years of CAP Data</strong>
-                <span>Cutoff trends from 2022, 2023 & 2024 across all categories</span>
-            </div>
-            <div class="benefit-item">
-                <div class="benefit-icon"><i class="fas fa-share-alt"></i></div>
-                <strong>Share & Decide</strong>
-                <span>Share your shortlist with family and counsellors</span>
-            </div>
-        </div>
-
-        <div class="trust-row fade-in-delay-2">
-            <div class="trust-item">
-                <div class="trust-icon"><i class="fas fa-database"></i></div>
-                <div class="trust-text"><strong>500+</strong><span>Colleges</span></div>
-            </div>
-            <div class="trust-item">
-                <div class="trust-icon"><i class="fas fa-chart-bar"></i></div>
-                <div class="trust-text"><strong>2022–24</strong><span>CAP Data</span></div>
-            </div>
-            <div class="trust-item">
-                <div class="trust-icon"><i class="fas fa-lock"></i></div>
-                <div class="trust-text"><strong>Free</strong><span>Always</span></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- RIGHT SIGN-UP PANEL -->
-    <div class="right-panel">
-        <div class="sign-up-wrap">
-            <div class="sign-up-header">
-                <h2>Create your account</h2>
-                <p>Join thousands of Maharashtra students finding their perfect college</p>
-            </div>
-
-            <div id="clerk-sign-up">
-                <div class="loading-state">
-                    <div class="spinner"></div>
-                    <span>Preparing sign-up…</span>
+            <!-- Benefits Grid -->
+            <div class="benefits-grid fade-in-delay-2">
+                <div class="benefit-item">
+                    <div class="benefit-icon"><i class="fas fa-robot"></i></div>
+                    <strong>AI-Powered Predictions</strong>
+                    <span>Personalised CAP cutoff analysis based on your percentile</span>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon"><i class="fas fa-bookmark"></i></div>
+                    <strong>Save & Compare</strong>
+                    <span>Bookmark colleges and compare up to 4 side-by-side</span>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon"><i class="fas fa-history"></i></div>
+                    <strong>3 Years of CAP Data</strong>
+                    <span>Cutoff trends from 2022, 2023 & 2024 across all categories</span>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon"><i class="fas fa-share-alt"></i></div>
+                    <strong>Share & Decide</strong>
+                    <span>Share your shortlist with family and counsellors</span>
                 </div>
             </div>
 
-            <div class="auth-divider">Already have an account?</div>
-
-            <div class="switch-auth">
-                <a href="{{ url_for('login_page') }}{% if next_url %}?next={{ next_url }}{% endif %}">
-                    <i class="fas fa-sign-in-alt fa-xs me-1"></i>Sign in to your account
-                </a>
+            <div class="trust-row fade-in-delay-3">
+                <div class="trust-item">
+                    <div class="trust-icon"><i class="fas fa-database"></i></div>
+                    <div class="trust-text"><strong>500+</strong><span>Colleges</span></div>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon"><i class="fas fa-chart-bar"></i></div>
+                    <div class="trust-text"><strong>2022–24</strong><span>CAP Data</span></div>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon"><i class="fas fa-lock"></i></div>
+                    <div class="trust-text"><strong>Free</strong><span>Always</span></div>
+                </div>
             </div>
-
-            <a href="{{ url_for('mhcet_page') }}" class="back-link">
-                <i class="fas fa-arrow-left fa-xs"></i> Continue without login
-            </a>
         </div>
     </div>
 
-    <script>
-        const PUBLISHABLE_KEY = "{{ clerk_publishable_key }}";
-        const NEXT_URL = "{{ next_url or url_for('mhcet_page') }}";
-    </script>
-    <script async crossorigin="anonymous"
-            src="https://{{ clerk_frontend_api }}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-            data-clerk-publishable-key="{{ clerk_publishable_key }}">
-    </script>
-    <script>
-        window.addEventListener('load', async () => {
-            const div = document.getElementById('clerk-sign-up');
-            try {
-                await window.Clerk.load();
-                div.innerHTML = '';
+    <!-- ===== RIGHT AUTH PANEL ===== -->
+    <div class="right-panel">
+        <div class="auth-card-wrap">
+            <div class="auth-card auth-card-entry">
 
-                if (window.Clerk.user) {
-                    await syncUser();
-                    window.location.href = NEXT_URL;
-                    return;
-                }
+                <div class="auth-header">
+                    <h2 id="signup-heading">Create your account</h2>
+                    <p id="signup-subheading">Join thousands of Maharashtra students finding their perfect college</p>
+                </div>
 
-                window.Clerk.mountSignUp(div, {
-                    afterSignInUrl: '/auth/sync?next=' + NEXT_URL,
-                    afterSignUpUrl: '/auth/sync?next=' + NEXT_URL
-                });
-            } catch (e) {
-                div.innerHTML = '<div class="error-state"><i class="fas fa-exclamation-circle me-2"></i>Could not load sign-up. Please refresh the page or check your internet connection.</div>';
-            }
-        });
+                <!-- Error Banner -->
+                <div id="signup-error" class="error-banner" style="display: none;" role="alert">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span></span>
+                </div>
 
-        async function syncUser() {
-            try {
-                const token = await window.Clerk.session.getToken();
-                await fetch('/auth/sync', {
-                    method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
-                });
-            } catch (e) { console.warn('Sync failed', e); }
-        }
-    </script>
+                <!-- ===== SIGNUP FORM SECTION ===== -->
+                <div id="signup-form-section" class="form-section">
+                    <form id="signup-form" novalidate autocomplete="off">
+                        <input type="hidden" id="next-url" value="{{ next_url or url_for('mhcet_page') }}">
+
+                        <!-- Full Name -->
+                        <div class="input-group">
+                            <label for="signup-name">Full name</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-user input-icon"></i>
+                                <input
+                                    type="text"
+                                    id="signup-name"
+                                    class="input-field"
+                                    placeholder="Aditya Patil"
+                                    autocomplete="name"
+                                    aria-describedby="signup-name-error"
+                                    required
+                                >
+                            </div>
+                            <div id="signup-name-error" class="field-error" role="alert">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span></span>
+                            </div>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="input-group">
+                            <label for="signup-email">Email address</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-envelope input-icon"></i>
+                                <input
+                                    type="email"
+                                    id="signup-email"
+                                    class="input-field"
+                                    placeholder="you@example.com"
+                                    autocomplete="email"
+                                    inputmode="email"
+                                    aria-describedby="signup-email-error"
+                                    required
+                                >
+                            </div>
+                            <div id="signup-email-error" class="field-error" role="alert">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span></span>
+                            </div>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="input-group">
+                            <label for="signup-password">Password</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input
+                                    type="password"
+                                    id="signup-password"
+                                    class="input-field"
+                                    placeholder="Create a strong password"
+                                    autocomplete="new-password"
+                                    aria-describedby="signup-password-error password-strength-meter"
+                                    required
+                                    minlength="8"
+                                >
+                                <button type="button" class="password-toggle" aria-label="Show password" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="signup-password-error" class="field-error" role="alert">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span></span>
+                            </div>
+
+                            <!-- Password Strength Meter -->
+                            <div id="password-strength-meter" class="strength-meter" aria-label="Password strength">
+                                <div class="strength-meter-labels">
+                                    <span>Weak</span>
+                                    <span>Fair</span>
+                                    <span>Good</span>
+                                    <span>Strong</span>
+                                </div>
+                                <div class="strength-bar">
+                                    <span class="segment"></span>
+                                    <span class="segment"></span>
+                                    <span class="segment"></span>
+                                    <span class="segment"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div class="input-group">
+                            <label for="signup-confirm-password">Confirm password</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input
+                                    type="password"
+                                    id="signup-confirm-password"
+                                    class="input-field"
+                                    placeholder="Re-enter your password"
+                                    autocomplete="new-password"
+                                    aria-describedby="confirm-password-error"
+                                    required
+                                >
+                                <button type="button" class="password-toggle" aria-label="Show password" tabindex="-1">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="confirm-password-error" class="field-error" role="alert">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span></span>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" id="signup-btn" class="btn-primary">
+                            <span class="btn-spinner"></span>
+                            <span class="btn-text">Create account</span>
+                        </button>
+                    </form>
+
+                    <!-- Social Login -->
+                    <div class="auth-divider">or continue with</div>
+
+                    <div class="social-login">
+                        <button type="button" class="social-btn" data-provider="google" aria-label="Sign up with Google">
+                            <i class="fab fa-google social-icon" style="color: #ea4335;"></i>
+                            <span>Google</span>
+                        </button>
+                        <button type="button" class="social-btn" data-provider="github" aria-label="Sign up with GitHub">
+                            <i class="fab fa-github social-icon"></i>
+                            <span>GitHub</span>
+                        </button>
+                    </div>
+
+                    <!-- Terms -->
+                    <div class="terms-text">
+                        By creating an account, you agree to our
+                        <a href="#" onclick="showToast('Terms of Service coming soon!', 'info'); return false;">Terms of Service</a>
+                        and
+                        <a href="#" onclick="showToast('Privacy Policy coming soon!', 'info'); return false;">Privacy Policy</a>.
+                    </div>
+
+                    <div class="switch-auth">
+                        <span>Already have an account?</span>
+                        <a href="{{ url_for('login_page') }}{% if next_url %}?next={{ next_url }}{% endif %}">
+                            Sign in
+                        </a>
+                    </div>
+
+                    <a href="{{ url_for('mhcet_page') }}" class="back-link">
+                        <i class="fas fa-arrow-left fa-xs"></i> Continue without login
+                    </a>
+                </div>
+
+                <!-- ===== VERIFICATION CODE SECTION ===== -->
+                <div id="verify-section" class="verify-section">
+                    <p class="verify-email">Enter the verification code sent to<br><strong id="verify-email-display"></strong></p>
+
+                    <div class="code-inputs" id="code-inputs">
+                        <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code" id="code-0">
+                        <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="code-1">
+                        <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="code-2">
+                        <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="code-3">
+                        <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="code-4">
+                        <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="code-5">
+                    </div>
+
+                    <button type="button" id="verify-btn" class="btn-primary">
+                        <span class="btn-spinner"></span>
+                        <span class="btn-text">Verify email</span>
+                    </button>
+
+                    <a class="resend-link" id="resend-link">Resend verification code</a>
+
+                    <div class="switch-auth" style="margin-top: var(--space-6);">
+                        <a href="#" id="back-to-signup-link" style="color: var(--text-tertiary);">
+                            <i class="fas fa-arrow-left fa-xs"></i> Back to signup
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash messages relay -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <script id="flash-data" type="application/json">[{% for cat, msg in messages %}{"category": "{{ cat }}", "text": "{{ msg | e }}"}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+        {% endif %}
+    {% endwith %}
+
+    <script src="{{ url_for('static', filename='css/auth.js') }}"></script>
 </body>
 </html>

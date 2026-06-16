@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings — CollegeKhoj</title>
+    <meta name="description" content="Manage your CollegeKhoj account settings.">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        (function(){
+            var t = localStorage.getItem('cf-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <style>
+        body { flex-direction: column; background: var(--bg-primary); }
+        .settings-page { flex: 1; display: flex; justify-content: center; padding: var(--space-10) var(--space-6); }
+        .settings-container { width: 100%; max-width: 640px; }
+        .settings-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-xl);
+            padding: var(--space-8);
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            margin-bottom: var(--space-6);
+        }
+        .settings-card h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-1);
+        }
+        .settings-card .desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-6);
+        }
+        .settings-divider { height: 1px; background: var(--border-primary); margin: var(--space-6) 0; }
+        .back-link-settings {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+            text-decoration: none;
+            margin-bottom: var(--space-6);
+            transition: color var(--duration-fast) var(--ease-out);
+        }
+        .back-link-settings:hover { color: var(--brand-primary); }
+        @media (max-width: 600px) {
+            .settings-card { padding: var(--space-5); }
+            .settings-page { padding: var(--space-6) var(--space-4); }
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <div class="settings-page">
+        <div class="settings-container">
+            <a href="{{ url_for('profile_page') }}" class="back-link-settings"><i class="fas fa-arrow-left"></i> Back to Profile</a>
+
+            <!-- Account Info -->
+            <div class="settings-card fade-in">
+                <h2>Account Information</h2>
+                <p class="desc">Your account details and profile information.</p>
+                <div class="profile-details" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+                    <div class="detail-item" style="padding: var(--space-4); background: var(--input-bg); border: 1px solid var(--border-primary); border-radius: var(--radius-md);">
+                        <div class="label" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); font-weight: 600; margin-bottom: var(--space-1);">Name</div>
+                        <div class="value" style="font-size: 0.92rem; color: var(--text-primary); font-weight: 500;">{{ user.first_name or '' }} {{ user.last_name or '' }}</div>
+                    </div>
+                    <div class="detail-item" style="padding: var(--space-4); background: var(--input-bg); border: 1px solid var(--border-primary); border-radius: var(--radius-md);">
+                        <div class="label" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); font-weight: 600; margin-bottom: var(--space-1);">Email</div>
+                        <div class="value" style="font-size: 0.92rem; color: var(--text-primary); font-weight: 500;">{{ user.email }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security -->
+            <div class="settings-card fade-in-delay">
+                <h2>Security</h2>
+                <p class="desc">Manage your password and authentication methods.</p>
+                <button class="btn-primary" style="width: auto; padding: 0 24px; height: 42px; font-size: 0.85rem;" onclick="handlePasswordReset()">
+                    <i class="fas fa-key"></i> Send Reset Link
+                </button>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="settings-card fade-in-delay-2" style="border-color: rgba(239, 68, 68, 0.2);">
+                <h2 style="color: var(--danger);">Danger Zone</h2>
+                <p class="desc">Irreversible account actions.</p>
+                <button class="btn-primary" style="width: auto; padding: 0 24px; height: 42px; font-size: 0.85rem; background: var(--danger); box-shadow: 0 4px 14px rgba(239,68,68,0.3);" onclick="handleDeleteAccount()">
+                    <i class="fas fa-trash-alt"></i> Delete Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='css/auth.js') }}"></script>
+    <script>
+        async function handlePasswordReset() {
+            try {
+                const res = await fetch('/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: '{{ user.email }}' }),
+                });
+                const data = await res.json();
+                showToast(data.message || 'Password reset email sent! Check your inbox.', 'success');
+            } catch (err) {
+                showToast('Failed to send reset email. Please try again.', 'error');
+            }
+        }
+
+        async function handleDeleteAccount() {
+            if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                return;
+            }
+            showToast('Account deletion is coming soon. Please contact support.', 'info');
+        }
+    </script>
+</body>
+</html>

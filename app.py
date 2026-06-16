@@ -1,5 +1,11 @@
 import os
 import logging
+from dotenv import load_dotenv
+
+# Load .env file into environment variables
+load_dotenv()
+
+import bcrypt
 import pandas as pd
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session, g
@@ -7,6 +13,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 from database import db, init_database
 import io
+import secrets
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -16,6 +24,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
 
 # Initialize database
 init_database(app)
@@ -24,53 +34,54 @@ init_database(app)
 from models import College, CAPCutoff, MHCETStudent, User
 from recommender import CollegeRecommender
 from mhcet_recommender import MHCETRecommender
-from clerk_auth import verify_token, get_clerk_user_data, extract_primary_email, CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY
+from auth_decorators import login_required, api_login_required
+from email_service import send_verification_email as resend_verify, send_password_reset_email
 
-# ── Clerk frontend API (derived from publishable key) ─────────────────────────
-def _clerk_frontend_api():
-    key = CLERK_PUBLISHABLE_KEY
-    if not key:
-        return ''
-    # pk_test_abc123... → abc123.clerk.accounts.dev
-    # pk_live_abc123... → abc123.clerk.accounts.dev
-    try:
-        b64 = key.split('_')[2]        # third segment after pk_test_ or pk_live_
-        import base64
-        decoded = base64.b64decode(b64 + '==').decode('utf-8').rstrip('$')
-        return decoded
-    except Exception:
-        return 'accounts.clerk.dev'
+# ── Auth helpers ───────────────────────────────────────────────────────────────
 
-CLERK_FRONTEND_API = _clerk_frontend_api()
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def check_password(password: str, password_hash: str) -> bool:
+    """Check a password against its hash."""
+    return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+
+def is_valid_email(email: str) -> bool:
+    """Basic email validation."""
+    return bool(re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email))
+
+def send_verification_email(user: User):
+    """Send a verification code email via Resend."""
+    code = user.generate_verification_code()
+    db.session.commit()
+    success = resend_verify(user.email, code)
+    if success:
+        logging.info(f"✅ Verification email sent via Resend to {user.email}")
+    else:
+        logging.warning(f"⚠️  Failed to send verification email to {user.email}, code still available: {code}")
+    return code
+
 
 # ── Auth middleware ────────────────────────────────────────────────────────────
 @app.before_request
 def load_current_user():
-    """Verify Clerk session token from cookie and load user into g.user."""
+    """Load user from session into g.user."""
     g.user = None
-    # Try Authorization header first (for AJAX calls), then cookie
-    auth_header = request.headers.get('Authorization', '')
-    token = None
-    if auth_header.startswith('Bearer '):
-        token = auth_header[7:]
-    else:
-        token = request.cookies.get('__session') or request.cookies.get('__client_uat')
+    user_id = session.get('user_id')
+    if user_id:
+        try:
+            user = db.session.get(User, user_id)
+            g.user = user
+        except Exception:
+            session.pop('user_id', None)
 
-    if token and CLERK_SECRET_KEY:
-        claims = verify_token(token)
-        if claims:
-            clerk_id = claims.get('sub', '')
-            if clerk_id:
-                user = User.query.filter_by(clerk_id=clerk_id).first()
-                g.user = user
 
 @app.context_processor
 def inject_user():
-    """Make current user and Clerk keys available in every template."""
+    """Make current user available in every template."""
     return {
         'current_user': g.get('user'),
-        'clerk_publishable_key': CLERK_PUBLISHABLE_KEY,
-        'clerk_frontend_api': CLERK_FRONTEND_API,
     }
 
 # Initialize recommendation engines
@@ -445,7 +456,6 @@ def list_colleges():
 @app.route('/mhcet')
 def mhcet_page():
     """MH-CET recommendation page"""
-    # Get unique locations and branches for form options
     locations = db.session.query(College.location).distinct().all()
     branches = db.session.query(College.branch).distinct().all()
     
@@ -652,111 +662,309 @@ def mhcet_api():
         logging.error(f"Error in MH-CET API: {e}")
         return jsonify({'error': str(e)}), 500
 
-# ── Auth routes ───────────────────────────────────────────────────────────────
+
+# ── Auth Routes (Custom Password-based Auth) ──────────────────────────────────
+
 
 @app.route('/login')
 def login_page():
+    """Render the login page."""
     next_url = request.args.get('next', url_for('mhcet_page'))
-    if not CLERK_PUBLISHABLE_KEY:
-        flash('Clerk keys not configured. Please set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY.', 'error')
-        return redirect(url_for('mhcet_page'))
+    if g.user:
+        return redirect(next_url)
     return render_template('login.html', next_url=next_url)
 
 
 @app.route('/signup')
 def signup_page():
-    """Sign-up page with Clerk's SignUp component."""
+    """Render the signup page."""
     next_url = request.args.get('next', url_for('mhcet_page'))
-    if not CLERK_PUBLISHABLE_KEY:
-        flash('Clerk keys not configured. Please set CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY.', 'error')
-        return redirect(url_for('mhcet_page'))
+    if g.user:
+        return redirect(next_url)
     return render_template('signup.html', next_url=next_url)
 
 
-@app.route('/auth/sync', methods=['GET', 'POST'])
-def auth_sync():
-    """Called by Clerk JS after sign-in to sync user into Neon DB."""
-    next_url = request.args.get('next', url_for('mhcet_page'))
-
-    auth_header = request.headers.get('Authorization', '')
-    token = auth_header[7:] if auth_header.startswith('Bearer ') else None
-
-    if not token:
-        return redirect(url_for('login_page'))
-
-    claims = verify_token(token)
-    if not claims:
-        logging.warning("Auth sync: invalid token")
-        return redirect(url_for('login_page'))
-
-    clerk_id = claims.get('sub', '')
-    if not clerk_id:
-        return redirect(url_for('login_page'))
-
+@app.route('/auth/signup', methods=['POST'])
+def auth_signup():
+    """Handle signup form submission."""
     try:
-        user = User.query.filter_by(clerk_id=clerk_id).first()
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'Invalid request'}), 400
 
-        # Fetch fresh profile data from Clerk API
-        clerk_data = get_clerk_user_data(clerk_id) or {}
-        email      = extract_primary_email(clerk_data) if clerk_data else ''
-        first_name = clerk_data.get('first_name') or ''
-        last_name  = clerk_data.get('last_name') or ''
-        image_url  = clerk_data.get('image_url') or ''
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
 
-        if user:
-            # Update existing user
-            user.email             = email or user.email
-            user.first_name        = first_name or user.first_name
-            user.last_name         = last_name or user.last_name
-            user.profile_image_url = image_url or user.profile_image_url
-            user.last_login        = datetime.utcnow()
-        else:
-            user = User(
-                clerk_id=clerk_id,
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                profile_image_url=image_url,
-                created_at=datetime.utcnow(),
-                last_login=datetime.utcnow(),
-            )
-            db.session.add(user)
+        # Validation
+        if not email or not is_valid_email(email):
+            return jsonify({'ok': False, 'error': 'Please enter a valid email address'}), 400
+        if not password or len(password) < 8:
+            return jsonify({'ok': False, 'error': 'Password must be at least 8 characters'}), 400
+        if not first_name:
+            return jsonify({'ok': False, 'error': 'Name is required'}), 400
 
+        # Check if user already exists
+        existing = User.query.filter_by(email=email).first()
+        if existing:
+            return jsonify({'ok': False, 'error': 'An account with this email already exists. Please sign in instead.'}), 409
+
+        # Create user
+        user = User(
+            email=email,
+            first_name=first_name,
+            last_name=last_name or None,
+            password_hash=hash_password(password),
+            is_verified=False,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(user)
+        db.session.flush()
+
+        # Send verification code
+        send_verification_email(user)
         db.session.commit()
-        logging.info(f"User synced: {clerk_id} ({email})")
 
-        if request.method == 'POST':
-            return jsonify({'ok': True, 'user': user.to_dict()})
+        return jsonify({
+            'ok': True,
+            'user': user.to_dict(),
+            'message': 'Account created! Please check your email for the verification code.'
+        }), 201
 
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Auth sync error: {e}")
-        if request.method == 'POST':
-            return jsonify({'ok': False, 'error': str(e)}), 500
+        logging.error(f"Signup error: {e}")
+        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500
 
-    return redirect(next_url)
+
+@app.route('/auth/verify', methods=['POST'])
+def auth_verify():
+    """Handle email verification code submission."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'Invalid request'}), 400
+
+        email = data.get('email', '').strip().lower()
+        code = data.get('code', '').strip()
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'ok': False, 'error': 'User not found. Please sign up again.'}), 404
+
+        if user.is_verified:
+            return jsonify({'ok': True, 'message': 'Email already verified.'})
+
+        if not user.verify_code(code):
+            return jsonify({'ok': False, 'error': 'Invalid or expired verification code. Please try again.'}), 400
+
+        user.is_verified = True
+        user.verification_code = None
+        user.verification_code_expiry = None
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+
+        # Log the user in
+        session['user_id'] = user.id
+        session.permanent = False
+
+        return jsonify({
+            'ok': True,
+            'user': user.to_dict(),
+            'message': 'Email verified successfully! Welcome to CollegeKhoj.'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Verification error: {e}")
+        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500
+
+
+@app.route('/auth/resend-code', methods=['POST'])
+def auth_resend_code():
+    """Resend verification code."""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower() if data else ''
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'ok': False, 'error': 'User not found.'}), 404
+
+        send_verification_email(user)
+        db.session.commit()
+
+        return jsonify({'ok': True, 'message': f'New verification code sent to {email}'})
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Resend code error: {e}")
+        return jsonify({'ok': False, 'error': 'Failed to resend code. Please try again.'}), 500
+
+
+@app.route('/auth/login', methods=['POST'])
+def auth_login():
+    """Handle login form submission."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'Invalid request'}), 400
+
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+
+        if not email or not password:
+            return jsonify({'ok': False, 'error': 'Email and password are required'}), 400
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'ok': False, 'error': 'No account found with this email address. Please check your email or create a new account.'}), 401
+
+        if not user.password_hash or not check_password(password, user.password_hash):
+            return jsonify({'ok': False, 'error': 'Incorrect password. Please try again or reset your password.'}), 401
+
+        if not user.is_verified:
+            # Resend verification code
+            send_verification_email(user)
+            db.session.commit()
+            return jsonify({
+                'ok': False,
+                'error': 'Please verify your email first.',
+                'needs_verification': True,
+                'email': user.email,
+            }), 403
+
+        # Login successful
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+
+        session['user_id'] = user.id
+        session.permanent = False
+
+        return jsonify({
+            'ok': True,
+            'user': user.to_dict(),
+            'message': 'Welcome back! Redirecting…'
+        })
+
+    except Exception as e:
+        logging.error(f"Login error: {e}")
+        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500
+
+
+@app.route('/auth/reset-password', methods=['POST'])
+def auth_reset_password():
+    """Send password reset email."""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower() if data else ''
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            # Don't reveal whether the email exists
+            return jsonify({'ok': True, 'message': 'If an account exists with this email, you will receive a password reset link.'})
+
+        token = user.generate_reset_token()
+        db.session.commit()
+
+        reset_url = url_for('auth_reset_password_confirm_page', token=token, _external=True)
+        success = send_password_reset_email(user.email, reset_url)
+        if success:
+            logging.info(f"✅ Password reset email sent via Resend to {user.email}")
+        else:
+            logging.warning(f"⚠️  Failed to send password reset email to {user.email}, link: {reset_url}")
+
+        return jsonify({'ok': True, 'message': 'If an account exists with this email, you will receive a password reset link.'})
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Reset password error: {e}")
+        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500
+
+
+@app.route('/auth/reset-password/<token>', methods=['GET'])
+def auth_reset_password_confirm_page(token):
+    """Show password reset form (validates token)."""
+    user = User.query.filter_by(reset_token=token).first()
+    if not user or not user.reset_token_expiry or datetime.utcnow() > user.reset_token_expiry:
+        flash('This reset link has expired or is invalid. Please request a new one.', 'error')
+        return redirect(url_for('login_page'))
+    return render_template('reset_password.html', token=token, email=user.email)
+
+
+@app.route('/auth/reset-password/<token>', methods=['POST'])
+def auth_reset_password_confirm(token):
+    """Handle password reset submission."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'Invalid request'}), 400
+
+        new_password = data.get('password', '')
+
+        if len(new_password) < 8:
+            return jsonify({'ok': False, 'error': 'Password must be at least 8 characters'}), 400
+
+        user = User.query.filter_by(reset_token=token).first()
+        if not user or not user.reset_token_expiry or datetime.utcnow() > user.reset_token_expiry:
+            return jsonify({'ok': False, 'error': 'This reset link has expired. Please request a new one.'}), 400
+
+        user.password_hash = hash_password(new_password)
+        user.reset_token = None
+        user.reset_token_expiry = None
+        db.session.commit()
+
+        # Log the user in
+        session['user_id'] = user.id
+
+        return jsonify({'ok': True, 'message': 'Password reset successfully! You are now signed in.'})
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Reset password confirm error: {e}")
+        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500
 
 
 @app.route('/logout')
 def logout():
-    """Clear server-side session and redirect to Clerk-signed-out page."""
+    """Log the user out."""
     session.clear()
+    flash('You have been signed out.', 'success')
     return redirect(url_for('mhcet_page'))
 
 
 @app.route('/profile')
+@login_required
 def profile_page():
-    """User profile page — shows saved data from Neon DB."""
-    user = g.get('user')
-    if not user:
-        return redirect(url_for('login_page', next=url_for('profile_page')))
-    return render_template('profile.html', user=user)
+    """User profile page."""
+    return render_template('profile.html', user=g.user)
+
+
+@app.route('/settings')
+@login_required
+def settings_page():
+    """Account settings page."""
+    return render_template('settings.html', user=g.user)
 
 
 # ── Initialize database and sample data ───────────────────────────────────────
 
 # Initialize database and sample data
 with app.app_context():
+    # Migrate users table (drop old schema, recreate with new fields)
+    try:
+        # Check if old users table has clerk_id column (old schema)
+        inspector = db.inspect(db.engine)
+        if 'users' in inspector.get_table_names():
+            columns = [c['name'] for c in inspector.get_columns('users')]
+            if 'clerk_id' in columns:
+                db.session.execute(db.text('DROP TABLE IF EXISTS users CASCADE'))
+                db.session.commit()
+                logging.info("Dropped old users table (Clerk schema) for migration")
+    except Exception:
+        pass  # Fresh DB — no migration needed
+
     db.create_all()
     init_sample_data()
     init_sample_cutoff_data()

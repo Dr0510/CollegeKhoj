@@ -7,7 +7,7 @@ pandas
 numpy
 scikit-learn
 python-dotenv
-cryptography
-PyJWT
+bcrypt
 requests
 sqlalchemy
+resend

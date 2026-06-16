@@ -1,0 +1,466 @@
+<!-- ============================================================
+     CollegeKhoj -- Shared Navbar with Auth State
+     Include this in any template with: `{% raw %}{% include 'navbar.html' %}{% endraw %}`
+     ============================================================ -->
+<nav class="ck-navbar" role="navigation" aria-label="Main navigation">
+    <div class="ck-navbar-inner">
+        <!-- Logo -->
+        <a class="ck-navbar-brand" href="/" aria-label="CollegeKhoj Home">
+            <div class="ck-navbar-brand-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <span class="ck-navbar-brand-text">College<span>Khoj</span></span>
+        </a>
+
+        <!-- Desktop Nav Links -->
+        <div class="ck-navbar-links">
+            <a class="ck-nav-link" href="/">Home</a>
+            <a class="ck-nav-link" href="{{ url_for('mhcet_page') }}">MH-CET</a>
+            <a class="ck-nav-link" href="{{ url_for('compare_page') }}">Compare</a>
+            <a class="ck-nav-link" href="/colleges">Colleges</a>
+        </div>
+
+        <!-- Auth Section -->
+        <div class="ck-navbar-auth">
+            {% if current_user %}
+                <!-- Logged In -->
+                <div class="ck-user-menu" id="user-menu">
+                    <button class="ck-user-avatar-btn" id="user-avatar-btn" aria-label="User menu" aria-expanded="false">
+                        {% if current_user.profile_image_url %}
+                        <img class="ck-user-avatar" src="{{ current_user.profile_image_url }}" alt="{{ current_user.first_name or 'User' }}" width="32" height="32" loading="lazy">
+                        {% else %}
+                        <div class="ck-user-avatar ck-user-avatar-fallback">
+                            {% if current_user.first_name %}
+                                {{ current_user.first_name[0] }}{% if current_user.last_name %}{{ current_user.last_name[0] }}{% endif %}
+                            {% else %}
+                                {{ current_user.email[0] | upper }}
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </button>
+                    <div class="ck-user-dropdown" id="user-dropdown" role="menu">
+                        <div class="ck-user-dropdown-header">
+                            <span class="ck-user-dropdown-name">{{ current_user.first_name or '' }} {{ current_user.last_name or '' }}</span>
+                            <span class="ck-user-dropdown-email">{{ current_user.email }}</span>
+                        </div>
+                        <div class="ck-user-dropdown-divider"></div>
+                        <a class="ck-user-dropdown-item" href="{{ url_for('profile_page') }}" role="menuitem">
+                            <i class="fas fa-user"></i> Profile
+                        </a>
+                        <a class="ck-user-dropdown-item" href="{{ url_for('settings_page') }}" role="menuitem">
+                            <i class="fas fa-cog"></i> Settings
+                        </a>
+                        <a class="ck-user-dropdown-item" href="{{ url_for('bookmarks_page') }}" role="menuitem">
+                            <i class="fas fa-bookmark"></i> Bookmarks
+                        </a>
+                        <div class="ck-user-dropdown-divider"></div>
+                        <a class="ck-user-dropdown-item ck-user-dropdown-logout" href="#" id="logout-btn" role="menuitem">
+                            <i class="fas fa-sign-out-alt"></i> Sign out
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Logged Out -->
+                <div class="ck-navbar-auth-buttons">
+                    <a class="ck-nav-btn ck-nav-btn-ghost" href="{{ url_for('login_page') }}">
+                        <i class="fas fa-sign-in-alt fa-xs"></i> Log in
+                    </a>
+                    <a class="ck-nav-btn ck-nav-btn-primary" href="{{ url_for('signup_page') }}">
+                        Sign up <i class="fas fa-arrow-right fa-xs"></i>
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Mobile Menu Toggle -->
+        <button class="ck-navbar-mobile-toggle" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div class="ck-navbar-mobile-menu" id="mobile-menu" role="navigation" aria-label="Mobile navigation">
+        <a class="ck-nav-link mobile" href="/">Home</a>
+        <a class="ck-nav-link mobile" href="{{ url_for('mhcet_page') }}">MH-CET</a>
+        <a class="ck-nav-link mobile" href="{{ url_for('compare_page') }}">Compare</a>
+        <a class="ck-nav-link mobile" href="/colleges">Colleges</a>
+        <div class="ck-navbar-mobile-divider"></div>
+        {% if current_user %}
+            <a class="ck-nav-link mobile" href="{{ url_for('profile_page') }}">Profile</a>
+            <a class="ck-nav-link mobile" href="{{ url_for('settings_page') }}">Settings</a>
+            <a class="ck-nav-link mobile" href="{{ url_for('bookmarks_page') }}">Bookmarks</a>
+            <a class="ck-nav-link mobile ck-logout-mobile" href="#" id="logout-btn-mobile">Sign out</a>
+        {% else %}
+            <a class="ck-nav-link mobile" href="{{ url_for('login_page') }}">Log in</a>
+            <a class="ck-nav-link mobile ck-signup-mobile" href="{{ url_for('signup_page') }}">Sign up</a>
+        {% endif %}
+    </div>
+</nav>
+
+<!-- Navbar CSS -->
+<style>
+/* ── NAVBAR ── */
+.ck-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: var(--navbar-bg, rgba(11, 16, 25, 0.92));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--card-border, rgba(255, 255, 255, 0.06));
+    transition: background var(--duration-normal) var(--ease-out);
+}
+
+[data-theme="light"] .ck-navbar {
+    --navbar-bg: rgba(255, 255, 255, 0.92);
+    background: var(--navbar-bg);
+}
+
+.ck-navbar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+/* Brand */
+.ck-navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+.ck-navbar-brand-icon {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #4f8ef7 0%, #818cf8 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(79, 142, 247, 0.25);
+}
+.ck-navbar-brand-text {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-primary, #f1f5f9);
+}
+.ck-navbar-brand-text span {
+    color: var(--brand-primary, #4f8ef7);
+}
+
+/* Nav Links (Desktop) */
+.ck-navbar-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.ck-nav-link {
+    padding: 8px 14px;
+    font-size: 0.87rem;
+    font-weight: 500;
+    color: var(--text-secondary, #8892a4);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all var(--duration-fast) var(--ease-out);
+}
+.ck-nav-link:hover {
+    color: var(--text-primary, #f1f5f9);
+    background: rgba(79, 142, 247, 0.08);
+}
+.ck-nav-link.mobile {
+    display: block;
+    padding: 12px 20px;
+    font-size: 0.95rem;
+    border-radius: 0;
+    border-bottom: 1px solid var(--card-border, rgba(255, 255, 255, 0.04));
+}
+
+/* Auth Buttons */
+.ck-navbar-auth {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.ck-navbar-auth-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ck-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 10px;
+    transition: all var(--duration-fast) var(--ease-out);
+    white-space: nowrap;
+    cursor: pointer;
+}
+.ck-nav-btn-ghost {
+    color: var(--text-secondary, #8892a4);
+    background: transparent;
+    border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
+}
+.ck-nav-btn-ghost:hover {
+    color: var(--text-primary, #f1f5f9);
+    border-color: rgba(79, 142, 247, 0.3);
+}
+.ck-nav-btn-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #4f8ef7 0%, #818cf8 100%);
+    box-shadow: 0 3px 12px rgba(79, 142, 247, 0.25);
+}
+.ck-nav-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 18px rgba(79, 142, 247, 0.35);
+}
+
+/* User Menu */
+.ck-user-menu {
+    position: relative;
+}
+.ck-user-avatar-btn {
+    background: none;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    padding: 0;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ck-user-avatar-btn:hover {
+    border-color: var(--brand-primary, #4f8ef7);
+}
+.ck-user-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.ck-user-avatar-fallback {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f8ef7 0%, #818cf8 100%);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Dropdown */
+.ck-user-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 220px;
+    background: var(--bg-elevated, #111b2e);
+    border: 1px solid var(--card-border, rgba(255, 255, 255, 0.08));
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all var(--duration-fast) var(--ease-out);
+    z-index: 1001;
+}
+.ck-user-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.ck-user-dropdown-header {
+    padding: 14px 16px 10px;
+}
+.ck-user-dropdown-name {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+}
+.ck-user-dropdown-email {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-tertiary, #4a5568);
+    margin-top: 2px;
+}
+.ck-user-dropdown-divider {
+    height: 1px;
+    background: var(--card-border, rgba(255, 255, 255, 0.06));
+    margin: 4px 0;
+}
+.ck-user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #8892a4);
+    text-decoration: none;
+    transition: all var(--duration-fast) var(--ease-out);
+}
+.ck-user-dropdown-item i {
+    width: 16px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+.ck-user-dropdown-item:hover {
+    background: rgba(79, 142, 247, 0.08);
+    color: var(--text-primary, #f1f5f9);
+}
+.ck-user-dropdown-logout {
+    color: var(--danger, #fc8181) !important;
+}
+.ck-user-dropdown-logout:hover {
+    background: rgba(239, 68, 68, 0.08) !important;
+    color: var(--danger, #fc8181) !important;
+}
+
+/* Backdrop */
+.ck-dropdown-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+}
+.ck-dropdown-backdrop.open {
+    display: block;
+}
+
+/* Mobile Toggle */
+.ck-navbar-mobile-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-secondary, #8892a4);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 8px;
+}
+.ck-navbar-mobile-toggle:hover {
+    color: var(--text-primary, #f1f5f9);
+}
+
+/* Mobile Menu */
+.ck-navbar-mobile-menu {
+    display: none;
+    background: var(--bg-elevated, #111b2e);
+    border-top: 1px solid var(--card-border, rgba(255, 255, 255, 0.06));
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s var(--ease-out);
+}
+.ck-navbar-mobile-menu.open {
+    max-height: 400px;
+}
+.ck-navbar-mobile-divider {
+    height: 1px;
+    background: var(--card-border, rgba(255, 255, 255, 0.06));
+}
+.ck-signup-mobile {
+    color: var(--brand-primary, #4f8ef7) !important;
+    font-weight: 600 !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .ck-navbar-links { display: none; }
+    .ck-navbar-auth-buttons .ck-nav-btn { 
+        padding: 8px 12px; 
+        font-size: 0.8rem; 
+    }
+    .ck-navbar-auth-buttons .ck-nav-btn-ghost { 
+        display: none; 
+    }
+    .ck-navbar-mobile-toggle { display: block; }
+    .ck-navbar-mobile-menu.open { display: block; }
+}
+
+@media (max-width: 480px) {
+    .ck-navbar-inner { padding: 0 16px; }
+    .ck-navbar-brand-text { font-size: 1rem; }
+    .ck-navbar-brand-icon { width: 30px; height: 30px; font-size: 0.8rem; }
+}
+</style>
+
+<!-- Navbar JS -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // User dropdown toggle
+    var avatarBtn = document.getElementById('user-avatar-btn');
+    var dropdown = document.getElementById('user-dropdown');
+    var backdrop = document.createElement('div');
+    backdrop.className = 'ck-dropdown-backdrop';
+    backdrop.id = 'dropdown-backdrop';
+    document.body.appendChild(backdrop);
+
+    if (avatarBtn && dropdown) {
+        avatarBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var isOpen = dropdown.classList.contains('open');
+            dropdown.classList.toggle('open');
+            backdrop.classList.toggle('open');
+            avatarBtn.setAttribute('aria-expanded', !isOpen);
+        });
+
+        backdrop.addEventListener('click', function () {
+            dropdown.classList.remove('open');
+            backdrop.classList.remove('open');
+            avatarBtn.setAttribute('aria-expanded', 'false');
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && dropdown.classList.contains('open')) {
+                dropdown.classList.remove('open');
+                backdrop.classList.remove('open');
+                avatarBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
+    // Mobile menu toggle
+    var mobileToggle = document.getElementById('mobile-menu-toggle');
+    var mobileMenu = document.getElementById('mobile-menu');
+    if (mobileToggle && mobileMenu) {
+        mobileToggle.addEventListener('click', function () {
+            var isOpen = mobileMenu.classList.contains('open');
+            mobileMenu.classList.toggle('open');
+            mobileToggle.setAttribute('aria-expanded', !isOpen);
+            var icon = mobileToggle.querySelector('i');
+            if (icon) {
+                icon.className = isOpen ? 'fas fa-bars' : 'fas fa-times';
+            }
+        });
+    }
+
+    // Logout handlers
+    function handleLogout(e) {
+        e.preventDefault();
+        window.location.href = '/logout';
+    }
+
+    var logoutBtn = document.getElementById('logout-btn');
+    var logoutBtnMobile = document.getElementById('logout-btn-mobile');
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+    if (logoutBtnMobile) logoutBtnMobile.addEventListener('click', handleLogout);
+});
+</script>
