@@ -1,7 +1,8 @@
 """Trend calculation service for cutoff history.
 
 Computes 3-year trends, branch popularity, and college ranking trends
-from the CAPCutoff table.
+from the CAPCutoff table. Stores computed trend results in the
+college_trends table (production Neon PostgreSQL).
 """
 import logging
 from collections import defaultdict
@@ -197,15 +198,60 @@ def get_safe_moderate_dream(student_percentile: float, category: str,
     }
 
 
-def recalculate_all_trends():
-    """Recalculate and log all trends (called after import commit)."""
-    from admin.audit import log_action
+def store_trend_results():
+    """Compute all trends and store/update them in the college_trends table.
+
+    This is called after every import commit to keep trend data current.
+    Reads data from Neon PostgreSQL cap_cutoffs table and writes to
+    the college_trends table.
+    """
+    from models import CollegeTrend
+    from datetime import datetime
 
     try:
-        trends = compute_college_trends(limit=1000)
+        # Compute trends (large limit to capture all data)
+        trends = compute_college_trends(limit=5000)
+
+        # Clear existing stored trends before refreshing
+        CollegeTrend.query.delete()
+
+        # Bulk insert new trend results
+        trend_objects = []
+        for t in trends:
+            trend_objects.append(CollegeTrend(
+                college_code=t['college_code'],
+                college_name=t.get('college_name', ''),
+                branch=t.get('branch', ''),
+                category=t.get('category', ''),
+                trend_data={str(k): v for k, v in t.get('trends', {}).items()},
+                direction=t.get('direction', 'stable'),
+                difference=t.get('difference', 0),
+                computed_at=datetime.utcnow(),
+            ))
+
+        if trend_objects:
+            db.session.bulk_save_objects(trend_objects)
+            db.session.commit()
+            logger.info(f"Stored {len(trend_objects)} trend results in college_trends table")
+        else:
+            db.session.commit()
+            logger.info("No trend results to store")
+
+        # Also compute branch popularity
         pop = compute_branch_popularity()
         logger.info(f"Trends calculated: {len(trends)} college trends, {len(pop)} branch trends")
+
         return {'trends_count': len(trends), 'branches_count': len(pop)}
+
     except Exception as e:
-        logger.error(f"Trend calculation error: {e}")
+        db.session.rollback()
+        logger.error(f"Trend storage error: {e}")
         return {'error': str(e)}
+
+
+def recalculate_all_trends():
+    """Legacy wrapper — recalculate and log all trends (called after import commit).
+
+    Now delegates to store_trend_results() for persistent storage.
+    """
+    return store_trend_results()

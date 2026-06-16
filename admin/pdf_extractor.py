@@ -1,9 +1,22 @@
 """
-MHT CET CAP Round PDF Extraction Service.
+DSE / MHT CET CAP Round PDF Extraction Service.
 
-Primary: pdfplumber for structural table extraction.
-Fallback: raw text extraction with regex if tables not detected.
-AI fallback (OpenAI) only used as last resort if confidence < 80%.
+The DSE PDFs are NOT table-based. They use a text-block layout with
+per-college-per-course blocks. pdfplumber.extract_tables() returns empty.
+
+This engine works exclusively via text extraction + regex parsing.
+
+PDF Block Structure (confirmed from actual DSE PDFs):
+
+    1002 Government College of Engineering, Amravati (Government Autonomous)
+    Choice Code : 100219110 Course Name : Civil Engineering
+    GOPEN    GST    GOBC    LOPEN    LSC    LSEBC    EWS
+    1282     28609  1927    1147     2355   5376     4977
+    Stage-I
+    (92.74%) (76.79%) (91.79%) (93.00%) (91.26%) (88.53%) (88.84%)
+
+Extracts: year, round, college_code, college_name, course_code, course_name,
+          category, rank, percentile
 """
 import os
 import re
@@ -12,39 +25,93 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# ── Pattern helpers ──────────────────────────────────────────────────────────
-
-# Filename patterns for year/round auto-detection
+# ── Filename patterns ────────────────────────────────────────────────────────
 FILENAME_PATTERNS = [
     re.compile(r'(?:cap|round)\s*[:_-]?\s*(\d)\s*(?:of)?\s*(\d{4})', re.I),
     re.compile(r'(\d{4})\s*[_-]\s*(?:round|r)\s*(\d)', re.I),
     re.compile(r'round[_-]?(\d)[_-]?(\d{4})', re.I),
 ]
 
-# Table header keywords (any casing)
-HEADER_KEYWORDS = [
-    'college code', 'institute code', 'college name', 'institute name',
-    'branch', 'course', 'category', 'open', 'obc', 'sc', 'st',
-    'nt', 'ews', 'percentile', 'cutoff', 'rank',
+# ── College code / name ──
+COLLEGE_RE = re.compile(r'^(\d{4})\s+(.+)$')
+
+# ── Choice code + Course name ──
+CHOICE_COURSE_RE = re.compile(
+    r'Choice\s*Code\s*:\s*(\d+)\s+Course\s*Name\s*:\s*(.+)',
+    re.I
+)
+
+# ── Percentile inside parentheses, e.g. (94.00%) ──
+PCT_RE = re.compile(r'\((\d+\.?\d*)%\)')
+
+# ── Known category prefixes ──
+CATEGORY_LABELS = [
+    'GOPEN', 'GSC', 'GST', 'GOBC', 'GSEBC', 'GNT', 'GTFWS',
+    'LOPEN', 'LSC', 'LST', 'LOBC', 'LSEBC', 'LNT', 'LTFWS',
+    'OPEN', 'OBC', 'SC', 'ST', 'NT', 'EWS', 'SEBC',
+    'DEF', 'PWD', 'MI', 'R-OBC', 'R-SC', 'R-ST',
+    'PWDR-OBC', 'PWDR-SC', 'PWDR-ST',
+    'GNTA', 'GNTC', 'GNTB', 'GNTD',
+    'LNTA', 'LNTC', 'LNTB', 'LNTD',
+    'PWD-OBC', 'PWD-SC', 'PWD-ST',
+    'DEFENCE', 'MI',
 ]
 
-# Category column detection
-CATEGORY_HEADERS = ['open', 'obc', 'sc', 'st', 'nt', 'ews', 'nt1', 'nt2', 'nt3', 'tfws']
+# ── Branch normalisation ──
+BRANCH_MAP = {
+    'computer': 'Computer Engineering',
+    'computer science': 'Computer Engineering',
+    'computer science and engineering': 'Computer Engineering',
+    'cse': 'Computer Engineering',
+    'cs': 'Computer Engineering',
+    'it': 'Information Technology',
+    'information technology': 'Information Technology',
+    'mechanical': 'Mechanical Engineering',
+    'mechanical engineering': 'Mechanical Engineering',
+    'mech': 'Mechanical Engineering',
+    'civil': 'Civil Engineering',
+    'civil engineering': 'Civil Engineering',
+    'electrical': 'Electrical Engineering',
+    'electrical engineering': 'Electrical Engineering',
+    'electronics': 'Electronics Engineering',
+    'electronics and telecommunication': 'Electronics & Telecommunication Engg',
+    'electronics and telecommunication engg': 'Electronics & Telecommunication Engg',
+    'entc': 'Electronics & Telecommunication Engg',
+    'e&tc': 'Electronics & Telecommunication Engg',
+    'chemical': 'Chemical Engineering',
+    'chemical engineering': 'Chemical Engineering',
+    'ai': 'Artificial Intelligence & Data Science',
+    'ai & ds': 'Artificial Intelligence & Data Science',
+    'aids': 'Artificial Intelligence & Data Science',
+    'data science': 'Artificial Intelligence & Data Science',
+    'ds': 'Artificial Intelligence & Data Science',
+    'instrumentation': 'Instrumentation Engineering',
+    'instrumentation engineering': 'Instrumentation Engineering',
+    'food technology': 'Food Technology',
+    'textile': 'Textile Engineering',
+    'production': 'Production Engineering',
+}
 
+
+def _normalise_branch(raw: str) -> str:
+    """Map a raw branch string to a standard form."""
+    b = raw.strip().lower()
+    for key, val in BRANCH_MAP.items():
+        if key in b:
+            return val
+    return raw.strip().title() if raw.strip().isupper() else raw.strip()
+
+
+# ── Year / round detection ───────────────────────────────────────────────────
 
 def detect_year_round_from_filename(filename: str) -> tuple:
-    """Auto-detect year and round from the PDF filename.
-
-    Returns:
-        (year, round_number) or (None, None)
-    """
+    """Auto-detect year and round from the PDF filename."""
     base = os.path.splitext(os.path.basename(filename))[0]
     for pattern in FILENAME_PATTERNS:
         match = pattern.search(base)
         if match:
             groups = match.groups()
             if len(groups) == 2:
-                # Try to determine which is year vs round
                 a, b = groups
                 try:
                     num_a, num_b = int(a), int(b)
@@ -54,7 +121,6 @@ def detect_year_round_from_filename(filename: str) -> tuple:
                     return num_a, num_b
                 if 2020 <= num_b <= 2030 and 1 <= num_a <= 5:
                     return num_b, num_a
-        # Also try: "2023" or "2024" standalone in filename
         year_match = re.search(r'\b(20[2-9]\d)\b', base)
         round_match = re.search(r'(?:round|r)\s*(\d)', base, re.I)
         if year_match and round_match:
@@ -69,11 +135,10 @@ def detect_year_round_from_filename(filename: str) -> tuple:
 
 
 def detect_year_round_from_pdf_text(text: str) -> tuple:
-    """Fallback: detect year/round from PDF text content."""
+    """Detect year/round from PDF text content."""
     lines = text.split('\n')
-    for line in lines[:50]:  # Check first 50 lines
+    for line in lines[:50]:
         line_lower = line.lower()
-        # "CAP Round 2 - 2024" or "Round 1 (2023)"
         m = re.search(r'(?:cap\s*)?round\s*[:\s]*(\d)\s*(?:of|\-|–|\(|,)?\s*(20[2-9]\d)', line_lower)
         if m:
             return int(m.group(2)), int(m.group(1))
@@ -83,220 +148,328 @@ def detect_year_round_from_pdf_text(text: str) -> tuple:
     return None, None
 
 
-def _clean_text(text: str) -> str:
-    """Normalize whitespace and special chars."""
-    text = text.replace('\u00a0', ' ')  # non-breaking space
-    text = re.sub(r'[ \t]+', ' ', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    return text.strip()
+# ── Line-level helpers ───────────────────────────────────────────────────────
+
+def _is_category_line(line: str) -> bool:
+    """Return True if the line looks like a DSE category header row."""
+    tokens = line.strip().split()
+    if len(tokens) < 2:
+        return False
+    label_count = sum(1 for t in tokens if t.upper() in CATEGORY_LABELS)
+    return label_count >= 2
 
 
-def _is_header_row(row_text: str) -> bool:
-    """Check if a row text looks like a table header."""
-    lower = row_text.lower()
-    keyword_count = sum(1 for kw in HEADER_KEYWORDS if kw in lower)
-    return keyword_count >= 2
+def _is_percentile_line(line: str) -> bool:
+    """Return True if the line contains parenthesised percentages."""
+    return bool(PCT_RE.search(line))
 
 
-def _normalize_branch(branch: str) -> str:
-    """Normalize branch names to standard forms."""
-    b = branch.strip()
-    mappings = {
-        'computer': 'Computer Engineering',
-        'computer science': 'Computer Engineering',
-        'cse': 'Computer Engineering',
-        'cs': 'Computer Engineering',
-        'it': 'Information Technology',
-        'information technology': 'Information Technology',
-        'mechanical': 'Mechanical Engineering',
-        'mech': 'Mechanical Engineering',
-        'civil': 'Civil Engineering',
-        'electrical': 'Electrical Engineering',
-        'electrical engineering': 'Electrical Engineering',
-        'electronics': 'Electronics Engineering',
-        'electronics and telecommunication': 'Electronics & Telecommunication Engg',
-        'entc': 'Electronics & Telecommunication Engg',
-        'e&tc': 'Electronics & Telecommunication Engg',
-        'chemical': 'Chemical Engineering',
-        'ai': 'Artificial Intelligence & Data Science',
-        'ai & ds': 'Artificial Intelligence & Data Science',
-        'aids': 'Artificial Intelligence & Data Science',
-        'data science': 'Artificial Intelligence & Data Science',
-        'ds': 'Artificial Intelligence & Data Science',
-    }
-    for key, val in mappings.items():
-        if key in b.lower():
-            return val
-    return b.title() if b.isupper() else b
+def _extract_percentiles(line: str) -> list[float]:
+    """Extract all (XX.XX%) values from a line, preserving order."""
+    return [float(m) for m in PCT_RE.findall(line)]
 
 
-def extract_tables_with_pdfplumber(filepath: str):
-    """Primary extraction: use pdfplumber to extract tables.
+def _extract_categories(line: str) -> list[str]:
+    """Split a category header line into individual category labels."""
+    tokens = line.strip().split()
+    return [t for t in tokens if t.upper() in CATEGORY_LABELS]
+
+
+def _is_rank_line(line: str) -> bool:
+    """Return True if line is just numbers (the rank numbers row)."""
+    stripped = line.strip()
+    if not stripped or stripped.startswith('('):
+        return False
+    tokens = stripped.split()
+    if len(tokens) < 2:
+        return False
+    numeric = sum(1 for t in tokens if t.replace(',', '').isdigit())
+    return numeric >= 2
+
+
+def _extract_ranks(line: str) -> list[int]:
+    """Extract numeric rank values from a line, preserving order."""
+    tokens = line.strip().split()
+    ranks = []
+    for t in tokens:
+        cleaned = t.replace(',', '')
+        if cleaned.isdigit():
+            ranks.append(int(cleaned))
+    return ranks
+
+
+# ── Per-page text-block parser ──────────────────────────────────────────────
+
+def parse_page_text(page_text: str, page_num: int, year: int, round_number: int) -> tuple[list[dict], dict]:
+    """Parse a single page of DSE PDF text into cutoff records.
+
+    Args:
+        page_text: The raw text extracted from one PDF page.
+        page_num:  1-based page number (for logging).
+        year:      Detected year.
+        round_number: Detected round number.
 
     Returns:
-        list of dicts: parsed rows with keys:
-            college_code, college_name, branch, category, cutoff_percentile,
-            year, round_number, gender
+        (records, debug_info)
+        records: list of dicts with keys:
+            college_code, college_name, course_code, course_name,
+            category, rank, percentile, year, round
+        debug_info: dict with page-level diagnostic information.
+    """
+    lines = page_text.split('\n')
+    records: list[dict] = []
+    debug = {
+        'page': page_num,
+        'college_found': False,
+        'course_found': 0,
+        'categories_found': 0,
+        'records_generated': 0,
+        'blocks_found': 0,
+    }
+
+    current_college_code = None
+    current_college_name = None
+    current_course_code = None
+    current_course_name = None
+    current_categories = []
+    current_ranks = []
+    current_percentiles = []
+    block_state = 'IDLE'  # IDLE → COLLEGE → COURSE → CATEGORIES → RANKS → PCT → IDLE
+    page_blocks = 0
+    seen_ranks = False
+    seen_pcts = False
+
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
+        line = raw.strip()
+
+        # ── Skip empty / footer lines ──
+        if not line:
+            # If we were processing data, flush if we have complete data
+            if block_state in ('RANKS', 'PCT') and current_categories and current_percentiles:
+                _emit_records_new(records, current_college_code, current_college_name,
+                                  current_course_code, current_course_name,
+                                  current_categories, current_ranks, current_percentiles,
+                                  year, round_number)
+                page_blocks += 1
+            block_state = 'IDLE'
+            current_categories = []
+            current_ranks = []
+            current_percentiles = []
+            seen_ranks = False
+            seen_pcts = False
+            i += 1
+            continue
+
+        # Skip footer lines
+        if line.startswith('L - Ladies') or line.startswith('STATE CET CELL') or \
+           'Provisional cutoff List' in line or 'GOVERNMENT OF MAHARASHTRA' in line or \
+           line.startswith('Address') or 'Page' in line or \
+           line.startswith('Provisional cutoff'):
+            i += 1
+            continue
+
+        # ── Line type detection ──
+
+        # College line: starts with 4-digit code
+        college_match = COLLEGE_RE.match(line)
+        if college_match and not line.startswith('Choice'):
+            # Flush previous block if any
+            if block_state in ('RANKS', 'PCT') and current_categories and current_percentiles:
+                _emit_records_new(records, current_college_code, current_college_name,
+                                  current_course_code, current_course_name,
+                                  current_categories, current_ranks, current_percentiles,
+                                  year, round_number)
+                page_blocks += 1
+                current_categories = []
+                current_ranks = []
+                current_percentiles = []
+                seen_ranks = False
+                seen_pcts = False
+
+            current_college_code = college_match.group(1)
+            current_college_name = college_match.group(2).strip()
+            debug['college_found'] = True
+            block_state = 'COLLEGE'
+            i += 1
+            continue
+
+        # Choice Code / Course Name line
+        choice_match = CHOICE_COURSE_RE.search(line)
+        if choice_match and block_state in ('COLLEGE', 'IDLE', 'COURSE'):
+            current_course_code = choice_match.group(1)
+            current_course_name = _normalise_branch(choice_match.group(2))
+            debug['course_found'] += 1
+            block_state = 'COURSE'
+            # Check if categories also on same line
+            if _is_category_line(line):
+                current_categories = _extract_categories(line)
+                debug['categories_found'] += len(current_categories)
+                block_state = 'CATEGORIES'
+            i += 1
+            continue
+
+        # Category header line
+        if _is_category_line(line) and block_state in ('COURSE', 'COLLEGE', 'IDLE', 'CATEGORIES'):
+            current_categories = _extract_categories(line)
+            debug['categories_found'] += len(current_categories)
+            block_state = 'CATEGORIES'
+            i += 1
+            continue
+
+        # Rank numbers line (skip it but store)
+        if _is_rank_line(line) and block_state in ('CATEGORIES', 'RANKS'):
+            ranks = _extract_ranks(line)
+            current_ranks = ranks
+            seen_ranks = True
+            block_state = 'RANKS'
+            i += 1
+            continue
+
+        # Stage-I / Stage-II / Round markers
+        if line.startswith('Stage-') or line.startswith('Round'):
+            # If ranks were found and we're now seeing stage, transition to waiting for pcts
+            if block_state in ('RANKS', 'CATEGORIES'):
+                block_state = 'WAITING_PCT'
+            i += 1
+            continue
+
+        # Percentile line
+        if _is_percentile_line(line) and block_state in ('RANKS', 'CATEGORIES', 'WAITING_PCT', 'PCT'):
+            current_percentiles = _extract_percentiles(line)
+            seen_pcts = True
+            block_state = 'PCT'
+            # If we have categories and percentiles, this block is complete
+            if current_categories and current_percentiles:
+                _emit_records_new(records, current_college_code, current_college_name,
+                                  current_course_code, current_course_name,
+                                  current_categories, current_ranks, current_percentiles,
+                                  year, round_number)
+                page_blocks += 1
+                debug['records_generated'] = len(records)
+                current_categories = []
+                current_ranks = []
+                current_percentiles = []
+                seen_ranks = False
+                seen_pcts = False
+                block_state = 'IDLE'
+            i += 1
+            continue
+
+        # Fallback: if we see another college while in a block, flush
+        if block_state in ('COURSE', 'CATEGORIES', 'RANKS', 'WAITING_PCT', 'PCT') and not line.startswith('('):
+            block_state = 'IDLE'
+            current_categories = []
+            current_ranks = []
+            current_percentiles = []
+            seen_ranks = False
+            seen_pcts = False
+
+        i += 1
+
+    # Flush last block at end of page
+    if block_state in ('RANKS', 'PCT', 'WAITING_PCT') and current_categories and current_percentiles:
+        _emit_records_new(records, current_college_code, current_college_name,
+                          current_course_code, current_course_name,
+                          current_categories, current_ranks, current_percentiles,
+                          year, round_number)
+        page_blocks += 1
+
+    debug['blocks_found'] = page_blocks
+    debug['records_generated'] = len(records)
+
+    logger.info(
+        f"Page {page_num}: college_found={debug['college_found']} "
+        f"course_found={debug['course_found']} "
+        f"categories_found={debug['categories_found']} "
+        f"blocks_found={page_blocks} "
+        f"records_generated={len(records)}"
+    )
+
+    return records, debug
+
+
+def _emit_records_new(records: list, college_code: str, college_name: str,
+                      course_code: str, course_name: str,
+                      categories: list[str], ranks: list[int], percentiles: list[float],
+                      year: int, round_number: int):
+    """Map categories to percentiles (and ranks) by position and append records.
+
+    Each record contains: college_code, college_name, course_code, course_name,
+    category, rank, percentile, year, round.
+    """
+    n = min(len(categories), len(percentiles))
+    if n == 0:
+        return
+
+    # Normalize ranks list length
+    if len(ranks) < n:
+        ranks = ranks + [None] * (n - len(ranks))
+
+    for idx in range(n):
+        cat = categories[idx]
+        pctl = percentiles[idx]
+        rnk = ranks[idx] if idx < len(ranks) else None
+
+        if pctl < 0 or pctl > 100:
+            continue
+
+        records.append({
+            'college_code': college_code,
+            'college_name': college_name,
+            'course_code': course_code,
+            'course_name': course_name,
+            'category': cat.upper(),
+            'rank': rnk,
+            'percentile': round(pctl, 2),
+            'year': year,
+            'round': round_number,
+        })
+
+
+# ── Full-page text extraction ───────────────────────────────────────────────
+
+def extract_page_texts(filepath: str) -> list[str]:
+    """Extract text from each page of a PDF.
+
+    Returns:
+        List of text strings, one per page.
     """
     try:
         import pdfplumber
     except ImportError:
         logger.error("pdfplumber not installed")
-        return [], 0.0
+        return []
 
-    results = []
-    total_cells = 0
-    parsed_cells = 0
-
+    texts = []
     with pdfplumber.open(filepath) as pdf:
-        for page_num, page in enumerate(pdf.pages):
-            tables = page.extract_tables()
-            if not tables:
-                continue
-
-            for table in tables:
-                if not table or len(table) < 2:
-                    continue
-
-                header_row = table[0]
-                data_rows = table[1:]
-
-                if not _is_header_row(' '.join(str(c or '') for c in header_row)):
-                    # Try second row as header
-                    if len(table) > 2:
-                        header_row = table[1]
-                        data_rows = table[2:]
-                    else:
-                        continue
-
-                # Detect category columns from header
-                header_lower = [str(h or '').strip().lower() for h in header_row]
-                cat_col_indices = {}
-                for idx, h in enumerate(header_lower):
-                    for cat in CATEGORY_HEADERS:
-                        if cat in h:
-                            cat_col_indices[cat.capitalize()] = idx
-
-                # Detect code and name columns
-                code_col = name_col = branch_col = -1
-                for idx, h in enumerate(header_lower):
-                    if 'code' in h and code_col < 0:
-                        code_col = idx
-                    elif 'name' in h or 'institute' in h:
-                        name_col = idx if name_col < 0 else name_col
-
-                # Branch column: often after name, before categories
-                for idx, h in enumerate(header_lower):
-                    if 'branch' in h or 'course' in h:
-                        branch_col = idx
-
-                # If no explicit branch col, assume column 2 (common MHT CET layout)
-                if branch_col < 0:
-                    branch_col = 2
-
-                # Parse data rows
-                for row in data_rows:
-                    if not row or all(not cell for cell in row):
-                        continue
-
-                    cells = [str(c or '').strip() for c in row]
-                    total_cells += len(cells)
-
-                    # Extract college code
-                    college_code = ''
-                    if code_col >= 0 and code_col < len(cells):
-                        raw_code = cells[code_col]
-                        code_match = re.search(r'(\d{4})', raw_code)
-                        if code_match:
-                            college_code = code_match.group(1)
-
-                    # Extract college name
-                    college_name = ''
-                    if name_col >= 0 and name_col < len(cells):
-                        college_name = cells[name_col]
-                    elif code_col >= 0 and code_col + 1 < len(cells):
-                        college_name = cells[code_col + 1]
-
-                    # Extract branch
-                    branch = ''
-                    if branch_col >= 0 and branch_col < len(cells):
-                        branch = _normalize_branch(cells[branch_col])
-
-                    if not college_code and not college_name:
-                        continue
-
-                    # Generate records for each category column found
-                    for cat_name, col_idx in cat_col_indices.items():
-                        if col_idx >= len(cells):
-                            continue
-                        raw_val = cells[col_idx]
-                        if not raw_val or raw_val in ('-', '--', 'NA', ''):
-                            continue
-
-                        try:
-                            pctl = float(raw_val.replace(',', ''))
-                        except ValueError:
-                            # Try extracting number from string like "95.23*"
-                            num_match = re.search(r'(\d+\.?\d*)', raw_val)
-                            if num_match:
-                                try:
-                                    pctl = float(num_match.group(1))
-                                except ValueError:
-                                    continue
-                            else:
-                                continue
-
-                        if pctl > 100 or pctl < 0:
-                            continue
-
-                        parsed_cells += 1
-                        results.append({
-                            'college_code': college_code,
-                            'college_name': college_name,
-                            'branch': branch,
-                            'category': cat_name,
-                            'cutoff_percentile': pctl,
-                            'year': None,  # filled by caller
-                            'round_number': None,
-                            'gender': 'Gender-Neutral',
-                        })
-
-    confidence = (parsed_cells / max(total_cells, 1)) * 100 if total_cells > 0 else 0
-    logger.info(f"pdfplumber extracted {len(results)} records (confidence {confidence:.1f}%)")
-    return results, confidence
+        for page_num, page in enumerate(pdf.pages, start=1):
+            text = page.extract_text()
+            if text and text.strip():
+                texts.append(text.strip())
+            else:
+                logger.warning(f"Page {page_num}: no extractable text")
+                texts.append('')
+    return texts
 
 
 def extract_raw_text(filepath: str) -> str:
-    """Extract all raw text from a PDF (fallback method).
-
-    Returns:
-        Full text content as string.
-    """
-    try:
-        import pdfplumber
-    except ImportError:
-        logger.error("pdfplumber not installed, cannot extract text")
-        return ''
-
-    text_parts = []
-    with pdfplumber.open(filepath) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if text:
-                text_parts.append(text)
-    return '\n'.join(text_parts)
+    """Extract all raw text from a PDF as a single string."""
+    texts = extract_page_texts(filepath)
+    return '\n'.join(texts)
 
 
-def parse_from_text(text: str, year: int, round_number: int) -> list:
-    """Regex-based parsing from raw text (when table extraction fails).
+# ── Old fallback (legacy) ────────────────────────────────────────────────────
 
-    Tries to find patterns like:
-        1001 | COEP Pune | Computer Engineering | 99.88 | 95.20 | 85.00
-    where columns after branch are category percentiles.
+def _old_text_parser(text: str, year: int, round_number: int) -> list:
+    """Legacy regex parser kept as last-resort fallback.
+
+    Yields records with the new field names (course_code, course_name).
     """
     results = []
     lines = text.split('\n')
-    cat_order = ['Open', 'OBC', 'SC', 'ST', 'NT', 'EWS']
+    cat_order = ['OPEN', 'OBC', 'SC', 'ST', 'NT', 'EWS']
 
     i = 0
     while i < len(lines):
@@ -304,14 +477,10 @@ def parse_from_text(text: str, year: int, round_number: int) -> list:
         if not line:
             i += 1
             continue
-
-        # Look for lines starting with 4-digit code
         code_match = re.match(r'^(\d{4})\s+(.+)$', line)
         if code_match:
             code = code_match.group(1)
             rest = code_match.group(2)
-
-            # Next few lines might contain the data
             data_block = rest
             j = i + 1
             while j < len(lines) and j < i + 3:
@@ -321,18 +490,13 @@ def parse_from_text(text: str, year: int, round_number: int) -> list:
                 if next_line:
                     data_block += ' ' + next_line
                 j += 1
-
-            # Try to parse: name, branch, then numbers
             parts = re.split(r'\s{2,}', data_block)
             if len(parts) < 3:
                 i += 1
                 continue
-
             name = parts[0].strip()
             branch_raw = parts[1].strip() if len(parts) > 1 else ''
-            branch = _normalize_branch(branch_raw)
-
-            # Remaining parts should be percentile values
+            branch = _normalise_branch(branch_raw)
             for cat_idx, cat in enumerate(cat_order):
                 val_idx = 2 + cat_idx
                 if val_idx < len(parts):
@@ -344,73 +508,128 @@ def parse_from_text(text: str, year: int, round_number: int) -> list:
                         results.append({
                             'college_code': code,
                             'college_name': name,
-                            'branch': branch,
+                            'course_code': f'{code}000',
+                            'course_name': branch,
                             'category': cat,
-                            'cutoff_percentile': pctl,
+                            'rank': None,
+                            'percentile': pctl,
                             'year': year,
-                            'round_number': round_number,
-                            'gender': 'Gender-Neutral',
+                            'round': round_number,
                         })
         i += 1
-
     return results
 
 
+# ── Main entry point ─────────────────────────────────────────────────────────
+
 def extract_pdf(filepath: str, filename: str = '') -> dict:
-    """Main entry point: extract cutoff data from a PDF.
+    """Main entry point: extract cutoff data from a DSE / MHT CET PDF.
+
+    Strategy (text-first, no table dependency):
+
+    1. Detect year/round from filename + PDF text.
+    2. Extract text per page via ``page.extract_text()``.
+    3. Run the DSE text-block parser (``parse_page_text``) on each page.
+    4. If zero records after DSE parser, try the old regex fallback.
+    5. If still zero records, return an error.
 
     Args:
-        filepath: Absolute path to the PDF file
-        filename: Original filename (for year/round detection)
+        filepath: Absolute path to the PDF file.
+        filename: Original filename (for year/round detection).
 
     Returns:
         dict with keys:
             rows: list of parsed row dicts
             year: detected year or None
-            round_number: detected round or None
+            round: detected round or None
             method: extraction method used
             confidence: confidence score (0-100)
-            raw_text: full extracted text
+            total_pages: total pages in PDF
+            page_debug: list of per-page debug dicts
+            error: error message if extraction failed
     """
     # 1. Detect year and round
     year, round_number = detect_year_round_from_filename(filename)
     logger.info(f"Filename detection: year={year}, round={round_number}")
 
-    # 2. Primary: pdfplumber table extraction
-    rows, confidence = extract_tables_with_pdfplumber(filepath)
+    # 2. Extract raw text
+    page_texts = extract_page_texts(filepath)
+    raw_text = '\n'.join(page_texts)
+    total_pages = len(page_texts)
 
-    # If filename didn't provide year/round, try PDF text
     if not year or not round_number:
-        raw_text = extract_raw_text(filepath)
         yr2, rd2 = detect_year_round_from_pdf_text(raw_text)
         year = year or yr2
         round_number = round_number or rd2
+
+    if not year:
+        year = 2025
+    if not round_number:
+        round_number = 1
+
+    # 3. Run DSE text-block parser on every page
+    all_rows: list[dict] = []
+    page_debug = []
+    total_errors = 0
+
+    for page_num, page_text in enumerate(page_texts, start=1):
+        if not page_text.strip():
+            page_debug.append({
+                'page': page_num,
+                'error': 'No text on page',
+                'records_generated': 0,
+            })
+            total_errors += 1
+            continue
+
+        rows_page, debug = parse_page_text(page_text, page_num, year, round_number)
+        all_rows.extend(rows_page)
+        page_debug.append(debug)
+
+    # 4. If DSE parser returned zero, try old fallback
+    method = 'dse_text_parser'
+    if not all_rows:
+        logger.warning("DSE text parser returned 0 rows — trying regex fallback")
+        fallback_rows = _old_text_parser(raw_text, year, round_number)
+        if fallback_rows:
+            all_rows = fallback_rows
+            method = 'regex_fallback'
+            logger.info(f"Regex fallback extracted {len(all_rows)} rows")
+
+    # 5. Calculate confidence
+    total_pages_with_text = sum(1 for pt in page_texts if pt.strip())
+    if total_pages_with_text > 0:
+        pages_with_records = sum(1 for d in page_debug if d.get('records_generated', 0) > 0)
+        confidence = (pages_with_records / total_pages_with_text) * 100
     else:
-        raw_text = extract_raw_text(filepath)
+        confidence = 0.0
 
-    # Fill in year/round for all rows
-    for row in rows:
-        row['year'] = row['year'] or year
-        row['round_number'] = row['round_number'] or round_number
+    # 6. Fill in year/round for all rows
+    for row in all_rows:
+        row['year'] = row.get('year') or year
+        row['round'] = row.get('round') or round_number
 
-    method = 'pdfplumber'
-    if confidence < 80 and rows:
-        logger.info(f"pdfplumber confidence {confidence:.1f}% — trying fallback text parsing")
-        text_rows = parse_from_text(raw_text, year, round_number)
-        if len(text_rows) > len(rows):
-            rows = text_rows
-            confidence = 85.0
-            method = 'text_fallback'
-        else:
-            method = 'pdfplumber'
+    logger.info(
+        f"Extraction complete: {len(all_rows)} rows, "
+        f"method={method}, confidence={confidence:.1f}%, "
+        f"pages={total_pages}"
+    )
 
-    logger.info(f"Extraction complete: {len(rows)} rows, method={method}, confidence={confidence:.1f}%")
-
-    return {
-        'rows': rows,
+    result = {
+        'rows': all_rows,
         'year': year,
-        'round_number': round_number,
+        'round': round_number,
         'method': method,
-        'confidence': confidence,
-        'raw_text': raw_text,
+        'confidence': round(confidence, 1),
+        'total_pages': total_pages,
+        'page_debug': page_debug,
     }
+
+    if not all_rows:
+        result['error'] = (
+            f"Zero records extracted from {total_pages} pages. "
+            f"First 500 chars: {raw_text[:500]}"
+        )
+        logger.error(result['error'])
+
+    return result

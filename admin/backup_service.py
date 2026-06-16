@@ -1,7 +1,9 @@
 """Database backup and restore service.
 
-Supports both PostgreSQL (pg_dump) and SQLite (.dump) databases.
-Stores backups in the configured BACKUP_DIR.
+Production: Uses pg_dump/psql for Neon PostgreSQL backups.
+Development: SQLite is supported for local testing only.
+
+Backup metadata is stored in the backup_history table.
 """
 import os
 import subprocess
@@ -37,34 +39,36 @@ def detect_db_type() -> str:
 def create_backup(notes: str = '') -> dict:
     """Create a full database backup.
 
+    PostgreSQL (Neon): Uses pg_dump for reliable, consistent backups.
+    SQLite: Uses .dump command (local development only).
+
     Returns:
         dict with keys: success, filepath, file_size, record_count, error
     """
     db_type = detect_db_type()
     timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    ext = 'sql' if db_type == 'sqlite' else 'dump'
+    ext = 'dump'
     backup_filename = f"backup_{timestamp}.{ext}"
     backup_path = os.path.join(_ensure_backup_dir(), backup_filename)
 
     try:
         if db_type == 'postgresql':
             url = get_db_url()
-            # Parse the URL for pg_dump
+            # Use pg_dump for production Neon PostgreSQL backups
             result = subprocess.run(
-                ['pg_dump', '--no-owner', '--no-acl', '--clean', url],
+                ['pg_dump', '--no-owner', '--no-acl', '--clean', '--if-exists', url],
                 capture_output=True, text=True, timeout=120
             )
             if result.returncode != 0:
-                raise RuntimeError(f"pg_dump failed: {result.stderr}")
+                error_msg = result.stderr.strip() or 'pg_dump failed with unknown error'
+                raise RuntimeError(f"pg_dump failed: {error_msg}")
             with open(backup_path, 'w') as f:
                 f.write(result.stdout)
             record_count = _count_records()
         else:
-            # SQLite
-            from database import db
+            # SQLite — local development only
             db_path = get_db_url().replace('sqlite:///', '')
             if not os.path.isabs(db_path):
-                # Resolve relative path
                 base = os.path.dirname(os.path.dirname(__file__))
                 db_path = os.path.join(base, db_path)
             result = subprocess.run(
@@ -95,7 +99,7 @@ def create_backup(notes: str = '') -> dict:
         db.session.add(entry)
         db.session.commit()
 
-        logger.info(f"Backup created: {backup_path} ({file_size} bytes, {record_count} records)")
+        logger.info(f"Backup created: {backup_path} ({file_size} bytes, {record_count} records, type={db_type})")
         return {
             'success': True,
             'filepath': backup_path,
@@ -112,6 +116,9 @@ def create_backup(notes: str = '') -> dict:
 
 def restore_backup(backup_id: int) -> dict:
     """Restore database from a backup.
+
+    PostgreSQL (Neon): Uses psql to replay pg_dump output.
+    SQLite: Uses sqlite3 for local development restore.
 
     Args:
         backup_id: ID of the BackupHistory record
@@ -136,26 +143,30 @@ def restore_backup(backup_id: int) -> dict:
 
         if db_type == 'postgresql':
             url = get_db_url()
+            with open(backup_path, 'r') as f:
+                backup_content = f.read()
             result = subprocess.run(
-                ['psql', url],
-                input=open(backup_path).read(),
+                ['psql', '--echo-errors', url],
+                input=backup_content,
                 capture_output=True, text=True, timeout=300
             )
             if result.returncode != 0:
-                raise RuntimeError(f"psql restore failed: {result.stderr}")
+                raise RuntimeError(f"psql restore failed: {result.stderr[:1000]}")
         else:
-            from database import db
+            # SQLite — local development only
             db_path = get_db_url().replace('sqlite:///', '')
             if not os.path.isabs(db_path):
                 base = os.path.dirname(os.path.dirname(__file__))
                 db_path = os.path.join(base, db_path)
+            with open(backup_path, 'r') as f:
+                backup_content = f.read()
             result = subprocess.run(
                 ['sqlite3', db_path],
-                input=open(backup_path).read(),
+                input=backup_content,
                 capture_output=True, text=True, timeout=300
             )
             if result.returncode != 0:
-                raise RuntimeError(f"sqlite3 restore failed: {result.stderr}")
+                raise RuntimeError(f"sqlite3 restore failed: {result.stderr[:1000]}")
 
         logger.info(f"Database restored from backup #{backup_id}: {backup_path}")
         return {'success': True, 'message': 'Database restored successfully'}
@@ -167,10 +178,10 @@ def restore_backup(backup_id: int) -> dict:
 
 def _count_records() -> int:
     """Count total records across all major tables."""
-    from models import CAPCutoff, College, User, UploadedFile
+    from models import CAPCutoff, College, User, UploadedFile, ImportJob, CollegeTrend
     try:
         total = 0
-        for model in [CAPCutoff, College, User, UploadedFile]:
+        for model in [CAPCutoff, College, User, UploadedFile, ImportJob, CollegeTrend]:
             total += model.query.count()
         return total
     except Exception:

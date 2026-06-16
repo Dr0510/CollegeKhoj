@@ -30,6 +30,8 @@ def init_database(app):
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_recycle": 300,
         "pool_pre_ping": True,
+        "pool_size": 20,
+        "max_overflow": 40,
     }
 
     db.init_app(app)

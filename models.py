@@ -1,8 +1,67 @@
 from database import db
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, Boolean, JSON, Index, Numeric, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime, timedelta
 import secrets
+
+
+class CollegeCutoff(db.Model):
+    """Main storage table for MHT-CET/DSE CAP cutoff data.
+
+    Created per user requirements: stores year, round, college_code,
+    college_name, course_code, course_name, category, rank, percentile.
+    """
+
+    __tablename__ = 'college_cutoffs'
+
+    __table_args__ = (
+        UniqueConstraint('year', 'round', 'college_code', 'course_code', 'category',
+                         name='uq_cutoff_unique'),
+        Index('idx_cc_year', 'year'),
+        Index('idx_cc_round', 'round'),
+        Index('idx_cc_college_name', 'college_name'),
+        Index('idx_cc_course_name', 'course_name'),
+        Index('idx_cc_category', 'category'),
+        Index('idx_cc_percentile', 'percentile'),
+        Index('idx_cc_college_code', 'college_code'),
+    )
+
+    id = Column(Integer, primary_key=True)
+    year = Column(Integer, nullable=False)
+    round = Column(Integer, nullable=False)
+    college_code = Column(String(20), nullable=False)
+    college_name = Column(Text, nullable=False)
+    course_code = Column(String(20), nullable=False)
+    course_name = Column(Text, nullable=False)
+    category = Column(String(20), nullable=False)
+    rank = Column(Integer, nullable=True)
+    percentile = Column(Numeric(5, 2), nullable=True)
+    source_file_id = Column(Integer, ForeignKey('uploaded_files.id'), nullable=True, index=True)
+    imported_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship back to UploadedFile
+    source_file = relationship("UploadedFile", back_populates="cutoff_records_new")
+
+    def __repr__(self):
+        return (
+            f'<CollegeCutoff {self.college_code} {self.course_code} '
+            f'{self.category} Y{self.year}R{self.round}>'
+        )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'year': self.year,
+            'round': self.round,
+            'college_code': self.college_code,
+            'college_name': self.college_name,
+            'course_code': self.course_code,
+            'course_name': self.course_name,
+            'category': self.category,
+            'rank': self.rank,
+            'percentile': float(self.percentile) if self.percentile else None,
+            'imported_at': self.imported_at.isoformat() if self.imported_at else None,
+        }
 
 
 class College(db.Model):
@@ -53,11 +112,19 @@ class CAPCutoff(db.Model):
 
     __tablename__ = 'cap_cutoffs'
 
+    __table_args__ = (
+        Index('idx_cutoff_year', 'year'),
+        Index('idx_cutoff_college_code', 'college_code'),
+        Index('idx_cutoff_category', 'category'),
+    )
+
     id = Column(Integer, primary_key=True)
     college_id = Column(Integer, ForeignKey('colleges.id'), nullable=False)
     college_code = Column(String(20), nullable=True, index=True)  # MH-CET institute code
+    college_name = Column(String(200), nullable=True)  # Denormalized for fast lookup
     year = Column(Integer, nullable=False, index=True)
     round_number = Column(Integer, nullable=False)
+    branch = Column(String(100), nullable=True)  # Denormalized branch name
     category = Column(String(20), nullable=False)  # Open, OBC, SC, ST, NT, EWS
     gender = Column(String(10), nullable=False)  # Male, Female, Other
     cutoff_percentile = Column(Float, nullable=False)
@@ -239,9 +306,68 @@ class UploadedFile(db.Model):
     uploader = relationship("User", foreign_keys=[uploaded_by])
     cutoff_records = relationship("CAPCutoff", back_populates="source_file",
                                   foreign_keys='CAPCutoff.source_file_id')
+    cutoff_records_new = relationship("CollegeCutoff", back_populates="source_file",
+                                      foreign_keys='CollegeCutoff.source_file_id')
+    import_jobs = relationship("ImportJob", back_populates="file", lazy="dynamic")
 
     def __repr__(self):
         return f'<UploadedFile {self.filename} ({self.processed_status})>'
+
+
+class ImportJob(db.Model):
+    """Tracks the status of a PDF import process (background processing)."""
+
+    __tablename__ = 'import_jobs'
+
+    id = Column(Integer, primary_key=True)
+    file_id = Column(Integer, ForeignKey('uploaded_files.id'), nullable=False, index=True)
+    status = Column(String(20), default='PENDING', nullable=False, index=True)  # PENDING | PROCESSING | VALIDATING | IMPORTING | COMPLETED | FAILED
+    total_pages = Column(Integer, default=0)
+    processed_pages = Column(Integer, default=0)
+    valid_records = Column(Integer, default=0)
+    rejected_records = Column(Integer, default=0)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+    confidence_score = Column(Float, nullable=True)
+
+    # Relationships
+    file = relationship("UploadedFile", back_populates="import_jobs")
+
+    def __repr__(self):
+        return f'<ImportJob {self.id} for file#{self.file_id} [{self.status}]>'
+
+
+class CollegeTrend(db.Model):
+    """Stores pre-computed trend data for colleges."""
+
+    __tablename__ = 'college_trends'
+
+    id = Column(Integer, primary_key=True)
+    college_code = Column(String(20), nullable=False, index=True)
+    college_name = Column(String(200), nullable=True)
+    branch = Column(String(100), nullable=True)
+    category = Column(String(20), nullable=True)
+    trend_data = Column(JSON, nullable=True)  # {"2022": 95.5, "2023": 97.2, "2024": 98.1}
+    direction = Column(String(20), nullable=True)  # increasing | decreasing | stable
+    difference = Column(Float, nullable=True)
+    computed_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<CollegeTrend {self.college_code} - {self.branch} ({self.direction})>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'college_code': self.college_code,
+            'college_name': self.college_name,
+            'branch': self.branch,
+            'category': self.category,
+            'trend_data': self.trend_data,
+            'direction': self.direction,
+            'difference': self.difference,
+            'computed_at': self.computed_at.isoformat() if self.computed_at else None,
+        }
 
 
 class BackupHistory(db.Model):

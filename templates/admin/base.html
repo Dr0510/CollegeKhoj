@@ -202,6 +202,9 @@
             <a href="/admin/upload-cutoff" class="{{ 'active' if request.path.startswith('/admin/upload-cutoff') else '' }}">
                 <i class="fas fa-upload"></i> <span>Upload Cutoff</span>
             </a>
+            <a href="/admin/uploads" class="{{ 'active' if request.path == '/admin/uploads' else '' }}">
+                <i class="fas fa-history"></i> <span>Upload History</span>
+            </a>
             <a href="/admin/cutoffs" class="{{ 'active' if request.path == '/admin/cutoffs' else '' }}">
                 <i class="fas fa-table"></i> <span>Cutoff Records</span>
             </a>
@@ -219,6 +222,9 @@
             </a>
             <a href="/admin/audit-logs" class="{{ 'active' if request.path == '/admin/audit-logs' else '' }}">
                 <i class="fas fa-clipboard-list"></i> <span>Audit Logs</span>
+            </a>
+            <a href="/admin/database-status" class="{{ 'active' if request.path == '/admin/database-status' else '' }}">
+                <i class="fas fa-heart-pulse"></i> <span>DB Health</span>
             </a>
             <a href="/admin/settings" class="{{ 'active' if request.path == '/admin/settings' else '' }}">
                 <i class="fas fa-gear"></i> <span>Settings</span>

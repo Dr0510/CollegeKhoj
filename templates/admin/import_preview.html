@@ -2,69 +2,76 @@
 {% block title %}Import Preview — Admin{% endblock %}
 {% block heading %}Import Preview{% endblock %}
 {% block content %}
+{% set preview = upload.preview_data or {} %}
+{% set total_rows = preview.get('total_rows', upload.total_rows or 0) %}
+{% set dup_count = preview.get('duplicate_count', upload.duplicate_rows or 0) %}
+{% set valid_count = total_rows - dup_count %}
+{% set uc = preview.get('unique_colleges', 0) %}
+{% set uco = preview.get('unique_courses', 0) %}
+
 <div class="stat-grid">
-    <div class="stat-card"><div class="label">File</div><div class="value" style="font-size:1.2rem;">{{ upload.filename }}</div><div class="sub">{{ upload.created_at.strftime('%d %b %Y %H:%M') if upload.created_at else '' }}</div></div>
-    <div class="stat-card"><div class="label">Valid Rows</div><div class="value" style="color: var(--success);">{{ upload.valid_rows }}</div></div>
-    <div class="stat-card"><div class="label">Rejected</div><div class="value" style="color: var(--danger);">{{ upload.rejected_rows }}</div></div>
-    <div class="stat-card"><div class="label">Duplicates</div><div class="value" style="color: var(--warning);">{{ upload.duplicate_rows }}</div></div>
+    <div class="stat-card"><div class="label">File</div><div class="value" style="font-size:1.1rem;">{{ upload.filename }}</div><div class="sub">{{ upload.created_at.strftime('%d %b %Y %H:%M') if upload.created_at else '' }}</div></div>
+    <div class="stat-card"><div class="label">Total Parsed</div><div class="value">{{ total_rows }}</div></div>
+    <div class="stat-card"><div class="label">Valid Rows</div><div class="value" style="color: var(--success);">{{ valid_count }}</div></div>
+    <div class="stat-card"><div class="label">Duplicates</div><div class="value" style="color: var(--warning);">{{ dup_count }}</div></div>
 </div>
 
-{% if upload.preview_data %}
-    {% set preview = upload.preview_data %}
-    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px;">
-        <p style="font-size:0.85rem; color: var(--text-secondary);">
-            <strong>Year:</strong> {{ preview.year or 'Auto-detect' }} |
-            <strong>Round:</strong> {{ preview.round_number or 'Auto-detect' }} |
-            <strong>Method:</strong> {{ preview.method }} |
-            <strong>Confidence:</strong> {{ '%.1f'|format(preview.confidence|default(0)) }}%
-        </p>
+{% if preview %}
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+    <div class="stat-card">
+        <div class="label">Year / Round</div>
+        <div class="value" style="font-size:1.2rem;">{{ preview.get('year', upload.year or '?') }} / R{{ preview.get('round', upload.round_number or '?') }}</div>
+        <div class="sub">Method: {{ preview.get('method', 'dse_text_parser') }} | Confidence: {{ '%.1f'|format(preview.get('confidence', 0)) }}%</div>
     </div>
+    <div class="stat-card">
+        <div class="label">Summary</div>
+        <div class="value" style="font-size:1.2rem;">{{ uc }} Colleges / {{ uco }} Courses</div>
+        <div class="sub">{{ total_rows }} total rows parsed from {{ preview.get('total_pages', '?') }} pages</div>
+    </div>
+</div>
 
-    {% if preview.rows|length > 0 %}
-    <div class="table-wrap" style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">
-        <table>
-            <tr>
-                <th>Code</th><th>College</th><th>Branch</th><th>Category</th><th>Percentile</th>
-            </tr>
-            {% for row in preview.rows[:100] %}
-            <tr>
-                <td>{{ row.college_code }}</td>
-                <td>{{ row.college_name[:30] }}</td>
-                <td>{{ row.branch[:25] }}</td>
-                <td><span class="badge badge-info">{{ row.category }}</span></td>
-                <td>{{ '%.2f'|format(row.cutoff_percentile) }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% if preview.rows|length > 100 %}<p style="text-align:center; padding:8px; color:var(--text-tertiary); font-size:0.85rem;">Showing first 100 of {{ preview.rows|length }} rows</p>{% endif %}
-    </div>
-
-    {% if preview.rejected and preview.rejected|length > 0 %}
-    <div class="stat-card" style="margin-bottom: 20px;">
-        <h3 style="font-size:1rem; margin-bottom:12px; color:var(--danger);">Rejected Rows ({{ preview.rejected|length }})</h3>
-        <div class="table-wrap">
-            <table>
-                <tr><th>Code</th><th>Reason</th></tr>
-                {% for r in preview.rejected[:20] %}
-                <tr>
-                    <td>{{ r.row.college_code or '?' }}</td>
-                    <td style="color: var(--danger);">{{ r.reason }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
-    </div>
+{% set rows = preview.get('rows', []) %}
+{% if rows|length > 0 %}
+<div class="table-wrap" style="margin-bottom: 20px; max-height: 500px; overflow-y: auto;">
+    <table>
+        <tr>
+            <th>Code</th><th>College</th><th>Course Code</th><th>Course</th><th>Category</th><th>Rank</th><th>Percentile</th>
+        </tr>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row.college_code }}</td>
+            <td>{{ row.college_name[:35] }}</td>
+            <td>{{ row.course_code }}</td>
+            <td>{{ row.course_name[:25] }}</td>
+            <td><span class="badge badge-info">{{ row.category }}</span></td>
+            <td>{{ row.rank if row.rank else '—' }}</td>
+            <td><strong>{{ '%.2f'|format(row.percentile) }}</strong></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% if total_rows > rows|length %}
+    <p style="text-align:center; padding:8px; color:var(--text-tertiary); font-size:0.85rem;">
+        Showing first {{ rows|length }} of {{ total_rows }} rows
+    </p>
     {% endif %}
+</div>
 
-    <div style="display: flex; gap: 12px; align-items: center;">
-        <button class="btn btn-success" onclick="commitImport({{ upload.id }})"><i class="fas fa-check"></i> Approve & Import ({{ upload.valid_rows }} rows)</button>
-        <button class="btn btn-danger" onclick="cancelImport({{ upload.id }})"><i class="fas fa-times"></i> Cancel</button>
-    </div>
-    {% else %}
-    <div class="stat-card"><p style="color:var(--warning);">No valid rows to import.</p></div>
-    {% endif %}
+<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+    <button class="btn btn-success" onclick="commitImport({{ upload.id }})">
+        <i class="fas fa-check"></i> Approve & Import ({{ valid_count }} rows)
+    </button>
+    <button class="btn btn-danger" onclick="cancelImport({{ upload.id }})">
+        <i class="fas fa-times"></i> Cancel
+    </button>
+    <span style="color: var(--text-tertiary); font-size:0.85rem; margin-left: auto;">
+        {{ uc }} colleges · {{ uco }} courses · {{ dup_count }} duplicates will be skipped
+    </span>
+</div>
 {% else %}
-    <div class="stat-card"><p style="color:var(--text-tertiary);">No preview data available. The PDF may have failed to parse.</p></div>
+<div class="stat-card"><p style="color:var(--warning);">No rows in preview.</p></div>
+{% endif %}
+{% else %}
+<div class="stat-card"><p style="color:var(--text-tertiary);">No preview data available.</p></div>
 {% endif %}
 
 <script>
@@ -75,8 +82,18 @@ function commitImport(id) {
     .then(function(r){ return r.json(); })
     .then(function(d){
         if (d.ok) {
-            showToast(d.message || 'Import successful!', 'success');
-            setTimeout(function(){ window.location.href = '/admin/cutoffs'; }, 1000);
+            var msg = d.message || 'Import successful!';
+            showToast(msg, 'success');
+            // Show summary modal
+            var summary = 
+                '=== Import Summary ===\n' +
+                'Total Records Imported: ' + (d.imported || 0) + '\n' +
+                'Duplicate Records Skipped: ' + (d.duplicates_skipped || 0) + '\n' +
+                'Total Colleges: ' + (d.colleges_found || 0) + '\n' +
+                'Total Courses: ' + (d.courses_found || 0) + '\n' +
+                '=====================';
+            console.log(summary);
+            setTimeout(function(){ window.location.href = '/admin/uploads'; }, 1500);
         } else {
             showToast(d.error || 'Import failed', 'error');
             btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Approve & Import';

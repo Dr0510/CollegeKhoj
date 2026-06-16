@@ -29,7 +29,7 @@ app.config["SESSION_TYPE"] = "filesystem"
 init_database(app)
 
 # Import models and recommender after db initialization
-from models import College, CAPCutoff, MHCETStudent, User, UploadedFile, BackupHistory, AuditLog
+from models import College, CAPCutoff, MHCETStudent, User, UploadedFile, BackupHistory, AuditLog, ImportJob, CollegeTrend
 from recommender import CollegeRecommender
 from mhcet_recommender import MHCETRecommender
 from auth_decorators import login_required, api_login_required
@@ -959,48 +959,48 @@ def settings_page():
 # ── Initialize database and sample data ───────────────────────────────────────
 
 # Initialize database and sample data
+# All production data is stored in Neon PostgreSQL via SQLAlchemy.
+# SQLite is used only for local development and testing.
 with app.app_context():
-    # Migrate users table (drop old schema, recreate with new fields)
-    try:
-        # Check if old users table has clerk_id column (old schema)
-        inspector = db.inspect(db.engine)
-        if 'users' in inspector.get_table_names():
-            columns = [c['name'] for c in inspector.get_columns('users')]
-            if 'clerk_id' in columns:
-                db.session.execute(db.text('DROP TABLE IF EXISTS users CASCADE'))
-                db.session.commit()
-                logging.info("Dropped old users table (Clerk schema) for migration")
-    except Exception:
-        pass  # Fresh DB — no migration needed
-
+    # Create all tables from SQLAlchemy models
+    # This handles both PostgreSQL (Neon) and SQLite (dev) automatically.
     db.create_all()
+    logging.info("✅ Database tables created/verified on Neon PostgreSQL")
 
-    # ── Migrate existing tables if needed ──
+    # ── Add new columns / FKs to existing tables if they don't exist ──
     try:
         inspector = db.inspect(db.engine)
-        cap_columns = [c['name'] for c in inspector.get_columns('cap_cutoffs')]
-        user_columns = [c['name'] for c in inspector.get_columns('users')]
-
-        # Add new columns to cap_cutoffs
-        if 'college_code' not in cap_columns:
-            db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN college_code VARCHAR(20)'))
-        if 'source_file_id' not in cap_columns:
-            db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN source_file_id INTEGER REFERENCES uploaded_files(id)'))
-        if 'is_auto_generated' not in cap_columns:
-            db.session.execute(db.text("ALTER TABLE cap_cutoffs ADD COLUMN is_auto_generated BOOLEAN DEFAULT FALSE"))
-        if 'validation_status' not in cap_columns:
-            db.session.execute(db.text("ALTER TABLE cap_cutoffs ADD COLUMN validation_status VARCHAR(20) DEFAULT 'validated'"))
-        if 'raw_pdf_text' not in cap_columns:
-            db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN raw_pdf_text TEXT'))
-        if 'imported_at' not in cap_columns:
-            db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
-
-        # Add role column to users
-        if 'role' not in user_columns:
-            db.session.execute(db.text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user'"))
-
-        db.session.commit()
-        logging.info("✅ Database migration applied successfully")
+        if 'cap_cutoffs' in inspector.get_table_names():
+            cap_columns = [c['name'] for c in inspector.get_columns('cap_cutoffs')]
+            if 'college_name' not in cap_columns:
+                db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN college_name VARCHAR(200)'))
+                logging.info("✅ Added college_name column to cap_cutoffs")
+            if 'branch' not in cap_columns:
+                db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN branch VARCHAR(100)'))
+                logging.info("✅ Added branch column to cap_cutoffs")
+            db.session.commit()
+        # ── Ensure college_cutoffs.source_file_id has FK constraint ──
+        if 'college_cutoffs' in inspector.get_table_names():
+            cc_columns = [c['name'] for c in inspector.get_columns('college_cutoffs')]
+            if 'source_file_id' in cc_columns:
+                # Check if FK already exists
+                fks = inspector.get_foreign_keys('college_cutoffs')
+                has_fk = any(
+                    fk['constrained_columns'] == ['source_file_id']
+                    for fk in fks
+                )
+                if not has_fk:
+                    db.session.execute(db.text(
+                        "DO $$ BEGIN "
+                        "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_college_cutoffs_source_file') THEN "
+                        "    ALTER TABLE college_cutoffs "
+                        "      ADD CONSTRAINT fk_college_cutoffs_source_file "
+                        "      FOREIGN KEY (source_file_id) REFERENCES uploaded_files(id); "
+                        "  END IF; "
+                        "END $$;"
+                    ))
+                    logging.info("✅ Added FK constraint to college_cutoffs.source_file_id")
+                    db.session.commit()
     except Exception as e:
         db.session.rollback()
         logging.warning(f"Migration note (may be OK): {e}")

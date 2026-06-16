@@ -1,0 +1,116 @@
+{% extends "admin/base.html" %}
+{% block title %}Upload History — Admin{% endblock %}
+{% block heading %}Upload History{% endblock %}
+{% block content %}
+<div class="stat-card" style="margin-bottom: 20px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap;">
+        <div>
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">Status</label>
+            <select name="status">
+                <option value="">All</option>
+                <option value="pending" {{ 'selected' if status_filter=='pending' }}>Pending</option>
+                <option value="preview" {{ 'selected' if status_filter=='preview' }}>Preview</option>
+                <option value="committed" {{ 'selected' if status_filter=='committed' }}>Committed</option>
+                <option value="failed" {{ 'selected' if status_filter=='failed' }}>Failed</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
+        <a href="/admin/uploads" class="btn btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</a>
+        <a href="/admin/upload-cutoff" class="btn btn-success btn-sm"><i class="fas fa-upload"></i> Upload New PDF</a>
+    </form>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <tr>
+            <th>File</th>
+            <th>Year</th>
+            <th>Round</th>
+            <th>Status</th>
+            <th>Total Rows</th>
+            <th>Imported</th>
+            <th>Duplicates</th>
+            <th>Colleges</th>
+            <th>Courses</th>
+            <th>Uploaded</th>
+            <th>Actions</th>
+        </tr>
+        {% for u in uploads %}
+        <tr>
+            <td>
+                <span title="{{ u.filename }}">{{ u.filename[:40] }}{% if u.filename|length > 40 %}…{% endif %}</span>
+            </td>
+            <td>{{ u.year or '—' }}</td>
+            <td>{{ 'R' ~ u.round_number if u.round_number else '—' }}</td>
+            <td>
+                {% set status_class = 'success' if u.processed_status == 'committed' else 'warning' if u.processed_status == 'preview' else 'danger' if u.processed_status == 'failed' else 'info' %}
+                <span class="badge badge-{{ status_class }}">{{ u.processed_status }}</span>
+            </td>
+            <td>{{ u.total_rows or '—' }}</td>
+            <td><strong>{{ u.valid_rows or '—' }}</strong></td>
+            <td>{{ u.duplicate_rows or '0' }}</td>
+            <td>{{ upload_stats[u.id].colleges or '—' }}</td>
+            <td>{{ upload_stats[u.id].courses or '—' }}</td>
+            <td>{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+            <td>
+                <div style="display: flex; gap: 4px;">
+                    {% if u.processed_status == 'preview' or u.processed_status == 'committed' %}
+                        <a href="/admin/upload-cutoff/{{ u.id }}/preview" class="btn btn-outline btn-sm"><i class="fas fa-eye"></i></a>
+                    {% endif %}
+                    {% if u.processed_status == 'committed' %}
+                        <button class="btn btn-outline btn-sm" onclick="reimportUpload({{ u.id }})" title="Re-import"><i class="fas fa-redo"></i></button>
+                    {% endif %}
+                    <button class="btn btn-danger btn-sm" onclick="deleteUpload({{ u.id }})" title="Delete"><i class="fas fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="11" style="text-align:center;color:var(--text-tertiary);">No uploads found</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+{% if pagination.pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}
+        <a href="?page={{ pagination.prev_num }}&status={{ status_filter }}">← Prev</a>
+    {% endif %}
+    {% for p in pagination.iter_pages() %}
+        {% if p %}
+            <a href="?page={{ p }}&status={{ status_filter }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+        <a href="?page={{ pagination.next_num }}&status={{ status_filter }}">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+function deleteUpload(id) {
+    if (!confirm('Delete this upload? This will also remove all imported records.')) return;
+    fetch('/admin/uploads/' + id + '/delete', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) { showToast('Upload deleted', 'success'); location.reload(); }
+        else { showToast(d.error || 'Delete failed', 'error'); }
+    })
+    .catch(function(){ showToast('Network error', 'error'); });
+}
+
+function reimportUpload(id) {
+    if (!confirm('Re-import this PDF? Existing records will be replaced.')) return;
+    fetch('/admin/uploads/' + id + '/reimport', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.ok) {
+            showToast('Ready for re-import', 'info');
+            setTimeout(function(){ window.location.href = d.redirect; }, 1000);
+        } else {
+            showToast(d.error || 'Reimport failed', 'error');
+        }
+    })
+    .catch(function(){ showToast('Network error', 'error'); });
+}
+</script>
+{% endblock %}

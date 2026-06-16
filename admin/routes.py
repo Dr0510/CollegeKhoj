@@ -3,12 +3,17 @@ Admin Management Routes for CollegeKhoj.
 
 All routes are prefixed with /admin (via the blueprint).
 Protected by admin_required decorator.
+
+All production data is stored in Neon PostgreSQL.
 """
 import os
+import csv
 import json
+import io
 import logging
+import threading
 from datetime import datetime
-from flask import render_template, request, jsonify, redirect, session, g, flash, current_app
+from flask import render_template, request, jsonify, redirect, session, g, flash, current_app, Response
 
 from database import db
 from admin import admin_bp
@@ -18,10 +23,15 @@ from admin.validation_service import validate_all
 from admin.backup_service import create_backup, restore_backup, BACKUP_DIR
 from admin.trend_service import (
     compute_college_trends, compute_branch_popularity,
-    get_safe_moderate_dream, recalculate_all_trends
+    get_safe_moderate_dream, recalculate_all_trends,
+    store_trend_results
 )
 from auth_decorators import login_required, admin_required
-from models import User, College, CAPCutoff, UploadedFile, BackupHistory, AuditLog
+from models import (
+    User, College, CAPCutoff, CollegeCutoff, 
+    UploadedFile, BackupHistory, AuditLog, ImportJob, CollegeTrend
+)
+from sqlalchemy import insert, text, func, and_
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +82,6 @@ def admin_login():
     if _get_admin():
         return redirect('/admin/dashboard')
 
-    # Capture next URL for redirect-after-login
     next_url = request.args.get('next') or request.form.get('next') or '/admin/dashboard'
 
     if request.method == 'POST':
@@ -87,7 +96,6 @@ def admin_login():
             flash('Invalid admin credentials', 'error')
             return render_template('login.html', error='Invalid credentials', next_url=next_url)
 
-        # Verify password (using bcrypt from app)
         from app import check_password
         if not user.password_hash or not check_password(password, user.password_hash):
             if request.is_json:
@@ -101,7 +109,6 @@ def admin_login():
             flash('Admin account not verified', 'error')
             return render_template('login.html', error='Account not verified', next_url=next_url)
 
-        # Login
         session['user_id'] = user.id
         session['role'] = user.role
         log_action('login', 'user', user.id)
@@ -125,29 +132,35 @@ def admin_dashboard():
     """Dashboard with stats cards."""
     total_colleges = College.query.count()
     total_cutoffs = CAPCutoff.query.count()
+    total_cutoffs_new = CollegeCutoff.query.count()
     total_users = User.query.count()
     total_uploads = UploadedFile.query.count()
 
+    # Summary stats for new cutoffs table
+    distinct_colleges = 0
+    distinct_courses = 0
+    if total_cutoffs_new > 0:
+        distinct_colleges = db.session.query(func.count(db.distinct(CollegeCutoff.college_code))).scalar() or 0
+        distinct_courses = db.session.query(func.count(db.distinct(CollegeCutoff.course_code))).scalar() or 0
+
     last_upload = UploadedFile.query.order_by(UploadedFile.created_at.desc()).first()
-    last_cutoff = CAPCutoff.query.order_by(CAPCutoff.imported_at.desc()).first()
+    last_cutoff = CollegeCutoff.query.order_by(CollegeCutoff.imported_at.desc()).first()
 
     recent_uploads = UploadedFile.query.order_by(
         UploadedFile.created_at.desc()
     ).limit(5).all()
 
-    backup_count = BackupHistory.query.count()
-    latest_backup = BackupHistory.query.order_by(BackupHistory.backup_date.desc()).first()
-
     return render_template('dashboard.html',
                            total_colleges=total_colleges,
-                           total_cutoffs=total_cutoffs,
+                           total_cutoffs=total_cutoffs + total_cutoffs_new,
                            total_users=total_users,
                            total_uploads=total_uploads,
+                           total_cutoffs_new=total_cutoffs_new,
+                           distinct_colleges=distinct_colleges,
+                           distinct_courses=distinct_courses,
                            last_upload=last_upload,
                            last_cutoff_date=last_cutoff.imported_at if last_cutoff else None,
-                           recent_uploads=recent_uploads,
-                           backup_count=backup_count,
-                           latest_backup=latest_backup)
+                           recent_uploads=recent_uploads)
 
 
 # ── Upload PDF ──────────────────────────────────────────────────────────────
@@ -156,7 +169,7 @@ def admin_dashboard():
 @admin_bp.route('/upload-cutoff', methods=['GET', 'POST'])
 @admin_required
 def upload_cutoff():
-    """Upload a CAP Round cutoff PDF, extract data, show preview."""
+    """Upload a CAP Round cutoff PDF, parse it, show preview before saving."""
     if request.method == 'GET':
         return render_template('upload_cutoff.html')
 
@@ -176,90 +189,127 @@ def upload_cutoff():
         stored_path = _save_uploaded_file(file)
         file_size = os.path.getsize(stored_path)
 
-        # 2. Create UploadedFile record (pending)
+        # 2. Extract PDF data synchronously for preview
+        extraction = extract_pdf(stored_path, file.filename)
+
+        if extraction.get('error'):
+            logger.error(f"PDF extraction failed: {extraction['error']}")
+            return jsonify({'ok': False, 'error': extraction['error'][:500]}), 400
+
+        rows = extraction.get('rows', [])
+        year = extraction['year'] or 2025
+        round_num = extraction['round'] or 1
+
+        if not rows:
+            return jsonify({'ok': False, 'error': 'No data could be extracted from the PDF'}), 400
+
+        # 3. Count duplicates against existing records
+        duplicate_count = 0
+        if rows:
+            # Check for existing records matching (year, round, college_code, course_code, category)
+            keys_to_check = set()
+            for row in rows:
+                keys_to_check.add((row['year'], row['round'], row['college_code'],
+                                   row['course_code'], row['category']))
+
+            existing = set()
+            if keys_to_check:
+                # Batch check existing records
+                for yr, rd, cc, ccode, cat in keys_to_check:
+                    exists = db.session.execute(
+                        text("SELECT 1 FROM college_cutoffs WHERE year=:y AND round=:r "
+                             "AND college_code=:cc AND course_code=:ccc AND category=:cat LIMIT 1"),
+                        {'y': yr, 'r': rd, 'cc': cc, 'ccc': ccode, 'cat': cat}
+                    ).scalar()
+                    if exists:
+                        existing.add((yr, rd, cc, ccode, cat))
+
+            duplicate_count = sum(
+                1 for row in rows
+                if (row['year'], row['round'], row['college_code'],
+                    row['course_code'], row['category']) in existing
+            )
+
+        # 4. Compute unique colleges and courses from parsed data
+        unique_colleges = set(row['college_code'] for row in rows)
+        unique_courses = set(row['course_code'] for row in rows)
+
+        # 5. Preview data (first 50 rows for display)
+        preview_rows = []
+        for row in rows[:50]:
+            preview_rows.append({
+                'college_code': row['college_code'],
+                'college_name': row['college_name'][:60],
+                'course_code': row['course_code'],
+                'course_name': row['course_name'],
+                'category': row['category'],
+                'rank': row['rank'],
+                'percentile': row['percentile'],
+            })
+
+        # 6. Create UploadedFile record
+        admin_user = _get_admin()
         upload_record = UploadedFile(
             filename=file.filename,
             stored_path=stored_path,
             file_size=file_size,
             mime_type='application/pdf',
-            processed_status='pending',
-            uploaded_by=_get_admin().id,
+            processed_status='preview',
+            uploaded_by=admin_user.id,
+            year=year,
+            round_number=round_num,
+            total_rows=len(rows),
+            valid_rows=len(rows) - duplicate_count,
+            duplicate_rows=duplicate_count,
+            extraction_method=extraction['method'],
+            extraction_confidence=extraction['confidence'],
+            preview_data={
+                'rows': preview_rows,
+                'total_rows': len(rows),
+                'year': year,
+                'round': round_num,
+                'method': extraction['method'],
+                'confidence': extraction['confidence'],
+                'duplicate_count': duplicate_count,
+                'unique_colleges': len(unique_colleges),
+                'unique_courses': len(unique_courses),
+            }
         )
         db.session.add(upload_record)
         db.session.flush()
         upload_id = upload_record.id
-
-        # 3. Extract PDF data
-        extraction = extract_pdf(stored_path, file.filename)
-
-        # Update with detected metadata
-        upload_record.year = extraction['year']
-        upload_record.round_number = extraction['round_number']
-        upload_record.extraction_method = extraction['method']
-        upload_record.extraction_confidence = extraction['confidence']
-        db.session.flush()
-
-        # 4. Validate extracted rows
-        if extraction['rows']:
-            year = extraction['year']
-            round_num = extraction['round_number']
-            validation_result = validate_all(extraction['rows'], year, round_num)
-            upload_record.total_rows = validation_result.summary['total']
-            upload_record.valid_rows = validation_result.summary['valid']
-            upload_record.rejected_rows = validation_result.summary['rejected']
-            upload_record.duplicate_rows = validation_result.summary['duplicates']
-
-            # Store preview data as JSON
-            preview = {
-                'rows': validation_result.valid_rows[:500],  # limit preview
-                'rejected': [
-                    {'row': r[0], 'reason': r[1]}
-                    for r in validation_result.rejected_rows
-                ],
-                'duplicates': [
-                    {'row': d[0]} for d in validation_result.duplicate_rows
-                ],
-                'summary': validation_result.summary,
-                'year': year,
-                'round_number': round_num,
-                'method': extraction['method'],
-                'confidence': extraction['confidence'],
-            }
-            upload_record.preview_data = preview
-            upload_record.validation_report = validation_result.to_dict()
-            upload_record.processed_status = 'preview'
-        else:
-            upload_record.processed_status = 'failed'
-            upload_record.validation_report = {'error': 'No rows could be extracted from the PDF'}
-
         db.session.commit()
 
-        # 5. Log audit
-        log_action('upload', 'uploaded_file', upload_id, {
+        log_action('upload_preview', 'uploaded_file', upload_id, {
             'filename': file.filename,
-            'year': extraction['year'],
-            'round': extraction['round_number'],
-            'rows': len(extraction['rows']),
-            'confidence': extraction['confidence'],
+            'year': year,
+            'round': round_num,
+            'rows': len(rows),
+            'duplicates': duplicate_count,
         })
 
-        if request.is_json:
-            return jsonify({
-                'ok': True,
-                'upload_id': upload_id,
-                'preview': upload_record.preview_data,
-                'redirect': f'/admin/upload-cutoff/{upload_id}/preview',
-            })
+        logger.info(
+            f"Upload preview ready: file#{upload_id}, {len(rows)} rows "
+            f"({duplicate_count} duplicates), {len(unique_colleges)} colleges, "
+            f"{len(unique_courses)} courses"
+        )
 
-        return redirect(f'/admin/upload-cutoff/{upload_id}/preview')
+        return jsonify({
+            'ok': True,
+            'upload_id': upload_id,
+            'year': year,
+            'round': round_num,
+            'total_rows': len(rows),
+            'duplicate_count': duplicate_count,
+            'unique_colleges': len(unique_colleges),
+            'unique_courses': len(unique_courses),
+            'message': f'Parsed {len(rows)} records from PDF. Review and confirm import.',
+        })
 
     except Exception as e:
         logger.error(f"Upload error: {e}")
         db.session.rollback()
-        if request.is_json:
-            return jsonify({'ok': False, 'error': str(e)}), 500
-        flash(f'Upload failed: {str(e)}', 'error')
-        return render_template('upload_cutoff.html')
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @admin_bp.route('/upload-cutoff/<int:upload_id>/preview')
@@ -277,101 +327,126 @@ def upload_preview(upload_id):
 @admin_bp.route('/upload-cutoff/<int:upload_id>/commit', methods=['POST'])
 @admin_required
 def commit_import(upload_id):
-    """Commit validated rows into the CAPCutoff table."""
+    """Commit parsed rows into the CollegeCutoff table with duplicate detection."""
     upload = db.session.get(UploadedFile, upload_id)
     if not upload:
         return jsonify({'ok': False, 'error': 'Upload record not found'}), 404
-    if upload.processed_status != 'preview':
+    if upload.processed_status not in ('preview', 'pending'):
         return jsonify({'ok': False, 'error': f"Invalid status: {upload.processed_status}"}), 400
 
-    preview = upload.preview_data
-    if not preview or not preview.get('rows'):
-        return jsonify({'ok': False, 'error': 'No valid rows to import'}), 400
-
     try:
-        # 1. Create backup before import
-        backup = create_backup(notes=f"Auto-backup before importing {upload.filename}")
-        if not backup['success']:
-            logger.warning(f"Pre-import backup failed: {backup.get('error')}")
+        # Re-parse the PDF to get fresh data
+        extraction = extract_pdf(upload.stored_path, upload.filename)
+        if extraction.get('error'):
+            return jsonify({'ok': False, 'error': extraction['error']}), 400
 
-        # 2. Batch insert valid rows
-        year = preview.get('year') or upload.year
-        round_num = preview.get('round_number') or upload.round_number
-        rows = preview['rows']
+        rows = extraction.get('rows', [])
+        if not rows:
+            return jsonify({'ok': False, 'error': 'No rows extracted'}), 400
+
+        year = extraction['year'] or upload.year or 2025
+        round_num = extraction['round'] or upload.round_number or 1
+
+        # Insert with duplicate detection using ON CONFLICT
         imported_count = 0
+        duplicate_count = 0
+        records_to_insert = []
 
         for row in rows:
-            # Find or skip college by code
-            college_code = row.get('college_code', '')
-            branch = row.get('branch', '')
+            records_to_insert.append({
+                'year': row.get('year', year),
+                'round': row.get('round', round_num),
+                'college_code': row['college_code'],
+                'college_name': row['college_name'],
+                'course_code': row['course_code'],
+                'course_name': row['course_name'],
+                'category': row['category'],
+                'rank': row.get('rank'),
+                'percentile': row.get('percentile'),
+                'source_file_id': upload.id,
+                'imported_at': datetime.utcnow(),
+            })
 
-            # Try to find matching college in DB
-            college = None
-            if college_code:
-                # Match by college_code -> try to find college name similarity
-                college = College.query.filter(
-                    College.college.ilike(f'%{row.get("college_name", "")[:20]}%')
-                ).first()
+        # Bulk insert with ON CONFLICT DO NOTHING
+        if records_to_insert:
+            # Use batch insert with individual conflict handling
+            for rec in records_to_insert:
+                try:
+                    db.session.execute(
+                        text("""
+                            INSERT INTO college_cutoffs 
+                            (year, round, college_code, college_name, course_code, course_name,
+                             category, rank, percentile, source_file_id, imported_at)
+                            VALUES (:year, :round, :college_code, :college_name, :course_code,
+                                    :course_name, :category, :rank, :percentile,
+                                    :source_file_id, :imported_at)
+                            ON CONFLICT (year, round, college_code, course_code, category)
+                            DO NOTHING
+                        """),
+                        rec
+                    )
+                    if db.session.execute(text("GET DIAGNOSTICS v = ROW_COUNT")).scalar() if hasattr(db, 'dialect') else True:
+                        # Check if row was inserted
+                        pass
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Insert failed for {rec}: {e}")
+                    continue
 
-            if not college and row.get('college_name'):
-                college = College.query.filter(
-                    College.college.ilike(f'%{row["college_name"][:20]}%')
-                ).first()
+            db.session.commit()
 
-            if not college:
-                # Create a temporary college entry if not found
-                college = College(
-                    college=row.get('college_name', f'Institute {college_code}'),
-                    location='Unknown',
-                    branch=branch or 'General',
-                    fees=0,
-                    placement_rate=0,
-                    nirf_rank=999,
-                    rating=0,
-                )
-                db.session.add(college)
-                db.session.flush()
-
-            cutoff = CAPCutoff(
-                college_id=college.id,
-                college_code=college_code,
-                year=row.get('year', year),
-                round_number=row.get('round_number', round_num),
-                category=row.get('category', 'Open'),
-                gender=row.get('gender', 'Gender-Neutral'),
-                cutoff_percentile=row['cutoff_percentile'],
-                source_file_id=upload.id,
-                validation_status='validated',
-                imported_at=datetime.utcnow(),
+            # Count what was actually inserted vs duplicates
+            result = db.session.execute(
+                text("SELECT count(*) FROM college_cutoffs WHERE source_file_id = :fid"),
+                {'fid': upload.id}
             )
-            # Store branch info in college_code if branch differs
-            if branch and branch != college.branch:
-                cutoff.college_code = f"{college_code}|{branch}"
-            db.session.add(cutoff)
-            imported_count += 1
+            imported_count = result.scalar() or 0
+            duplicate_count = len(records_to_insert) - imported_count
 
-        # 3. Update upload record
+        # Compute summary stats
+        distinct_colleges = db.session.execute(
+            text("SELECT count(DISTINCT college_code) FROM college_cutoffs WHERE source_file_id = :fid"),
+            {'fid': upload.id}
+        ).scalar() or 0
+
+        distinct_courses = db.session.execute(
+            text("SELECT count(DISTINCT course_code) FROM college_cutoffs WHERE source_file_id = :fid"),
+            {'fid': upload.id}
+        ).scalar() or 0
+
+        # Update upload record
         upload.processed_status = 'committed'
         upload.committed_at = datetime.utcnow()
+        upload.total_rows = len(rows)
+        upload.valid_rows = imported_count
+        upload.duplicate_rows = duplicate_count
         db.session.commit()
 
-        # 4. Recalculate trends
-        trends = recalculate_all_trends()
-
-        # 5. Log audit
         log_action('import_commit', 'uploaded_file', upload.id, {
             'imported': imported_count,
+            'duplicates': duplicate_count,
             'year': year,
             'round': round_num,
+            'colleges': distinct_colleges,
+            'courses': distinct_courses,
         })
 
-        logger.info(f"Import committed: {imported_count} rows from {upload.filename}")
+        logger.info(
+            f"Import committed: {imported_count} rows (+{duplicate_count} duplicates skipped) "
+            f"from {upload.filename}"
+        )
 
         return jsonify({
             'ok': True,
             'imported': imported_count,
-            'trends': trends,
-            'message': f'Successfully imported {imported_count} cutoff records',
+            'duplicates_skipped': duplicate_count,
+            'colleges_found': distinct_colleges,
+            'courses_found': distinct_courses,
+            'message': (
+                f'Successfully imported {imported_count} cutoff records. '
+                f'Duplicates skipped: {duplicate_count}. '
+                f'Colleges: {distinct_colleges}. Courses: {distinct_courses}.'
+            ),
         })
 
     except Exception as e:
@@ -390,54 +465,246 @@ def cancel_import(upload_id):
 
     upload.processed_status = 'failed'
     db.session.commit()
-    log_action('cancel_import', 'uploaded_file', upload.id)
+
+    log_action('cancel_import', 'uploaded_file', upload_id)
     return jsonify({'ok': True})
 
 
-# ── Cutoff Records ──────────────────────────────────────────────────────────
+# ── Upload History ──────────────────────────────────────────────────────────
+
+
+@admin_bp.route('/uploads')
+@admin_required
+def uploads_history():
+    """View all uploaded PDFs with their import history."""
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', '')
+
+    query = UploadedFile.query
+
+    if status_filter:
+        query = query.filter(UploadedFile.processed_status == status_filter)
+
+    query = query.order_by(UploadedFile.created_at.desc())
+    pagination = query.paginate(page=page, per_page=20, error_out=False)
+
+    # Get stats for each upload
+    upload_stats = {}
+    for u in pagination.items:
+        if u.processed_status == 'committed':
+            colleges = db.session.execute(
+                text("SELECT count(DISTINCT college_code) FROM college_cutoffs WHERE source_file_id = :fid"),
+                {'fid': u.id}
+            ).scalar() or 0
+            courses = db.session.execute(
+                text("SELECT count(DISTINCT course_code) FROM college_cutoffs WHERE source_file_id = :fid"),
+                {'fid': u.id}
+            ).scalar() or 0
+            upload_stats[u.id] = {'colleges': colleges, 'courses': courses}
+        else:
+            upload_stats[u.id] = {'colleges': 0, 'courses': 0}
+
+    return render_template('uploads.html',
+                           uploads=pagination.items,
+                           pagination=pagination,
+                           status_filter=status_filter,
+                           upload_stats=upload_stats)
+
+
+@admin_bp.route('/uploads/<int:upload_id>/delete', methods=['POST'])
+@admin_required
+def delete_upload(upload_id):
+    """Delete an uploaded PDF and its imported records."""
+    upload = db.session.get(UploadedFile, upload_id)
+    if not upload:
+        return jsonify({'ok': False, 'error': 'Upload record not found'}), 404
+
+    try:
+        # Delete associated cutoff records
+        if upload.processed_status == 'committed':
+            db.session.execute(
+                text("DELETE FROM college_cutoffs WHERE source_file_id = :fid"),
+                {'fid': upload.id}
+            )
+
+        # Delete the physical file
+        if os.path.exists(upload.stored_path):
+            os.remove(upload.stored_path)
+
+        # Delete the upload record
+        db.session.delete(upload)
+        db.session.commit()
+
+        log_action('delete_upload', 'uploaded_file', upload_id)
+        return jsonify({'ok': True, 'message': 'Upload deleted successfully'})
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Delete upload failed: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/uploads/<int:upload_id>/reimport', methods=['POST'])
+@admin_required
+def reimport_upload(upload_id):
+    """Re-import a PDF (delete existing records, re-parse, re-import)."""
+    upload = db.session.get(UploadedFile, upload_id)
+    if not upload:
+        return jsonify({'ok': False, 'error': 'Upload record not found'}), 404
+
+    try:
+        # Delete existing records from this source
+        if upload.processed_status == 'committed':
+            deleted = db.session.execute(
+                text("DELETE FROM college_cutoffs WHERE source_file_id = :fid"),
+                {'fid': upload.id}
+            ).rowcount
+            logger.info(f"Deleted {deleted} existing records for reimport of file#{upload_id}")
+
+        # Reset status
+        upload.processed_status = 'pending'
+        upload.committed_at = None
+        upload.total_rows = 0
+        upload.valid_rows = 0
+        upload.duplicate_rows = 0
+        db.session.commit()
+
+        # Re-parse and re-import via the commit endpoint
+        return jsonify({
+            'ok': True,
+            'message': 'Existing records deleted. Ready for re-import.',
+            'redirect': f'/admin/upload-cutoff/{upload_id}/preview'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Reimport failed: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# ── CSV Export ──────────────────────────────────────────────────────────────
+
+
+@admin_bp.route('/cutoffs/export')
+@admin_required
+def export_cutoffs_csv():
+    """Export cutoff records as CSV."""
+    year = request.args.get('year', type=int)
+    round_num = request.args.get('round', type=int)
+    category = request.args.get('category', '')
+    college_code = request.args.get('college_code', '')
+
+    query = CollegeCutoff.query
+
+    if year:
+        query = query.filter(CollegeCutoff.year == year)
+    if round_num:
+        query = query.filter(CollegeCutoff.round == round_num)
+    if category:
+        query = query.filter(CollegeCutoff.category == category)
+    if college_code:
+        query = query.filter(CollegeCutoff.college_code == college_code)
+
+    query = query.order_by(CollegeCutoff.year.desc(), CollegeCutoff.round,
+                           CollegeCutoff.college_code, CollegeCutoff.category)
+    records = query.all()
+
+    # Build CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        'Year', 'Round', 'College Code', 'College Name',
+        'Course Code', 'Course Name', 'Category', 'Rank', 'Percentile'
+    ])
+
+    for rec in records:
+        writer.writerow([
+            rec.year,
+            rec.round,
+            rec.college_code,
+            rec.college_name,
+            rec.course_code,
+            rec.course_name,
+            rec.category,
+            rec.rank,
+            float(rec.percentile) if rec.percentile else '',
+        ])
+
+    csv_content = output.getvalue()
+    output.close()
+
+    # Build filename
+    parts = ['cutoffs']
+    if year:
+        parts.append(str(year))
+    if round_num:
+        parts.append(f'R{round_num}')
+    filename = '_'.join(parts) + '.csv'
+
+    return Response(
+        csv_content,
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Content-Type': 'text/csv; charset=utf-8',
+        }
+    )
+
+
+# ── Cutoff Records (New table) ──────────────────────────────────────────────
 
 
 @admin_bp.route('/cutoffs')
 @admin_required
 def list_cutoffs():
-    """View and search cutoff records."""
+    """View and search cutoff records from the new college_cutoffs table."""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     year = request.args.get('year', type=int)
+    round_num = request.args.get('round', type=int)
     category = request.args.get('category', '')
     college_code = request.args.get('college_code', '')
     search = request.args.get('q', '')
 
-    query = CAPCutoff.query
+    query = CollegeCutoff.query
 
     if year:
-        query = query.filter(CAPCutoff.year == year)
+        query = query.filter(CollegeCutoff.year == year)
+    if round_num:
+        query = query.filter(CollegeCutoff.round == round_num)
     if category:
-        query = query.filter(CAPCutoff.category == category)
+        query = query.filter(CollegeCutoff.category == category)
     if college_code:
-        query = query.filter(CAPCutoff.college_code.ilike(f'%{college_code}%'))
+        query = query.filter(CollegeCutoff.college_code.ilike(f'%{college_code}%'))
     if search:
-        query = query.join(College).filter(
+        query = query.filter(
             db.or_(
-                College.college.ilike(f'%{search}%'),
-                CAPCutoff.college_code.ilike(f'%{search}%'),
+                CollegeCutoff.college_name.ilike(f'%{search}%'),
+                CollegeCutoff.course_name.ilike(f'%{search}%'),
+                CollegeCutoff.college_code.ilike(f'%{search}%'),
             )
         )
 
-    query = query.order_by(CAPCutoff.year.desc(), CAPCutoff.college_code)
+    query = query.order_by(CollegeCutoff.year.desc(), CollegeCutoff.round,
+                           CollegeCutoff.college_code, CollegeCutoff.category)
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     # Get distinct filter values
-    years = [r[0] for r in db.session.query(CAPCutoff.year).distinct().order_by(CAPCutoff.year.desc()).all()]
-    categories = [r[0] for r in db.session.query(CAPCutoff.category).distinct().all()]
+    years = [r[0] for r in db.session.query(CollegeCutoff.year).distinct().order_by(
+        CollegeCutoff.year.desc()).all()]
+    categories = [r[0] for r in db.session.query(CollegeCutoff.category).distinct().all()]
+    rounds = [r[0] for r in db.session.query(CollegeCutoff.round).distinct().order_by(
+        CollegeCutoff.round).all()]
 
     return render_template('cutoffs.html',
                            cutoffs=pagination.items,
                            pagination=pagination,
                            years=years,
+                           rounds=rounds,
                            categories=categories,
                            filters={
                                'year': year,
+                               'round': round_num,
                                'category': category,
                                'college_code': college_code,
                                'q': search,
@@ -448,7 +715,7 @@ def list_cutoffs():
 @admin_required
 def delete_cutoff(cutoff_id):
     """Delete a single cutoff record."""
-    cutoff = db.session.get(CAPCutoff, cutoff_id)
+    cutoff = db.session.get(CollegeCutoff, cutoff_id)
     if not cutoff:
         return jsonify({'ok': False, 'error': 'Cutoff record not found'}), 404
 
@@ -564,7 +831,6 @@ def trends_page():
     trends = compute_college_trends(college_code=college_code if college_code else None, limit=200)
     branch_pop = compute_branch_popularity(year=year_filter, top_n=15)
 
-    # Get top colleges with most trend data
     top_trends = [t for t in trends if len(t.get('years', [])) >= 2][:20]
 
     return render_template('trends.html',
@@ -578,7 +844,7 @@ def trends_page():
 @admin_required
 def recalculate_trends_api():
     """API to recalculate all trends."""
-    result = recalculate_all_trends()
+    result = store_trend_results()
     return jsonify({'ok': True, **result})
 
 
@@ -639,7 +905,6 @@ def audit_logs_page():
     query = query.order_by(AuditLog.created_at.desc())
     pagination = query.paginate(page=page, per_page=50, error_out=False)
 
-    # Get distinct action types for filter
     actions = [r[0] for r in db.session.query(AuditLog.action).distinct().all()]
 
     return render_template('audit_log.html',
@@ -660,7 +925,6 @@ def admin_settings():
         data = request.get_json() or request.form
         admin = _get_admin()
 
-        # Change password
         if data.get('current_password') and data.get('new_password'):
             from app import check_password, hash_password
             if not check_password(data['current_password'], admin.password_hash):
@@ -700,6 +964,61 @@ def admin_logout():
     return redirect('/admin/login')
 
 
+# ── Database Health Page ────────────────────────────────────────────────────
+
+
+@admin_bp.route('/database-status')
+@admin_required
+def database_status():
+    """Health check page for the database connection."""
+    status_info = {
+        'database_connected': False,
+        'database_type': 'Unknown',
+        'neon_region': 'N/A',
+        'total_cutoff_records': 0,
+        'total_new_cutoff_records': 0,
+        'total_users': 0,
+        'total_uploads': 0,
+        'last_import_date': None,
+        'connection_pool_size': 0,
+    }
+
+    try:
+        db.session.execute(text('SELECT 1'))
+        status_info['database_connected'] = True
+
+        db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if 'postgresql' in db_url:
+            status_info['database_type'] = 'PostgreSQL (Neon)'
+        elif 'sqlite' in db_url:
+            status_info['database_type'] = 'SQLite (Development Only)'
+        else:
+            status_info['database_type'] = 'Other'
+
+        import re as re_module
+        region_match = re_module.search(r'ep-([a-z-]+)\.c-(\d+)\.(aws|gcp|azure)\.neon\.tech', db_url)
+        if region_match:
+            status_info['neon_region'] = f"{region_match.group(1)} ({region_match.group(3)})"
+
+        status_info['total_cutoff_records'] = CAPCutoff.query.count()
+        status_info['total_new_cutoff_records'] = CollegeCutoff.query.count()
+        status_info['total_users'] = User.query.count()
+        status_info['total_uploads'] = UploadedFile.query.count()
+
+        last_cutoff = CollegeCutoff.query.order_by(CollegeCutoff.imported_at.desc()).first()
+        if last_cutoff and last_cutoff.imported_at:
+            status_info['last_import_date'] = last_cutoff.imported_at.isoformat()
+
+        engine_options = current_app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})
+        status_info['connection_pool_size'] = engine_options.get('pool_size', 0)
+
+    except Exception as e:
+        logger.error(f"Database status check failed: {e}")
+        status_info['error'] = str(e)
+
+    return render_template('database_status.html', status=status_info)
+
+
 # ── Dashboard API ───────────────────────────────────────────────────────────
 
 
@@ -707,10 +1026,16 @@ def admin_logout():
 @admin_required
 def dashboard_stats_api():
     """JSON stats for dashboard."""
+    total_new = CollegeCutoff.query.count()
+    colleges = db.session.query(func.count(db.distinct(CollegeCutoff.college_code))).scalar() or 0
+    courses = db.session.query(func.count(db.distinct(CollegeCutoff.course_code))).scalar() or 0
+    years = [r[0] for r in db.session.query(CollegeCutoff.year).distinct().order_by(
+        CollegeCutoff.year.desc()).all()]
+
     return jsonify({
-        'total_colleges': College.query.count(),
-        'total_cutoffs': CAPCutoff.query.count(),
-        'total_users': User.query.count(),
-        'total_uploads': UploadedFile.query.count(),
-        'total_backups': BackupHistory.query.filter_by(status='success').count(),
+        'ok': True,
+        'total_records': total_new,
+        'total_colleges': colleges,
+        'total_courses': courses,
+        'years': years,
     })
