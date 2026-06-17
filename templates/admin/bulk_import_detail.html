@@ -1,0 +1,510 @@
+{% extends "admin/base.html" %}
+{% block title %}Import Job #{{ job.id }} — Admin{% endblock %}
+{% block heading %}Import Job #{{ job.id }}{% endblock %}
+
+{% block content %}
+<div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px;">
+    <!-- Status Card -->
+    <div class="stat-card" style="flex: 1; min-width: 200px;">
+        <div class="label">Status</div>
+        <div class="value" style="display: flex; align-items: center; gap: 10px;">
+            {% set sc = 'success' if job.status == 'COMPLETED' else
+                       'danger' if job.status == 'FAILED' else
+                       'warning' if job.status == 'PROCESSING' else
+                       'info' %}
+            <span class="badge badge-{{ sc }}" style="font-size: 1rem; padding: 4px 14px;">
+                {% if is_running %}<i class="fas fa-spinner fa-spin"></i> {% endif %}
+                {{ job.status }}
+            </span>
+            {% if is_running %}
+            <span style="color: var(--text-secondary); font-size: 0.85rem;">
+                <i class="fas fa-clock"></i> <span id="eta-display">Calculating...</span>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Progress Card -->
+    <div class="stat-card" style="flex: 2; min-width: 300px;">
+        <div class="label">Progress</div>
+        {% if job.total_pages > 0 %}
+        {% set pct = (job.processed_pages / job.total_pages * 100) | round(1) %}
+        <div style="display: flex; align-items: center; gap: 12px; margin: 8px 0;">
+            <div style="flex: 1; height: 12px; background: var(--bg-primary); border-radius: 6px; overflow: hidden;">
+                <div id="progress-bar" style="height: 100%; width: {{ pct }}%; background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary)); border-radius: 6px; transition: width 0.5s;"></div>
+            </div>
+            <span id="progress-pct" style="font-size: 1.2rem; font-weight: 700; min-width: 50px;">{{ pct }}%</span>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+            Pages: <strong id="processed-pages">{{ job.processed_pages }}</strong> / <strong>{{ job.total_pages }}</strong>
+            {% if job.page_range_end %}
+            (Range: {{ job.page_range_start }}–{{ job.page_range_end }})
+            {% endif %}
+        </div>
+        {% else %}
+        <div style="color: var(--text-tertiary);">No page data</div>
+        {% endif %}
+    </div>
+
+    <!-- Rows Card -->
+    <div class="stat-card" style="flex: 1; min-width: 150px;">
+        <div class="label">Rows Imported</div>
+        <div class="value">{{ job.rows_imported or 0 }}</div>
+        <div class="sub">
+            Extracted: {{ job.rows_extracted or 0 }} |
+            Failed: <span {% if (job.rows_failed or 0) > 0 %}style="color: var(--danger);"{% endif %}>{{ job.rows_failed or 0 }}</span>
+        </div>
+    </div>
+
+    <!-- Memory Card -->
+    <div class="stat-card" style="flex: 1; min-width: 150px;">
+        <div class="label">Peak Memory</div>
+        <div class="value">{{ job.memory_usage_mb or '—' }}</div>
+        <div class="sub">MB</div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+    {% if job.status in ('PENDING', 'FAILED', 'CANCELLED') %}
+        <button class="btn btn-success" onclick="startImport({{ job.id }})">
+            <i class="fas fa-play"></i> {% if job.checkpoint_page > 0 %}Resume from Page {{ job.checkpoint_page + 1 }}{% else %}Start Import{% endif %}
+        </button>
+    {% endif %}
+
+    {% if is_running %}
+        <button class="btn btn-warning" onclick="cancelImport({{ job.id }})">
+            <i class="fas fa-stop"></i> Cancel
+        </button>
+    {% endif %}
+
+    {% if job.failed_pages and job.failed_pages|length > 0 %}
+        <button class="btn btn-outline" onclick="retryFailed({{ job.id }})">
+            <i class="fas fa-redo"></i> Retry {{ job.failed_pages|length }} Failed Page(s)
+        </button>
+    {% endif %}
+
+    {% if job.error_log and job.error_log|length > 0 %}
+        <a href="/admin/bulk-import/{{ job.id }}/error-report" class="btn btn-outline">
+            <i class="fas fa-download"></i> Download Error Report (CSV)
+        </a>
+    {% endif %}
+
+    <button class="btn btn-danger" onclick="deleteJob({{ job.id }})">
+        <i class="fas fa-trash"></i> Delete
+    </button>
+
+    <a href="/admin/bulk-imports" class="btn btn-outline">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<!-- Approval Section -->
+{% if job.status == 'COMPLETED' and job.approval_status == 'pending_approval' %}
+<div class="stat-card" style="margin-bottom: 20px; border-left: 3px solid var(--warning);">
+    <h3 style="font-size: 1rem; margin-bottom: 12px;">
+        <i class="fas fa-check-double" style="color: var(--warning);"></i> Approval Required
+    </h3>
+    <p style="color: var(--text-secondary); margin-bottom: 12px;">
+        This import has completed and is awaiting your review.
+        <strong>{{ job.rows_imported or 0 }}</strong> records will become visible to users upon approval.
+    </p>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="btn btn-success" onclick="approveImport({{ job.id }})">
+            <i class="fas fa-check"></i> Approve Import
+        </button>
+        <button class="btn btn-danger" onclick="rejectImport({{ job.id }})">
+            <i class="fas fa-times"></i> Reject Import
+        </button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Approval Status Display -->
+{% if job.approval_status %}
+<div class="stat-card" style="margin-bottom: 20px; border-left: 3px solid {% if job.approval_status == 'approved' %}var(--success){% elif job.approval_status == 'rejected' %}var(--danger){% else %}var(--warning){% endif %};">
+    <h3 style="font-size: 1rem; margin-bottom: 8px;">
+        {% if job.approval_status == 'approved' %}
+            <i class="fas fa-check-circle" style="color: var(--success);"></i> Approved
+        {% elif job.approval_status == 'rejected' %}
+            <i class="fas fa-times-circle" style="color: var(--danger);"></i> Rejected
+        {% elif job.approval_status == 'pending_approval' %}
+            <i class="fas fa-clock" style="color: var(--warning);"></i> Pending Approval
+        {% endif %}
+    </h3>
+    <table style="width: auto;">
+        {% if job.approved_at %}
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Decision Date:</td>
+            <td>{{ job.approved_at.strftime('%Y-%m-%d %H:%M UTC') if job.approved_at else '—' }}</td>
+        </tr>
+        {% endif %}
+        {% if job.approver %}
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Approved By:</td>
+            <td>{{ job.approver.display_name() }}</td>
+        </tr>
+        {% endif %}
+        {% if job.rejection_reason %}
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Reason:</td>
+            <td style="color: var(--danger);">{{ job.rejection_reason }}</td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+{% endif %}
+
+<!-- File Info -->
+<div class="stat-card" style="margin-bottom: 20px;">
+    <h3 style="font-size: 1rem; margin-bottom: 8px;">
+        <i class="fas fa-file-pdf" style="color: var(--danger);"></i> File Information
+    </h3>
+    <table style="width: auto;">
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Filename:</td>
+            <td>{{ job.file.filename if job.file else 'Deleted' }}</td>
+        </tr>
+        {% if job.file %}
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Year / Round:</td>
+            <td>{{ job.file.year or 'Auto' }} / Round {{ job.file.round_number or 'Auto' }}</td>
+        </tr>
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">File Size:</td>
+            <td>{{ (job.file.file_size / 1024) | round(1) if job.file.file_size else '?' }} KB</td>
+        </tr>
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Stored Path:</td>
+            <td style="font-size: 0.8rem; color: var(--text-secondary);">{{ job.file.stored_path }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Extraction Method:</td>
+            <td>{{ job.extraction_method or 'pdfplumber' }}</td>
+        </tr>
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Checkpoint:</td>
+            <td>Page {{ job.checkpoint_page or 0 }}</td>
+        </tr>
+        {% if job.started_at %}
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Started:</td>
+            <td>{{ job.started_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+        </tr>
+        {% endif %}
+        {% if job.completed_at %}
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Completed:</td>
+            <td>{{ job.completed_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+        </tr>
+        {% endif %}
+        {% if job.error_message %}
+        <tr>
+            <td style="color: var(--text-tertiary); padding: 4px 16px 4px 0;">Error Message:</td>
+            <td style="color: var(--danger);">{{ job.error_message }}</td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+
+<!-- Failed Pages -->
+{% if job.failed_pages and job.failed_pages|length > 0 %}
+<div class="stat-card" style="margin-bottom: 20px;">
+    <h3 style="font-size: 1rem; margin-bottom: 8px; color: var(--danger);">
+        <i class="fas fa-exclamation-triangle"></i> Failed Pages ({{ job.failed_pages|length }})
+    </h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+        {% for page_num in job.failed_pages %}
+        <span class="badge badge-danger" style="font-size: 0.8rem;">Page {{ page_num }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Error Log -->
+{% if job.error_log and job.error_log|length > 0 %}
+<div class="stat-card" style="margin-bottom: 20px;">
+    <h3 style="font-size: 1rem; margin-bottom: 8px;">
+        <i class="fas fa-clipboard-list"></i> Error Log
+    </h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Page</th>
+                    <th>Error</th>
+                    <th>Text Snippet</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in job.error_log[:50] %}
+                <tr>
+                    <td>{{ entry.get('page', '?') }}</td>
+                    <td style="color: var(--danger); max-width: 400px; word-break: break-word;">
+                        {{ entry.get('error', '?') }}
+                    </td>
+                    <td style="font-size: 0.75rem; color: var(--text-tertiary); max-width: 300px; overflow: hidden; text-overflow: ellipsis;">
+                        {% if entry.get('text_snippet') %}
+                            <code>{{ entry.text_snippet[:150] }}{% if entry.text_snippet|length > 150 %}…{% endif %}</code>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if job.error_log|length > 50 %}
+    <div style="margin-top: 8px; color: var(--text-tertiary); font-size: 0.85rem;">
+        Showing 50 of {{ job.error_log|length }} errors.
+        <a href="/admin/bulk-import/{{ job.id }}/error-report">Download full report</a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Error Records from DB -->
+{% if error_records and error_records|length > 0 %}
+<div class="stat-card" style="margin-bottom: 20px;">
+    <h3 style="font-size: 1rem; margin-bottom: 8px;">
+        <i class="fas fa-database"></i> Failed Row Records ({{ error_records|length }})
+    </h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>College Code</th>
+                    <th>College Name</th>
+                    <th>Course</th>
+                    <th>Category</th>
+                    <th>Rank</th>
+                    <th>Percentile</th>
+                    <th>Error Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for err in error_records[:50] %}
+                <tr>
+                    <td>{{ err.id }}</td>
+                    <td>{{ err.college_code or '—' }}</td>
+                    <td>{{ err.college_name or '—' }}</td>
+                    <td>{{ err.course_code or '?' }}-{{ err.course_name or '?' }}</td>
+                    <td>{{ err.category or '—' }}</td>
+                    <td>{{ err.rank or '—' }}</td>
+                    <td>{{ err.percentile or '—' }}</td>
+                    <td style="color: var(--danger); max-width: 300px; word-break: break-word; font-size: 0.8rem;">
+                        {{ err.error_reason[:100] }}{% if err.error_reason|length > 100 %}…{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Imported Cutoff Records -->
+{% if cutoff_records is defined %}
+<div class="stat-card" style="margin-bottom: 20px;">
+    <h3 style="font-size: 1rem; margin-bottom: 8px;">
+        <i class="fas fa-table"></i> Imported Cutoff Records
+        {% if cutoff_pagination %}
+        <span style="font-size: 0.8rem; color: var(--text-tertiary); font-weight: 400;">
+            (Page {{ cutoff_pagination.page }} of {{ cutoff_pagination.pages }})
+        </span>
+        {% endif %}
+    </h3>
+    {% if search %}
+    <div style="margin-bottom: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+        Search: "{{ search }}"
+        <a href="?page=1" style="margin-left: 8px;">Clear</a>
+    </div>
+    {% endif %}
+    {% if cutoff_records %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>College Code</th>
+                    <th>College Name</th>
+                    <th>Course Code</th>
+                    <th>Course Name</th>
+                    <th>Category</th>
+                    <th>Rank</th>
+                    <th>Percentile</th>
+                    <th>Approval</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in cutoff_records %}
+                <tr>
+                    <td>{{ rec.id }}</td>
+                    <td>{{ rec.college_code }}</td>
+                    <td>{{ rec.college_name[:50] }}{% if rec.college_name|length > 50 %}…{% endif %}</td>
+                    <td>{{ rec.course_code }}</td>
+                    <td>{{ rec.course_name[:40] }}{% if rec.course_name|length > 40 %}…{% endif %}</td>
+                    <td>{{ rec.category }}</td>
+                    <td>{{ rec.rank or '—' }}</td>
+                    <td>{{ rec.percentile or '—' }}</td>
+                    <td>
+                        {% set rec_sc = 'success' if rec.approval_status == 'approved' else
+                                       'danger' if rec.approval_status == 'rejected' else
+                                       'warning' %}
+                        <span class="badge badge-{{ rec_sc }}">
+                            {{ rec.approval_status or 'pending_approval' }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if cutoff_pagination and cutoff_pagination.pages > 1 %}
+    <div class="pagination" style="margin-top: 12px;">
+        {% if cutoff_pagination.has_prev %}
+        <a href="?page={{ cutoff_pagination.prev_num }}&q={{ search }}">← Prev</a>
+        {% endif %}
+        {% for p in cutoff_pagination.iter_pages() %}
+        {% if p %}
+        <a href="?page={{ p }}&q={{ search }}" class="{{ 'current' if p == cutoff_pagination.page }}">{{ p }}</a>
+        {% endif %}
+        {% endfor %}
+        {% if cutoff_pagination.has_next %}
+        <a href="?page={{ cutoff_pagination.next_num }}&q={{ search }}">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div style="color: var(--text-tertiary); padding: 16px; text-align: center;">
+        <i class="fas fa-database" style="font-size: 1.5rem; display: block; margin-bottom: 8px;"></i>
+        No cutoff records found for this import job.
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Live Progress Updates ────────────────────────────────────────────
+{% if is_running %}
+(function(){
+    var jobId = {{ job.id }};
+    function updateProgress() {
+        fetch('/admin/bulk-import/' + jobId + '/progress')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.ok) return;
+
+            var j = d.job;
+            var pct = j.progress_pct || 0;
+            var bar = document.getElementById('progress-bar');
+            var pctLabel = document.getElementById('progress-pct');
+            var pagesLabel = document.getElementById('processed-pages');
+            var etaLabel = document.getElementById('eta-display');
+
+            if (bar) bar.style.width = pct + '%';
+            if (pctLabel) pctLabel.textContent = pct + '%';
+            if (pagesLabel) pagesLabel.textContent = j.processed_pages;
+
+            if (etaLabel && j.eta_seconds) {
+                var mins = Math.floor(j.eta_seconds / 60);
+                var secs = Math.round(j.eta_seconds % 60);
+                etaLabel.textContent = 'ETA: ' + mins + 'm ' + secs + 's';
+            } else if (etaLabel) {
+                etaLabel.textContent = '';
+            }
+
+            // Stop polling if job is no longer running
+            if (!j.is_running) {
+                clearInterval(pollInterval);
+                setTimeout(function() { location.reload(); }, 2000);
+            }
+        })
+        .catch(function() {});
+    }
+
+    var pollInterval = setInterval(updateProgress, 2000);
+    updateProgress();
+})();
+{% endif %}
+
+// ── Action Functions ─────────────────────────────────────────────────
+function startImport(id) {
+    if (!confirm('Start import for job #' + id + '?')) return;
+    fetch('/admin/bulk-import/' + id + '/start', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'success'); setTimeout(function() { location.reload(); }, 500); }
+        else { showToast(d.error || 'Failed to start', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+function cancelImport(id) {
+    if (!confirm('Cancel import for job #' + id + '?')) return;
+    fetch('/admin/bulk-import/' + id + '/cancel', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'info'); setTimeout(function() { location.reload(); }, 1000); }
+        else { showToast(d.error || 'Failed to cancel', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+function retryFailed(id) {
+    if (!confirm('Retry failed pages for job #' + id + '?')) return;
+    fetch('/admin/bulk-import/' + id + '/retry-failed', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'info'); setTimeout(function() { location.reload(); }, 1000); }
+        else { showToast(d.error || 'Failed to retry', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+function deleteJob(id) {
+    if (!confirm('Delete job #' + id + '? This cannot be undone.')) return;
+    fetch('/admin/bulk-import/' + id + '/delete', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast('Job deleted', 'success'); window.location.href = '/admin/bulk-import'; }
+        else { showToast(d.error || 'Delete failed', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+// ── Approval Functions ────────────────────────────────────────────────
+function approveImport(id) {
+    if (!confirm('Approve import #' + id + '? The records will become visible to users.')) return;
+    fetch('/admin/bulk-imports/' + id + '/approve', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'success'); setTimeout(function() { location.reload(); }, 1000); }
+        else { showToast(d.error || 'Failed to approve', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+function rejectImport(id) {
+    var reason = prompt('Reason for rejection (optional):');
+    if (reason === null) return;
+    var data = { reason: reason || 'Rejected by admin' };
+    fetch('/admin/bulk-imports/' + id + '/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'info'); setTimeout(function() { location.reload(); }, 1000); }
+        else { showToast(d.error || 'Failed to reject', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+</script>
+{% endblock %}

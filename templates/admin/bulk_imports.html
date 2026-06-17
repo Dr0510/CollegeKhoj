@@ -1,0 +1,376 @@
+{% extends "admin/base.html" %}
+{% block title %}Bulk Import Approvals — Admin{% endblock %}
+{% block heading %}Bulk Import Approval Management{% endblock %}
+
+{% block content %}
+{% if stats is defined %}
+<!-- Approval Stats Cards -->
+<div class="stat-grid">
+    <div class="stat-card" style="cursor: pointer; border-left: 3px solid var(--warning);" onclick="window.location='?approval_status=pending_approval'">
+        <div class="label">⏳ Pending Approval</div>
+        <div class="value" style="color: var(--warning);">{{ stats.pending }}</div>
+    </div>
+    <div class="stat-card" style="cursor: pointer; border-left: 3px solid var(--success);" onclick="window.location='?approval_status=approved'">
+        <div class="label">✅ Approved</div>
+        <div class="value" style="color: var(--success);">{{ stats.approved }}</div>
+    </div>
+    <div class="stat-card" style="cursor: pointer; border-left: 3px solid var(--danger);" onclick="window.location='?approval_status=rejected'">
+        <div class="label">❌ Rejected</div>
+        <div class="value" style="color: var(--danger);">{{ stats.rejected }}</div>
+    </div>
+    <div class="stat-card" style="cursor: pointer; border-left: 3px solid var(--danger);" onclick="window.location='?status=FAILED'">
+        <div class="label">⚠️ Failed</div>
+        <div class="value" style="color: var(--danger);">{{ stats.failed }}</div>
+    </div>
+</div>
+
+<!-- Approval Filter -->
+<div class="stat-card" style="margin-bottom: 20px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap;">
+        <div>
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">Approval Status</label>
+            <select name="approval_status">
+                <option value="">All</option>
+                <option value="pending_approval" {{ 'selected' if approval_filter=='pending_approval' }}>Pending Approval</option>
+                <option value="approved" {{ 'selected' if approval_filter=='approved' }}>Approved</option>
+                <option value="rejected" {{ 'selected' if approval_filter=='rejected' }}>Rejected</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">Job Status</label>
+            <select name="status">
+                <option value="">All</option>
+                <option value="PENDING" {{ 'selected' if status_filter=='PENDING' }}>Pending</option>
+                <option value="PROCESSING" {{ 'selected' if status_filter=='PROCESSING' }}>Processing</option>
+                <option value="COMPLETED" {{ 'selected' if status_filter=='COMPLETED' }}>Completed</option>
+                <option value="FAILED" {{ 'selected' if status_filter=='FAILED' }}>Failed</option>
+                <option value="CANCELLED" {{ 'selected' if status_filter=='CANCELLED' }}>Cancelled</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
+        <a href="/admin/bulk-imports" class="btn btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</a>
+    </form>
+</div>
+{% else %}
+<!-- Status Filter (non-approval view) -->
+<div class="stat-card" style="margin-bottom: 20px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap;">
+        <div>
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">Status</label>
+            <select name="status">
+                <option value="">All</option>
+                <option value="PENDING" {{ 'selected' if status_filter=='PENDING' }}>Pending</option>
+                <option value="PROCESSING" {{ 'selected' if status_filter=='PROCESSING' }}>Processing</option>
+                <option value="COMPLETED" {{ 'selected' if status_filter=='COMPLETED' }}>Completed</option>
+                <option value="FAILED" {{ 'selected' if status_filter=='FAILED' }}>Failed</option>
+                <option value="CANCELLED" {{ 'selected' if status_filter=='CANCELLED' }}>Cancelled</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
+        <a href="/admin/bulk-import" class="btn btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</a>
+    </form>
+</div>
+{% endif %}
+<!-- Upload Form -->
+<div class="stat-card" style="margin-bottom: 20px;">
+    <h3 style="margin-bottom: 12px; font-size: 1rem;">
+        <i class="fas fa-cloud-upload-alt"></i> Upload New PDF for Bulk Import
+    </h3>
+    <form id="upload-form" enctype="multipart/form-data" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap;">
+        <div style="flex: 2; min-width: 200px;">
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">PDF File</label>
+            <input type="file" name="file" accept=".pdf" required>
+        </div>
+        <div style="flex: 1; min-width: 100px;">
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">Year (optional)</label>
+            <input type="number" name="year" placeholder="e.g. 2025" min="2020" max="2030">
+        </div>
+        <div style="flex: 1; min-width: 80px;">
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">Round (optional)</label>
+            <input type="number" name="round" placeholder="e.g. 1" min="1" max="5">
+        </div>
+        <div style="flex: 1; min-width: 80px;">
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">Page Start</label>
+            <input type="number" name="page_start" value="1" min="1">
+        </div>
+        <div style="flex: 1; min-width: 80px;">
+            <label style="font-size:0.8rem;color:var(--text-tertiary);">Page End</label>
+            <input type="number" name="page_end" placeholder="Auto" min="1">
+        </div>
+        <button type="submit" class="btn btn-success" id="upload-btn">
+            <i class="fas fa-upload"></i> Upload
+        </button>
+    </form>
+    <div id="upload-status" style="margin-top: 8px; font-size: 0.85rem;"></div>
+</div>
+
+<!-- Jobs Table -->
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>File</th>
+                <th>Year / Round</th>
+                <th>Status</th>
+                <th>Approval</th>
+                <th>Pages</th>
+                <th>Progress</th>
+                <th>Rows</th>
+                <th>Failed</th>
+                <th>Memory</th>
+                <th>Started</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            {% set is_active = job.id in active_jobs %}
+            {% set asc = 'success' if job.approval_status == 'approved' else
+                         'danger' if job.approval_status == 'rejected' else
+                         'warning' if job.approval_status == 'pending_approval' else
+                         'info' %}
+            <tr>
+                <td><strong>{{ job.id }}</strong></td>
+                <td>
+                    <span title="{{ job.file.filename if job.file else '?' }}">
+                        {% if job.file %}
+                            {{ job.file.filename[:35] }}{% if job.file.filename|length > 35 %}…{% endif %}
+                        {% else %}
+                            <span style="color: var(--text-tertiary);">Deleted</span>
+                        {% endif %}
+                    </span>
+                </td>
+                <td>
+                    {% if job.file %}
+                        {{ job.file.year or '?' }} / R{{ job.file.round_number or '?' }}
+                    {% else %}
+                        — / —
+                    {% endif %}
+                </td>
+                <td>
+                    {% set sc = 'success' if job.status == 'COMPLETED' else
+                               'danger' if job.status == 'FAILED' else
+                               'warning' if job.status == 'PROCESSING' else
+                               'info' if job.status == 'CANCELLED' else
+                               'info' %}
+                    <span class="badge badge-{{ sc }}">
+                        {% if is_active %}<i class="fas fa-spinner fa-spin"></i> {% endif %}
+                        {{ job.status }}
+                    </span>
+                </td>
+                <td>
+                    {% if job.approval_status %}
+                    <span class="badge badge-{{ asc }}">
+                        {% if job.approval_status == 'pending_approval' %}
+                            ⏳ Pending
+                        {% elif job.approval_status == 'approved' %}
+                            ✅ Approved
+                        {% elif job.approval_status == 'rejected' %}
+                            ❌ Rejected
+                        {% endif %}
+                    </span>
+                    {% else %}
+                        <span style="color: var(--text-tertiary);">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if job.page_range_end %}
+                        {{ job.page_range_start }}–{{ job.page_range_end }}
+                        <span style="color: var(--text-tertiary); font-size: 0.75rem;">/ {{ job.total_pages }}</span>
+                    {% else %}
+                        {{ job.total_pages or '?' }}
+                    {% endif %}
+                </td>
+                <td style="min-width: 140px;">
+                    {% if job.total_pages > 0 %}
+                    {% set pct = (job.processed_pages / job.total_pages * 100) | round(1) %}
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="flex: 1; height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden;">
+                            <div style="height: 100%; width: {{ pct }}%; background: var(--brand-primary); border-radius: 3px; transition: width 0.3s;"></div>
+                        </div>
+                        <span style="font-size: 0.8rem; min-width: 40px;">{{ pct }}%</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-tertiary);">
+                        {{ job.processed_pages }} / {{ job.total_pages }} pages
+                    </div>
+                    {% else %}
+                        <span style="color: var(--text-tertiary);">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ job.rows_imported or 0 }}</strong>
+                    {% if job.rows_extracted > 0 %}
+                    <span style="color: var(--text-tertiary); font-size: 0.75rem;">
+                        / {{ job.rows_extracted }} extracted
+                    </span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% set failed_count = job.failed_pages|length if job.failed_pages else 0 %}
+                    {% if failed_count > 0 %}
+                        <span style="color: var(--danger);">{{ failed_count }} pg</span>
+                    {% else %}
+                        <span style="color: var(--text-tertiary);">0</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if job.memory_usage_mb %}
+                        {{ job.memory_usage_mb }} MB
+                    {% else %}
+                        <span style="color: var(--text-tertiary);">—</span>
+                    {% endif %}
+                </td>
+                <td style="font-size: 0.8rem;">
+                    {% if job.started_at %}
+                        {{ job.started_at.strftime('%d %b %H:%M') if job.started_at else '—' }}
+                    {% else %}
+                        <span style="color: var(--text-tertiary);">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        <a href="/admin/bulk-imports/{{ job.id }}" class="btn btn-outline btn-sm" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        {% if job.status in ('PENDING', 'FAILED', 'CANCELLED') %}
+                            <button class="btn btn-success btn-sm" onclick="startImport({{ job.id }})" title="Start / Resume">
+                                <i class="fas fa-play"></i>
+                            </button>
+                        {% endif %}
+                        {% if is_active %}
+                            <button class="btn btn-warning btn-sm" onclick="cancelImport({{ job.id }})" title="Cancel">
+                                <i class="fas fa-stop"></i>
+                            </button>
+                        {% endif %}
+                        {% if job.failed_pages and job.failed_pages|length > 0 %}
+                            <button class="btn btn-outline btn-sm" onclick="retryFailed({{ job.id }})" title="Retry Failed Pages">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                        {% endif %}
+                        <button class="btn btn-danger btn-sm" onclick="deleteJob({{ job.id }})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="11" style="text-align: center; color: var(--text-tertiary); padding: 32px;">
+                    <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 8px; display: block;"></i>
+                    No bulk import jobs found. Upload a PDF above to get started.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagination.pages > 1 %}
+<div class="pagination">
+    {% if pagination.has_prev %}
+        <a href="?page={{ pagination.prev_num }}&status={{ status_filter }}{% if approval_filter is defined and approval_filter %}&approval_status={{ approval_filter }}{% endif %}">← Prev</a>
+    {% endif %}
+    {% for p in pagination.iter_pages() %}
+        {% if p %}
+            <a href="?page={{ p }}&status={{ status_filter }}{% if approval_filter is defined and approval_filter %}&approval_status={{ approval_filter }}{% endif %}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+        <a href="?page={{ pagination.next_num }}&status={{ status_filter }}{% if approval_filter is defined and approval_filter %}&approval_status={{ approval_filter }}{% endif %}">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Upload Form ──────────────────────────────────────────────────────
+document.getElementById('upload-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var btn = document.getElementById('upload-btn');
+    var status = document.getElementById('upload-status');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    status.innerHTML = '<span style="color: var(--text-secondary);">Uploading PDF...</span>';
+
+    var data = new FormData(form);
+    fetch('/admin/bulk-import/upload', { method: 'POST', body: data })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) {
+            status.innerHTML = '<span style="color: var(--success);">✅ ' + d.message + '</span>';
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            status.innerHTML = '<span style="color: var(--danger);">❌ ' + (d.error || 'Upload failed') + '</span>';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-upload"></i> Upload';
+        }
+    })
+    .catch(function() {
+        status.innerHTML = '<span style="color: var(--danger);">❌ Network error</span>';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload"></i> Upload';
+    });
+});
+
+// ── Action Functions ─────────────────────────────────────────────────
+function startImport(id) {
+    if (!confirm('Start import for job #' + id + '?')) return;
+    fetch('/admin/bulk-import/' + id + '/start', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'success'); setTimeout(function() { location.reload(); }, 500); }
+        else { showToast(d.error || 'Failed to start', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+function cancelImport(id) {
+    if (!confirm('Cancel import for job #' + id + '?')) return;
+    fetch('/admin/bulk-import/' + id + '/cancel', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'info'); setTimeout(function() { location.reload(); }, 1000); }
+        else { showToast(d.error || 'Failed to cancel', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+function retryFailed(id) {
+    if (!confirm('Retry failed pages for job #' + id + '?')) return;
+    fetch('/admin/bulk-import/' + id + '/retry-failed', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'info'); setTimeout(function() { location.reload(); }, 1000); }
+        else { showToast(d.error || 'Failed to retry', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+function deleteJob(id) {
+    if (!confirm('Delete job #' + id + '? This cannot be undone.')) return;
+    fetch('/admin/bulk-import/' + id + '/delete', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast('Job deleted', 'success'); location.reload(); }
+        else { showToast(d.error || 'Delete failed', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+// ── Auto-refresh active jobs ─────────────────────────────────────────
+{% if active_jobs %}
+(function(){
+    var activeIds = {{ active_jobs | tojson }};
+    if (activeIds.length > 0) {
+        setInterval(function() {
+            location.reload();
+        }, 10000);  // Refresh every 10 seconds when jobs are running
+    }
+})();
+{% endif %}
+</script>
+{% endblock %}

@@ -199,6 +199,12 @@
             <a href="/admin/dashboard" class="{{ 'active' if request.path == '/admin/dashboard' else '' }}">
                 <i class="fas fa-chart-simple"></i> <span>Dashboard</span>
             </a>
+            <a href="/admin/bulk-import" class="{{ 'active' if request.path.startswith('/admin/bulk-import') and not request.path.startswith('/admin/bulk-imports') else '' }}">
+                <i class="fas fa-rocket"></i> <span>Bulk PDF Import</span>
+            </a>
+            <a href="/admin/bulk-imports" class="{{ 'active' if request.path.startswith('/admin/bulk-imports') else '' }}">
+                <i class="fas fa-check-double"></i> <span>Bulk Import Approvals</span>
+            </a>
             <a href="/admin/upload-cutoff" class="{{ 'active' if request.path.startswith('/admin/upload-cutoff') else '' }}">
                 <i class="fas fa-upload"></i> <span>Upload Cutoff</span>
             </a>

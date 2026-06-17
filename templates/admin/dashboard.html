@@ -22,6 +22,26 @@
     </div>
 </div>
 
+<!-- Approval Stats Row -->
+<div class="stat-grid" style="margin-bottom: 20px;">
+    <div class="stat-card" style="cursor: pointer;" onclick="window.location='/admin/bulk-imports?approval_status=pending_approval'">
+        <div class="label">⏳ Pending Approvals</div>
+        <div class="value" style="color: var(--warning);">{{ pending_approvals or 0 }}</div>
+    </div>
+    <div class="stat-card" style="cursor: pointer;" onclick="window.location='/admin/bulk-imports?approval_status=approved'">
+        <div class="label">✅ Approved Imports</div>
+        <div class="value" style="color: var(--success);">{{ approved_imports or 0 }}</div>
+    </div>
+    <div class="stat-card" style="cursor: pointer;" onclick="window.location='/admin/bulk-imports?approval_status=rejected'">
+        <div class="label">❌ Rejected Imports</div>
+        <div class="value" style="color: var(--danger);">{{ rejected_imports or 0 }}</div>
+    </div>
+    <div class="stat-card" style="cursor: pointer;" onclick="window.location='/admin/bulk-imports?status=FAILED'">
+        <div class="label">⚠️ Failed Imports</div>
+        <div class="value" style="color: var(--danger);">{{ total_failed or 0 }}</div>
+    </div>
+</div>
+
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
     <div class="stat-card">
         <h3 style="font-size: 1rem; margin-bottom: 16px;">Recent Uploads</h3>

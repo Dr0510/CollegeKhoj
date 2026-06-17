@@ -1,3 +1,4 @@
+"""Database models for CollegeKhoj."""
 from database import db
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, Boolean, JSON, Index, Numeric, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -10,6 +11,9 @@ class CollegeCutoff(db.Model):
 
     Created per user requirements: stores year, round, college_code,
     college_name, course_code, course_name, category, rank, percentile.
+
+    Approval workflow: records are hidden from user-facing queries until the
+    associated ImportJob's approval_status is set to 'approved'.
     """
 
     __tablename__ = 'college_cutoffs'
@@ -24,6 +28,7 @@ class CollegeCutoff(db.Model):
         Index('idx_cc_category', 'category'),
         Index('idx_cc_percentile', 'percentile'),
         Index('idx_cc_college_code', 'college_code'),
+        Index('idx_cc_approval', 'approval_status'),
     )
 
     id = Column(Integer, primary_key=True)
@@ -38,6 +43,11 @@ class CollegeCutoff(db.Model):
     percentile = Column(Numeric(5, 2), nullable=True)
     source_file_id = Column(Integer, ForeignKey('uploaded_files.id'), nullable=True, index=True)
     imported_at = Column(DateTime, default=datetime.utcnow)
+
+    # Approval workflow — denormalized from ImportJob for fast filtering
+    approval_status = Column(String(20), default='pending_approval', nullable=False, index=True)
+    approved_at = Column(DateTime, nullable=True)
+    approved_by = Column(Integer, ForeignKey('users.id'), nullable=True)
 
     # Relationship back to UploadedFile
     source_file = relationship("UploadedFile", back_populates="cutoff_records_new")
@@ -60,6 +70,9 @@ class CollegeCutoff(db.Model):
             'category': self.category,
             'rank': self.rank,
             'percentile': float(self.percentile) if self.percentile else None,
+            'approval_status': self.approval_status,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'approved_by': self.approved_by,
             'imported_at': self.imported_at.isoformat() if self.imported_at else None,
         }
 
@@ -315,27 +328,107 @@ class UploadedFile(db.Model):
 
 
 class ImportJob(db.Model):
-    """Tracks the status of a PDF import process (background processing)."""
+    """
+    Tracks the status of a PDF import process (background processing).
+
+    Enhanced with fields for the Bulk PDF Import Engine:
+    - checkpoint_page: last successfully processed page (for resume)
+    - rows_extracted: total rows parsed from PDF
+    - rows_imported: rows actually inserted (after dedup)
+    - rows_failed: rows that failed validation
+    - failed_pages: JSON list of page numbers that failed
+    - error_log: JSON list of error details
+    - page_range_start / page_range_end: smart page range import
+    - memory_usage_mb: peak memory usage during processing
+    - log_every_n_pages: logging frequency (default 10)
+
+    Approval Workflow:
+    Status life cycle: UPLOADED → PROCESSING → COMPLETED → PENDING_APPROVAL → APPROVED | REJECTED
+    Failed/Cancelled are terminal error states.
+    """
 
     __tablename__ = 'import_jobs'
 
     id = Column(Integer, primary_key=True)
     file_id = Column(Integer, ForeignKey('uploaded_files.id'), nullable=False, index=True)
-    status = Column(String(20), default='PENDING', nullable=False, index=True)  # PENDING | PROCESSING | VALIDATING | IMPORTING | COMPLETED | FAILED
+
+    # Status life cycle: UPLOADED → PROCESSING → COMPLETED → PENDING_APPROVAL → APPROVED | REJECTED
+    status = Column(String(20), default='PENDING', nullable=False, index=True)
+
+    # ── Approval Workflow Fields ────────────────────────────────────────────
+    approval_status = Column(String(20), nullable=True, index=True)  # pending_approval | approved | rejected | None
+    approved_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+
+    # Denormalized uploader reference (the admin who uploaded the file)
+    uploaded_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+
+    # Progress tracking
     total_pages = Column(Integer, default=0)
     processed_pages = Column(Integer, default=0)
-    valid_records = Column(Integer, default=0)
-    rejected_records = Column(Integer, default=0)
+    checkpoint_page = Column(Integer, default=0)
+    rows_extracted = Column(Integer, default=0)
+    rows_imported = Column(Integer, default=0)
+    rows_failed = Column(Integer, default=0)
+
+    # Failed/error tracking
+    failed_pages = Column(JSON, default=list)   # [1, 5, 23, ...]
+    error_log = Column(JSON, default=list)       # [{"page": 5, "error": "..."}, ...]
+
+    # Page range (smart import)
+    page_range_start = Column(Integer, default=1)
+    page_range_end = Column(Integer, nullable=True)  # None = all pages
+
+    # Performance metrics
+    memory_usage_mb = Column(Float, nullable=True)
+    extraction_method = Column(String(20), default='pdfplumber')
+    confidence_score = Column(Float, nullable=True)
+
+    # Timing
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
-    confidence_score = Column(Float, nullable=True)
 
     # Relationships
     file = relationship("UploadedFile", back_populates="import_jobs")
+    approver = relationship("User", foreign_keys=[approved_by])
+    uploaded_by_user = relationship("User", foreign_keys=[uploaded_by])
 
     def __repr__(self):
         return f'<ImportJob {self.id} for file#{self.file_id} [{self.status}]>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'file_id': self.file_id,
+            'filename': self.file.filename if self.file else None,
+            'status': self.status,
+            'approval_status': self.approval_status,
+            'approved_by': self.approved_by,
+            'approver_name': self.approver.display_name() if self.approver else None,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'rejection_reason': self.rejection_reason,
+            'uploaded_by': self.uploaded_by,
+            'uploader_name': self.uploaded_by_user.display_name() if self.uploaded_by_user else None,
+            'total_pages': self.total_pages,
+            'processed_pages': self.processed_pages,
+            'checkpoint_page': self.checkpoint_page,
+            'rows_extracted': self.rows_extracted,
+            'rows_imported': self.rows_imported,
+            'rows_failed': self.rows_failed,
+            'failed_pages': self.failed_pages or [],
+            'error_log': self.error_log or [],
+            'page_range_start': self.page_range_start,
+            'page_range_end': self.page_range_end,
+            'memory_usage_mb': self.memory_usage_mb,
+            'extraction_method': self.extraction_method,
+            'confidence_score': self.confidence_score,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'error_message': self.error_message,
+            'created_at': self.created_at.isoformat() if hasattr(self, 'created_at') and self.created_at else None,
+        }
 
 
 class CollegeTrend(db.Model):
@@ -410,3 +503,115 @@ class AuditLog(db.Model):
 
     def __repr__(self):
         return f'<AuditLog {self.action} on {self.resource_type} at {self.created_at}>'
+
+
+class ApprovalRequest(db.Model):
+    """Stores approval requests for the Bulk Approval Management System."""
+
+    __tablename__ = 'approval_requests'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(200), nullable=False, index=True)
+    email = Column(String(200), nullable=False, index=True)
+    request_type = Column(String(100), nullable=False, index=True)
+    submitted_date = Column(DateTime, default=datetime.utcnow, index=True)
+    status = Column(String(20), default='PENDING', nullable=False, index=True)  # PENDING | APPROVED | REJECTED
+
+    # Approval tracking
+    approved_at = Column(DateTime, nullable=True)
+    approved_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    rejected_at = Column(DateTime, nullable=True)
+    rejected_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+
+    # Metadata
+    notes = Column(Text, nullable=True)
+    data_snapshot = Column(JSON, nullable=True)  # extra request data
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    approver = relationship("User", foreign_keys=[approved_by])
+    rejecter = relationship("User", foreign_keys=[rejected_by])
+
+    def __repr__(self):
+        return f'<ApprovalRequest {self.id} [{self.status}] {self.name} — {self.request_type}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'request_type': self.request_type,
+            'submitted_date': self.submitted_date.isoformat() if self.submitted_date else None,
+            'status': self.status,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'approved_by': self.approved_by,
+            'rejected_at': self.rejected_at.isoformat() if self.rejected_at else None,
+            'rejected_by': self.rejected_by,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class BulkActionBackup(db.Model):
+    """Stores backup snapshots before bulk actions for restore capability."""
+
+    __tablename__ = 'bulk_action_backups'
+
+    id = Column(Integer, primary_key=True)
+    action_type = Column(String(50), nullable=False, index=True)  # approve_selected | reject_selected | delete_selected | approve_all | reject_all | delete_all
+    admin_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    affected_count = Column(Integer, default=0)
+    snapshot_data = Column(JSON, nullable=False)  # Array of request dicts before modification
+    status_filter = Column(String(20), nullable=True)  # PENDING | APPROVED | REJECTED | None
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    admin = relationship("User", foreign_keys=[admin_id])
+
+    def __repr__(self):
+        return f'<BulkActionBackup {self.id} [{self.action_type}] {self.affected_count} records>'
+
+
+class ImportErrorRecord(db.Model):
+    """
+    Stores rows that failed validation during bulk import.
+    Admin can review, edit, and retry these rows.
+    """
+
+    __tablename__ = 'import_error_records'
+
+    id = Column(Integer, primary_key=True)
+    job_id = Column(Integer, ForeignKey('import_jobs.id'), nullable=False, index=True)
+    page_number = Column(Integer, nullable=True)
+    college_code = Column(String(20), nullable=True)
+    college_name = Column(Text, nullable=True)
+    course_code = Column(String(20), nullable=True)
+    course_name = Column(Text, nullable=True)
+    category = Column(String(20), nullable=True)
+    rank = Column(Integer, nullable=True)
+    percentile = Column(Float, nullable=True)
+    error_reason = Column(Text, nullable=False)
+    raw_text_snippet = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("ImportJob", foreign_keys=[job_id])
+
+    def __repr__(self):
+        return f'<ImportErrorRecord {self.id} job#{self.job_id}: {self.error_reason[:50]}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'job_id': self.job_id,
+            'page_number': self.page_number,
+            'college_code': self.college_code,
+            'college_name': self.college_name,
+            'course_code': self.course_code,
+            'course_name': self.course_name,
+            'category': self.category,
+            'rank': self.rank,
+            'percentile': self.percentile,
+            'error_reason': self.error_reason,
+            'raw_text_snippet': self.raw_text_snippet,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

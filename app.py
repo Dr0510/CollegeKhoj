@@ -34,10 +34,13 @@ from recommender import CollegeRecommender
 from mhcet_recommender import MHCETRecommender
 from auth_decorators import login_required, api_login_required
 from email_service import send_verification_email as resend_verify, send_password_reset_email
-from admin import admin_bp
+from admin import admin_bp, register_bulk_import_engine
 
 # Register admin blueprint
 app.register_blueprint(admin_bp)
+
+# Register Bulk PDF Import Engine (blueprint + migration + worker recovery)
+register_bulk_import_engine(app)
 
 # ── Auth helpers ───────────────────────────────────────────────────────────────
 
@@ -966,44 +969,6 @@ with app.app_context():
     # This handles both PostgreSQL (Neon) and SQLite (dev) automatically.
     db.create_all()
     logging.info("✅ Database tables created/verified on Neon PostgreSQL")
-
-    # ── Add new columns / FKs to existing tables if they don't exist ──
-    try:
-        inspector = db.inspect(db.engine)
-        if 'cap_cutoffs' in inspector.get_table_names():
-            cap_columns = [c['name'] for c in inspector.get_columns('cap_cutoffs')]
-            if 'college_name' not in cap_columns:
-                db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN college_name VARCHAR(200)'))
-                logging.info("✅ Added college_name column to cap_cutoffs")
-            if 'branch' not in cap_columns:
-                db.session.execute(db.text('ALTER TABLE cap_cutoffs ADD COLUMN branch VARCHAR(100)'))
-                logging.info("✅ Added branch column to cap_cutoffs")
-            db.session.commit()
-        # ── Ensure college_cutoffs.source_file_id has FK constraint ──
-        if 'college_cutoffs' in inspector.get_table_names():
-            cc_columns = [c['name'] for c in inspector.get_columns('college_cutoffs')]
-            if 'source_file_id' in cc_columns:
-                # Check if FK already exists
-                fks = inspector.get_foreign_keys('college_cutoffs')
-                has_fk = any(
-                    fk['constrained_columns'] == ['source_file_id']
-                    for fk in fks
-                )
-                if not has_fk:
-                    db.session.execute(db.text(
-                        "DO $$ BEGIN "
-                        "  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_college_cutoffs_source_file') THEN "
-                        "    ALTER TABLE college_cutoffs "
-                        "      ADD CONSTRAINT fk_college_cutoffs_source_file "
-                        "      FOREIGN KEY (source_file_id) REFERENCES uploaded_files(id); "
-                        "  END IF; "
-                        "END $$;"
-                    ))
-                    logging.info("✅ Added FK constraint to college_cutoffs.source_file_id")
-                    db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        logging.warning(f"Migration note (may be OK): {e}")
 
     init_sample_data()
     init_sample_cutoff_data()

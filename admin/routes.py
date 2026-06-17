@@ -29,8 +29,10 @@ from admin.trend_service import (
 from auth_decorators import login_required, admin_required
 from models import (
     User, College, CAPCutoff, CollegeCutoff, 
-    UploadedFile, BackupHistory, AuditLog, ImportJob, CollegeTrend
+    UploadedFile, BackupHistory, AuditLog, ImportJob, CollegeTrend,
+    ApprovalRequest, BulkActionBackup
 )
+from sqlalchemy import func as sa_func
 from sqlalchemy import insert, text, func, and_
 
 logger = logging.getLogger(__name__)
@@ -150,6 +152,17 @@ def admin_dashboard():
         UploadedFile.created_at.desc()
     ).limit(5).all()
 
+    # ── Approval Stats ──
+    pending_approvals = ImportJob.query.filter(
+        ImportJob.approval_status == 'pending_approval'
+    ).count()
+    approved_imports = ImportJob.query.filter(
+        ImportJob.approval_status == 'approved'
+    ).count()
+    rejected_imports = ImportJob.query.filter(
+        ImportJob.approval_status == 'rejected'
+    ).count()
+
     return render_template('dashboard.html',
                            total_colleges=total_colleges,
                            total_cutoffs=total_cutoffs + total_cutoffs_new,
@@ -160,7 +173,10 @@ def admin_dashboard():
                            distinct_courses=distinct_courses,
                            last_upload=last_upload,
                            last_cutoff_date=last_cutoff.imported_at if last_cutoff else None,
-                           recent_uploads=recent_uploads)
+                           recent_uploads=recent_uploads,
+                           pending_approvals=pending_approvals,
+                           approved_imports=approved_imports,
+                           rejected_imports=rejected_imports)
 
 
 # ── Upload PDF ──────────────────────────────────────────────────────────────
