@@ -4,11 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MH-CET Portal — CollegeKhoj</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <meta name="description" content="Check your MH-CET admission chances with AI-powered CAP cutoff analysis. Enter your percentile, category & gender for personalized college recommendations.">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- CollegeKhoj Design System v5.0 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/globals.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/utilities.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badge.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/input.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/skeleton.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/modal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/dropdown.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/tabs.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/filter.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pagination.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/mhcet-premium.css') }}">
 
     <!-- Apply theme before paint to avoid flash -->
     <script>
@@ -18,375 +38,166 @@
             document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
-
-    <style>
-        /* ── Brand colours ── */
-        :root {
-            --brand: #4f8ef7;
-            --brand-glow: rgba(79,142,247,.18);
-            --safe: #22c55e;
-            --moderate: #f59e0b;
-            --ambitious: #818cf8;
-            --dream: #ec4899;
-        }
-
-        /* ── DARK ── */
-        [data-theme="dark"] {
-            --bg:           #0b1019;
-            --navbar-bg:    rgba(11,16,25,.96);
-            --sidebar-bg:   #0f1520;
-            --card-bg:      #161b27;
-            --card-border:  rgba(255,255,255,.07);
-            --text:         #e2e8f0;
-            --text-muted:   #8892a4;
-            --text-faint:   #5a677d;
-            --label:        #9ba4b5;
-            --input-bg:     #0b1019;
-            --input-border: rgba(255,255,255,.1);
-            --stat-bg:      rgba(255,255,255,.03);
-            --meta-bg:      rgba(255,255,255,.05);
-            --bar-bg:       rgba(255,255,255,.06);
-            --footer:       #4a5568;
-            --analysis-bg:  rgba(79,142,247,.07);
-            --analysis-bdr: rgba(79,142,247,.15);
-            --step-bg:      #161b27;
-        }
-
-        /* ── LIGHT ── */
-        [data-theme="light"] {
-            --bg:           #f0f4ff;
-            --navbar-bg:    rgba(255,255,255,.95);
-            --sidebar-bg:   #ffffff;
-            --card-bg:      #ffffff;
-            --card-border:  rgba(0,0,0,.09);
-            --text:         #1a202c;
-            --text-muted:   #4a5568;
-            --text-faint:   #718096;
-            --label:        #4a5568;
-            --input-bg:     #f7f9ff;
-            --input-border: rgba(0,0,0,.13);
-            --stat-bg:      #f7f9ff;
-            --meta-bg:      #f0f4ff;
-            --bar-bg:       rgba(0,0,0,.07);
-            --footer:       #a0aec0;
-            --analysis-bg:  rgba(79,142,247,.05);
-            --analysis-bdr: rgba(79,142,247,.18);
-            --step-bg:      #ffffff;
-        }
-
-        /* ── Base ── */
-        *, *::before, *::after { transition: background-color .25s, border-color .25s, color .15s; box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; }
-
-        /* ── Navbar ── */
-        .navbar { background: var(--navbar-bg); border-bottom: 1px solid var(--card-border); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; }
-        .navbar-brand { font-weight: 800; font-size: 1.3rem; color: var(--brand) !important; letter-spacing: -.3px; text-decoration: none; }
-        .navbar-brand span { color: var(--text); }
-        .nav-right { display: flex; gap: 8px; align-items: center; }
-        .nav-pill { background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); border-radius: 8px; padding: 6px 14px; font-size: .84rem; transition: all .2s; text-decoration: none; }
-        .nav-pill:hover { border-color: var(--brand); color: var(--brand); }
-        .nav-pill.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-        .theme-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--card-border); background: var(--stat-bg); color: var(--text-muted); font-size: .9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
-        .theme-btn:hover { border-color: var(--brand); color: var(--brand); }
-
-        /* ── Hero ── */
-        .hero { padding: 38px 0 26px; text-align: center; }
-        .hero .badge-pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(79,142,247,.12); border: 1px solid rgba(79,142,247,.3); border-radius: 30px; padding: 5px 16px; font-size: .78rem; color: var(--brand); font-weight: 600; margin-bottom: 14px; }
-        .hero h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -.5px; color: var(--text); margin-bottom: 8px; }
-        .hero h1 span { color: var(--brand); }
-        .hero p { color: var(--text-muted); font-size: .98rem; }
-
-        /* ── Layout ── */
-        .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
-        @media(max-width:991px){ .main-grid { grid-template-columns: 1fr; } }
-
-        /* ── Sidebar card ── */
-        .sidebar-card { background: var(--sidebar-bg); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-        .card-head { padding: 15px 19px; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 10px; }
-        .card-head h5 { margin: 0; font-size: .93rem; font-weight: 700; color: var(--text); }
-        .badge-required { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.25); color: #f87171; border-radius: 4px; font-size: .67rem; padding: 1px 7px; margin-left: auto; }
-        .card-body-inner { padding: 18px; }
-
-        /* ── Forms ── */
-        .form-label { font-size: .76rem; font-weight: 600; color: var(--label); margin-bottom: 5px; letter-spacing: .3px; text-transform: uppercase; display: block; }
-        .form-control, .form-select { background: var(--input-bg) !important; border: 1px solid var(--input-border) !important; color: var(--text) !important; border-radius: 10px; font-size: .89rem; padding: 9px 12px; width: 100%; outline: none; }
-        .form-control::placeholder { color: var(--text-faint); }
-        .form-control:focus, .form-select:focus { border-color: var(--brand) !important; box-shadow: 0 0 0 3px var(--brand-glow) !important; }
-        .form-text { font-size: .71rem; color: var(--text-faint); margin-top: 4px; }
-        .mb-3 { margin-bottom: 12px; }
-        .mb-4 { margin-bottom: 16px; }
-        select[multiple] { height: 96px; }
-        .form-range { width: 100%; accent-color: var(--brand); }
-        .range-val { display: inline-block; background: var(--brand); color: #fff; border-radius: 20px; padding: 2px 10px; font-size: .77rem; font-weight: 700; }
-        hr.divider { border-color: var(--card-border); margin: 14px 0; }
-
-        /* ── Checkbox pill group ── */
-        .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
-        .pill-group input[type=checkbox] { display: none; }
-        .pill-group label {
-            display: inline-flex; align-items: center; gap: 5px;
-            background: var(--input-bg); border: 1px solid var(--input-border);
-            border-radius: 20px; padding: 4px 11px; font-size: .76rem;
-            color: var(--text-muted); cursor: pointer; user-select: none;
-            transition: all .15s;
-        }
-        .pill-group label:hover { border-color: var(--brand); color: var(--brand); }
-        .pill-group input[type=checkbox]:checked + label {
-            background: var(--brand); border-color: var(--brand); color: #fff;
-        }
-
-        /* Percentile input */
-        .percentile-wrap { position: relative; }
-        .percentile-wrap input { padding-right: 50px; font-size: 1.05rem; font-weight: 700; }
-        .percentile-suffix { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: var(--text-faint); font-size: .82rem; font-weight: 600; pointer-events: none; }
-
-        .btn-brand { background: var(--brand); border: none; color: #fff; border-radius: 10px; padding: 12px; font-weight: 700; font-size: .93rem; width: 100%; cursor: pointer; transition: all .2s; }
-        .btn-brand:hover { background: #3b75e0; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(79,142,247,.28); }
-
-        /* ── Analysis card ── */
-        .analysis-card { background: var(--sidebar-bg); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; margin-top: 14px; }
-        .analysis-head { padding: 13px 17px; border-bottom: 1px solid var(--card-border); font-size: .86rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
-        .analysis-body { padding: 14px 17px; }
-        .analysis-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(0,0,0,.04); }
-        [data-theme="dark"] .analysis-row { border-bottom-color: rgba(255,255,255,.04); }
-        .analysis-row:last-child { border: none; }
-        .a-label { font-size: .75rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: .3px; }
-        .a-val { font-size: .79rem; font-weight: 700; border-radius: 6px; padding: 2px 9px; }
-        .strategy-box { background: var(--analysis-bg); border: 1px solid var(--analysis-bdr); border-radius: 10px; padding: 9px 12px; margin-top: 10px; font-size: .8rem; color: var(--text-muted); line-height: 1.55; }
-
-        /* ── Results ── */
-        .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-        .results-header h4 { font-size: 1.04rem; font-weight: 700; color: var(--text); margin: 0; }
-        .results-count { background: var(--brand-glow); border: 1px solid var(--brand); color: var(--brand); border-radius: 20px; padding: 3px 12px; font-size: .77rem; font-weight: 700; }
-
-        /* Legend */
-        .legend-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-        .legend-item { display: flex; align-items: center; gap: 7px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 5px 11px; font-size: .76rem; color: var(--text-muted); }
-        .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-
-        /* ── College card ── */
-        .college-card { background: var(--card-bg); border: 1px solid var(--card-border); border-left: 3px solid transparent; border-radius: 14px; padding: 16px 18px; margin-bottom: 11px; transition: border-color .2s, transform .15s; box-shadow: 0 1px 5px rgba(0,0,0,.05); }
-        .college-card:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.1); }
-        .safe-card     { border-left-color: var(--safe); }
-        .moderate-card { border-left-color: var(--moderate); }
-        .ambitious-card{ border-left-color: var(--ambitious); }
-        .dream-card    { border-left-color: var(--dream); }
-
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
-        .college-name { font-size: .95rem; font-weight: 700; color: var(--text); line-height: 1.3; }
-        .chance-badge { flex-shrink: 0; border-radius: 8px; padding: 4px 11px; font-size: .76rem; font-weight: 800; letter-spacing: .3px; }
-        .badge-safe     { background: rgba(34,197,94,.13);  border: 1px solid rgba(34,197,94,.28);  color: var(--safe); }
-        .badge-moderate { background: rgba(245,158,11,.13); border: 1px solid rgba(245,158,11,.28); color: var(--moderate); }
-        .badge-ambitious{ background: rgba(129,140,248,.13);border: 1px solid rgba(129,140,248,.28);color: var(--ambitious); }
-        .badge-dream    { background: rgba(236,72,153,.13); border: 1px solid rgba(236,72,153,.28); color: var(--dream); }
-
-        .college-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
-        .meta-tag { background: var(--meta-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 2px 8px; font-size: .73rem; color: var(--text-muted); }
-        .meta-tag i { margin-right: 3px; }
-
-        .college-stats { display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; }
-        @media(max-width:700px){ .college-stats { grid-template-columns: repeat(3,1fr); } }
-        .stat-box { background: var(--stat-bg); border-radius: 9px; padding: 8px 8px; text-align: center; }
-        .stat-label { font-size: .63rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
-        .stat-val { font-size: .88rem; font-weight: 800; color: var(--text); }
-
-        .chance-bar-wrap { background: var(--bar-bg); border-radius: 5px; height: 4px; margin-top: 5px; overflow: hidden; }
-        .chance-bar { height: 4px; border-radius: 5px; }
-        .bar-safe     { background: var(--safe); }
-        .bar-moderate { background: var(--moderate); }
-        .bar-ambitious{ background: var(--ambitious); }
-        .bar-dream    { background: var(--dream); }
-
-        .cutoff-note { font-size: .7rem; color: var(--text-faint); margin-top: 8px; }
-
-        /* ── Empty state ── */
-        .empty-state { text-align: center; padding: 70px 24px; }
-        .icon-circle { width: 78px; height: 78px; background: rgba(79,142,247,.1); border: 1px solid rgba(79,142,247,.2); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--brand); margin-bottom: 20px; }
-        .empty-state h4 { font-size: 1.22rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
-        .empty-state p { color: var(--text-muted); max-width: 380px; margin: 0 auto 26px; font-size: .92rem; }
-        .step-list { display: inline-flex; flex-direction: column; gap: 9px; text-align: left; }
-        .step-item { display: flex; align-items: center; gap: 12px; background: var(--step-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 9px 15px; font-size: .84rem; color: var(--text-muted); }
-        .step-num { width: 25px; height: 25px; background: var(--brand); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .73rem; font-weight: 800; color: #fff; flex-shrink: 0; }
-
-        /* ── Footer ── */
-        footer { border-top: 1px solid var(--card-border); padding: 24px 0; margin-top: 60px; text-align: center; color: var(--footer); font-size: .82rem; }
-
-        /* ── Card action buttons ── */
-        .card-actions { display: flex; gap: 7px; margin-top: 11px; flex-wrap: wrap; }
-        .btn-card-action { flex: 1; min-width: 70px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); border-radius: 7px; padding: 6px 8px; font-size: .74rem; cursor: pointer; transition: all .2s; text-decoration: none; }
-        .btn-card-action:hover { border-color: var(--brand); color: var(--brand); }
-        .btn-card-action.bookmarked { border-color: var(--moderate); color: var(--moderate); }
-        .btn-card-action.in-compare { border-color: var(--ambitious); color: var(--ambitious); background: rgba(129,140,248,.08); }
-
-        /* ── Result toolbar ── */
-        .result-toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
-        .btn-toolbar { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); border-radius: 8px; padding: 6px 13px; font-size: .79rem; cursor: pointer; transition: all .2s; text-decoration: none; }
-        .btn-toolbar:hover { border-color: var(--brand); color: var(--brand); }
-
-        /* ── Map ── */
-        #map-section { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 18px; margin-top: 16px; }
-        #map-section h5 { font-size: .93rem; font-weight: 700; color: var(--text); margin-bottom: 12px; }
-        #map { height: 320px; border-radius: 12px; overflow: hidden; }
-
-        /* ── Floating compare bar ── */
-        .compare-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--card-bg); border: 1px solid var(--brand); border-radius: 40px; box-shadow: 0 8px 32px rgba(79,142,247,.25); padding: 10px 20px; display: flex; align-items: center; gap: 14px; z-index: 999; white-space: nowrap; }
-        .compare-bar-text { font-size: .84rem; color: var(--text); font-weight: 600; }
-        .compare-bar-text span { color: var(--brand); }
-        .btn-compare-go { background: var(--brand); border: none; color: #fff; border-radius: 20px; padding: 7px 18px; font-size: .82rem; font-weight: 700; cursor: pointer; transition: all .2s; }
-        .btn-compare-go:hover { background: #3b75e0; }
-        .btn-compare-clear { background: transparent; border: none; color: var(--text-faint); font-size: .8rem; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: color .2s; }
-        .btn-compare-clear:hover { color: #ef4444; }
-
-        /* ── Print styles ── */
-        @media print {
-            .navbar, .sidebar-card, .analysis-card, .card-actions, .compare-bar, #map-section, .results-header .result-toolbar, footer { display: none !important; }
-            .main-grid { grid-template-columns: 1fr !important; }
-            .college-card { break-inside: avoid; border: 1px solid #ddd !important; border-left: 3px solid #000 !important; }
-            body { background: #fff !important; color: #000 !important; }
-        }
-
-        /* ── Toast notification ── */
-        .toast-notif { position: fixed; top: 70px; right: 18px; background: var(--card-bg); border: 1px solid var(--brand); border-radius: 10px; padding: 10px 16px; font-size: .82rem; color: var(--text); z-index: 9999; box-shadow: 0 4px 16px rgba(0,0,0,.15); display: flex; align-items: center; gap: 8px; transform: translateX(120%); transition: transform .3s; }
-        .toast-notif.show { transform: translateX(0); }
-
-        /* ── User chip (navbar) ── */
-        .user-chip { display: inline-flex; align-items: center; gap: 7px; background: var(--stat-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 4px 12px 4px 4px; text-decoration: none; transition: border-color .2s; }
-        .user-chip:hover { border-color: var(--brand); }
-        .user-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
-        .user-initials { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), #818cf8); display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: #fff; }
-        .user-chip-name { font-size: .82rem; font-weight: 600; color: var(--text); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .login-btn { border-color: var(--brand) !important; color: var(--brand) !important; }
-        .login-btn:hover { background: var(--brand) !important; color: #fff !important; }
-    </style>
 </head>
 <body>
 
-    <!-- Navbar -->
-    <nav class="navbar">
-        <a class="navbar-brand" href="{{ url_for('index') }}">
-            <i class="fas fa-graduation-cap me-2"></i>College<span>Khoj</span>
-        </a>
-        <div class="nav-right">
-            <a href="{{ url_for('index') }}" class="nav-pill">General Search</a>
-            <a href="{{ url_for('mhcet_page') }}" class="nav-pill active">MH-CET Portal</a>
-            <a href="#" class="nav-pill" id="navCompare" onclick="goCompare(event)">Compare</a>
-            <a href="#" class="nav-pill" id="navBookmarks" onclick="goBookmarks(event)">Bookmarks</a>
+    {% include 'navbar.html' %}
 
-            {% if current_user %}
-            <a href="/profile" class="user-chip" title="My Profile">
-                {% if current_user.profile_image_url %}
-                <img src="{{ current_user.profile_image_url }}" class="user-avatar" alt="">
-                {% else %}
-                <span class="user-initials">{{ current_user.initials() }}</span>
-                {% endif %}
-                <span class="user-chip-name">{{ current_user.first_name or current_user.email or 'Me' }}</span>
-            </a>
-            <button class="nav-pill" onclick="doSignOut()" title="Sign out" style="cursor:pointer;">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
-            {% else %}
-            <a href="/login" class="nav-pill login-btn">
-                <i class="fas fa-user me-1"></i>Login
-            </a>
-            {% endif %}
-
-            <button class="theme-btn" id="themeToggle" title="Toggle light/dark mode">
-                <i class="fas fa-sun" id="themeIcon"></i>
-            </button>
-        </div>
-    </nav>
-
-    <!-- Flash Messages -->
+    <!-- ════════════════════════════════════════════════════════
+         FLASH MESSAGES
+         ════════════════════════════════════════════════════════ -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div style="max-width:1200px;margin:12px auto;padding:0 16px;">
+            <div class="container-lg px-3 px-md-4" style="margin-top:12px;">
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show border-0 rounded-3" role="alert">
+                    <div class="flash flash-{{ 'error' if category == 'error' else 'success' }}" role="alert">
+                        <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'check-circle' }}"></i>
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
     {% endwith %}
 
-    <div class="container-lg px-3 px-md-4">
-        <!-- Hero -->
-        <div class="hero">
-            <div class="badge-pill"><i class="fas fa-calculator"></i>MH-CET CAP Round Predictor</div>
-            <h1>Check Your <span>Admission Chances</span></h1>
-            <p>Enter your percentile, category & gender — see colleges from top to low with realistic chances</p>
+    <!-- ════════════════════════════════════════════════════════
+         PREMIUM HERO SECTION
+         ════════════════════════════════════════════════════════ -->
+    <section class="mhcet-hero">
+        <div class="hero-floating-shapes">
+            <div class="hero-shape shape-1"><i class="fas fa-graduation-cap"></i></div>
+            <div class="hero-shape shape-2"><i class="fas fa-chart-line"></i></div>
+            <div class="hero-shape shape-3"><i class="fas fa-brain"></i></div>
+            <div class="hero-shape shape-4"><i class="fas fa-university"></i></div>
         </div>
+        <div class="container-lg px-3 px-md-4">
+            <div class="mhcet-hero-badge">
+                <i class="fas fa-calculator"></i> MH-CET CAP Round Predictor
+            </div>
+            <h1>
+                Check Your <span class="gradient-text">Admission Chances</span>
+            </h1>
+            <p>
+                Enter your percentile, category & gender — see colleges from top to low with realistic chances based on 3 years of CAP cutoff data
+            </p>
+            <div class="mhcet-hero-stats">
+                <div class="mhcet-hero-stat">
+                    <i class="fas fa-building"></i>
+                    <span class="stat-num" data-target="1000">0</span><span>+</span>
+                    <span>Colleges</span>
+                </div>
+                <div class="mhcet-hero-stat">
+                    <i class="fas fa-calendar"></i>
+                    <span class="stat-num" data-target="3">0</span>
+                    <span>Years Data</span>
+                </div>
+                <div class="mhcet-hero-stat">
+                    <i class="fas fa-brain"></i>
+                    <span>AI Analysis</span>
+                </div>
+                <div class="mhcet-hero-stat">
+                    <i class="fas fa-users"></i>
+                    <span class="stat-num" data-target="50000">0</span><span>+</span>
+                    <span>Students</span>
+                </div>
+            </div>
+            <div class="mhcet-features">
+                <span class="mhcet-feature-pill"><i class="fas fa-database"></i> 3 Years Cutoff Data</span>
+                <span class="mhcet-feature-pill"><i class="fas fa-brain"></i> AI-Powered Analysis</span>
+                <span class="mhcet-feature-pill"><i class="fas fa-check-circle"></i> Real CAP Cutoffs</span>
+                <span class="mhcet-feature-pill"><i class="fas fa-chart-bar"></i> Trend Analysis</span>
+            </div>
+        </div>
+    </section>
 
-        <!-- Main Grid -->
-        <div class="main-grid pb-5">
-            <!-- Sidebar -->
+    <!-- ════════════════════════════════════════════════════════
+         MAIN GRID
+         ════════════════════════════════════════════════════════ -->
+    <div class="container-lg px-3 px-md-4 pb-5" style="margin-top:var(--space-6);">
+        <div class="main-grid">
+            <!-- ═══ LEFTBAR: FILTER PANEL ═══ -->
             <div>
-                <div class="sidebar-card">
-                    <div class="card-head">
-                        <i class="fas fa-user-graduate" style="color:var(--brand);"></i>
-                        <h5>Your MH-CET Profile</h5>
-                        <span class="badge-required">* Required</span>
+                <!-- Mobile Filter Toggle -->
+                <button class="mhcet-filter-toggle" id="filterToggle" onclick="toggleFilter()">
+                    <span><i class="fas fa-sliders-h"></i> Filters & Profile</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+
+                <!-- Profile Form Panel -->
+                <div class="mhcet-filter-panel" id="filterPanel">
+                    <div class="mhcet-filter-header">
+                        <i class="fas fa-user-graduate"></i>
+                        <h3>Your MH-CET Profile</h3>
+                        <span class="required-badge">* Required</span>
                     </div>
-                    <div class="card-body-inner">
-                        <form method="POST" action="{{ url_for('mhcet_recommend') }}">
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-percent me-1"></i>MH-CET Percentile *</label>
-                                <div class="percentile-wrap">
-                                    <input type="number" class="form-control" name="percentile"
-                                           placeholder="e.g., 85.50" min="0" max="100" step="0.01"
-                                           value="{{ form_data.percentile if form_data else '' }}" required>
-                                    <span class="percentile-suffix">%ile</span>
-                                </div>
-                                <div class="form-text">Your MH-CET 2024 percentile score</div>
+                    <div class="mhcet-filter-body">
+                        <form method="POST" action="{{ url_for('mhcet_recommend') }}" id="mhcetForm">
+                            <!-- Percentile -->
+                            <div class="mhcet-field-group">
+                                <label for="percentileInput">MH-CET Percentile</label>
+                                <input type="number" class="form-control" name="percentile"
+                                       placeholder="e.g. 85.50" min="0" max="100" step="0.01"
+                                       value="{{ form_data.percentile if form_data else '' }}"
+                                       id="percentileInput" required>
+                                <span class="field-hint">Your MH-CET 2024 percentile score</span>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-id-card me-1"></i>Category *</label>
-                                <select class="form-select" name="category" required>
-                                    <option value="">— Select —</option>
+                            <!-- Category -->
+                            <div class="mhcet-field-group">
+                                <label for="categorySelect">Category</label>
+                                <select class="form-control" name="category" id="categorySelect" required>
+                                    <option value="" disabled {{ 'selected' if not form_data else '' }}>Select category</option>
                                     {% for cat in categories %}
                                         <option value="{{ cat }}" {{ 'selected' if form_data and form_data.category == cat }}>{{ cat }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-user me-1"></i>Gender *</label>
-                                <select class="form-select" name="gender" required>
-                                    <option value="">— Select —</option>
+                            <!-- Gender -->
+                            <div class="mhcet-field-group">
+                                <label for="genderSelect">Gender</label>
+                                <select class="form-control" name="gender" id="genderSelect" required>
+                                    <option value="" disabled {{ 'selected' if not form_data else '' }}>Select gender</option>
                                     {% for g in genders %}
                                         <option value="{{ g }}" {{ 'selected' if form_data and form_data.gender == g }}>{{ g }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
 
-                            <hr class="divider">
+                            <!-- Divider -->
+                            <hr class="divider" style="margin:var(--space-2) 0;">
 
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-rupee-sign me-1"></i>Max Budget (₹)</label>
-                                <input type="number" class="form-control" name="budget"
-                                       placeholder="e.g., 2,00,000"
-                                       value="{{ form_data.budget if form_data else '' }}">
-                                <div class="form-text">Leave empty for no limit</div>
+                            <!-- Optional Filters Label -->
+                            <div style="font-size:var(--text-xs);font-weight:var(--font-semibold);color:var(--text-secondary);text-transform:uppercase;letter-spacing:var(--letter-wide);display:flex;align-items:center;gap:var(--space-2);">
+                                <i class="fas fa-sliders-h" style="color:var(--color-primary);font-size:0.65rem;"></i> Optional Filters
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-map-marker-alt me-1"></i>Preferred Locations</label>
-                                <div class="pill-group">
+                            <!-- Budget -->
+                            <div class="mhcet-field-group">
+                                <label for="budgetInput">Max Budget (₹)</label>
+                                <input type="number" class="form-control" name="budget"
+                                       placeholder="e.g. 2,00,000"
+                                       value="{{ form_data.budget if form_data else '' }}"
+                                       id="budgetInput">
+                                <span class="field-hint">Leave empty for no limit</span>
+                            </div>
+
+                            <!-- Locations -->
+                            <div class="mhcet-field-group">
+                                <span class="field-label"><i class="fas fa-map-marker-alt"></i> Preferred Locations</span>
+                                <div class="mhcet-pill-group">
                                     {% for loc in locations %}
                                     {% set loc_id = "loc_" ~ loop.index %}
                                     <input type="checkbox" name="locations" value="{{ loc }}" id="{{ loc_id }}"
                                            {{ 'checked' if form_data and form_data.locations and loc in form_data.locations }}>
-                                    <label for="{{ loc_id }}"><i class="fas fa-map-marker-alt" style="font-size:.65rem;"></i>{{ loc }}</label>
+                                    <label for="{{ loc_id }}"><i class="fas fa-map-marker-alt"></i>{{ loc }}</label>
                                     {% endfor %}
                                 </div>
-                                <div class="form-text">Click to select one or more cities</div>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-code-branch me-1"></i>Preferred Branches</label>
-                                <div class="pill-group">
+                            <!-- Branches -->
+                            <div class="mhcet-field-group">
+                                <span class="field-label"><i class="fas fa-code-branch"></i> Preferred Branches</span>
+                                <div class="mhcet-pill-group">
                                     {% for br in branches %}
                                     {% set br_id = "br_" ~ loop.index %}
                                     <input type="checkbox" name="branches" value="{{ br }}" id="{{ br_id }}"
@@ -394,173 +205,248 @@
                                     <label for="{{ br_id }}">{{ br }}</label>
                                     {% endfor %}
                                 </div>
-                                <div class="form-text">Click to filter by branch — leave blank to show all</div>
+                                <span class="field-hint">Leave blank to show all branches</span>
                             </div>
 
-                            <div class="mb-4">
-                                <label class="form-label">
-                                    <i class="fas fa-list-ol me-1"></i>Results &nbsp;
-                                    <span class="range-val" id="top_n_value">{{ form_data.top_n if form_data else 15 }}</span>
-                                </label>
-                                <input type="range" class="form-range mt-1" name="top_n"
-                                       min="5" max="30"
-                                       value="{{ form_data.top_n if form_data else 15 }}"
-                                       oninput="document.getElementById('top_n_value').textContent = this.value">
+                            <!-- Results Count -->
+                            <div class="mhcet-field-group">
+                                <span class="field-label"><i class="fas fa-list-ol"></i> Results</span>
+                                <div class="mhcet-range-wrap">
+                                    <input type="range" name="top_n"
+                                           min="5" max="30"
+                                           value="{{ form_data.top_n if form_data else 15 }}"
+                                           oninput="document.getElementById('top_n_value').textContent = this.value">
+                                    <span class="range-value" id="top_n_value">{{ form_data.top_n if form_data else 15 }}</span>
+                                </div>
                             </div>
 
-                            <button type="submit" class="btn-brand">
-                                <i class="fas fa-search me-2"></i>Check Admission Chances
+                            <!-- Submit -->
+                            <button type="submit" class="mhcet-submit-btn">
+                                <i class="fas fa-search"></i> Check Admission Chances
                             </button>
                         </form>
                     </div>
                 </div>
 
-                <!-- Profile Analysis -->
+                <!-- Profile Analysis (when results exist) -->
                 {% if student_analysis %}
-                <div class="analysis-card">
-                    <div class="analysis-head"><i class="fas fa-chart-pie" style="color:var(--brand);"></i>Profile Analysis</div>
-                    <div class="analysis-body">
-                        <div class="analysis-row">
-                            <span class="a-label">Performance</span>
-                            <span class="a-val" style="background:rgba(79,142,247,.12);color:var(--brand);">{{ student_analysis.percentile_category }}</span>
+                <div class="mhcet-analysis-card animate-on-scroll" style="margin-top:var(--space-4);">
+                    <div class="mhcet-analysis-header">
+                        <i class="fas fa-chart-pie"></i> Profile Analysis
+                    </div>
+                    <div class="mhcet-analysis-body">
+                        <div class="mhcet-analysis-row">
+                            <span class="mhcet-analysis-label">Performance</span>
+                            <span class="mhcet-analysis-value" style="background:var(--color-primary-muted);color:var(--color-primary);">{{ student_analysis.percentile_category }}</span>
                         </div>
-                        <div class="analysis-row">
-                            <span class="a-label">Competitiveness</span>
-                            <span class="a-val" style="background:rgba(245,158,11,.12);color:var(--moderate);">{{ student_analysis.competitive_level }}</span>
+                        <div class="mhcet-analysis-row">
+                            <span class="mhcet-analysis-label">Competitiveness</span>
+                            <span class="mhcet-analysis-value" style="background:var(--color-warning-bg);color:var(--color-moderate);">{{ student_analysis.competitive_level }}</span>
                         </div>
                         {% if student_analysis.budget_category %}
-                        <div class="analysis-row">
-                            <span class="a-label">Budget</span>
-                            <span class="a-val" style="background:rgba(34,197,94,.12);color:var(--safe);">{{ student_analysis.budget_category }}</span>
+                        <div class="mhcet-analysis-row">
+                            <span class="mhcet-analysis-label">Budget</span>
+                            <span class="mhcet-analysis-value" style="background:var(--color-success-bg);color:var(--color-safe);">{{ student_analysis.budget_category }}</span>
                         </div>
                         {% endif %}
-                        <div class="strategy-box">
-                            <i class="fas fa-lightbulb me-2" style="color:var(--moderate);"></i>
-                            {{ student_analysis.recommendations.strategy }}
+                        <div class="mhcet-analysis-strategy">
+                            <i class="fas fa-lightbulb"></i>
+                            <span>{{ student_analysis.recommendations.strategy }}</span>
                         </div>
                     </div>
                 </div>
                 {% endif %}
             </div>
 
-            <!-- Results -->
+            <!-- ═══ RIGHT: RESULTS ═══ -->
             <div>
                 {% if recommendations %}
-                    <div class="results-header">
-                        <h4><i class="fas fa-graduation-cap me-2" style="color:var(--brand);"></i>College Possibilities</h4>
-                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                            <span class="results-count">{{ recommendations|length }} colleges</span>
-                            <div class="result-toolbar">
-                                <button class="btn-toolbar" onclick="shareResults()"><i class="fas fa-share-alt"></i> Share</button>
-                                <button class="btn-toolbar" onclick="window.print()"><i class="fas fa-file-pdf"></i> PDF</button>
-                            </div>
+                    <!-- Trend Insights Panel -->
+                    <div class="mhcet-insight-card animate-on-scroll">
+                        <div class="mhcet-insight-header">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Trend Insights</span>
+                        </div>
+                        <div class="mhcet-insight-text">
+                            Based on your <strong>{{ form_data.percentile }}</strong> percentile in <strong>{{ form_data.category }}</strong> category, here's your admission landscape across Maharashtra colleges.
+                            {% for college, data in recommendations[:3] %}
+                                {% if data.has_real_data and data.cutoff_trend %}
+                                    {% if data.cutoff_trend == 'Increasing' %}
+                                        "{{ college.college }}" shows an <strong>increasing cutoff trend</strong> in {{ college.branch }} — apply early.
+                                    {% elif data.cutoff_trend == 'Decreasing' %}
+                                        "{{ college.college }}" shows a <strong>decreasing cutoff trend</strong> in {{ college.branch }} — good opportunity.
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <div class="mhcet-insight-tiers">
+                            <span class="mhcet-insight-tier tier-safe"><i class="fas fa-check-circle"></i> Safe — High chance</span>
+                            <span class="mhcet-insight-tier tier-moderate"><i class="fas fa-thumbs-up"></i> Moderate — Good chance</span>
+                            <span class="mhcet-insight-tier tier-ambitious"><i class="fas fa-fire"></i> Ambitious — Try it</span>
+                            <span class="mhcet-insight-tier tier-dream" style="background:var(--color-dream-bg);color:var(--color-dream);border:1px solid var(--color-dream-border);"><i class="fas fa-star"></i> Dream — Reach</span>
+                        </div>
+                    </div>
+
+                    <!-- Results Header -->
+                    <div class="mhcet-results-header animate-on-scroll">
+                        <div>
+                            <h3><i class="fas fa-graduation-cap"></i>College Possibilities</h3>
+                            <span class="mhcet-results-count">Showing <strong>{{ recommendations|length }}</strong> colleges</span>
+                        </div>
+                        <div class="mhcet-results-actions">
+                            <button class="btn-ghost btn-sm" onclick="shareResults()"><i class="fas fa-share-alt"></i> Share</button>
+                            <button class="btn-ghost btn-sm" onclick="window.print()"><i class="fas fa-file-pdf"></i> PDF</button>
                         </div>
                     </div>
 
                     <!-- Legend -->
-                    <div class="legend-bar">
-                        <div class="legend-item"><div class="legend-dot" style="background:var(--safe);"></div>Safe — Very high chance</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:var(--moderate);"></div>Moderate — Good chance</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:var(--ambitious);"></div>Ambitious — Try it</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:var(--dream);"></div>Dream — Low chance</div>
+                    <div class="mhcet-legend">
+                        <div class="mhcet-legend-item"><div class="mhcet-legend-dot" style="background:var(--color-safe);"></div>Safe — Very high chance</div>
+                        <div class="mhcet-legend-item"><div class="mhcet-legend-dot" style="background:var(--color-moderate);"></div>Moderate — Good chance</div>
+                        <div class="mhcet-legend-item"><div class="mhcet-legend-dot" style="background:var(--color-ambitious);"></div>Ambitious — Try it</div>
+                        <div class="mhcet-legend-item"><div class="mhcet-legend-dot" style="background:var(--color-dream);"></div>Dream — Low chance</div>
                     </div>
 
+                    <!-- Premium College Cards -->
                     {% for college, data in recommendations %}
                     {% set cat = data.category_type|lower %}
-                    <div class="college-card {{ cat }}-card" data-id="{{ college.id }}" data-name="{{ college.college }}" data-loc="{{ college.location }}" data-lat="" data-lng="">
-                        <div class="card-top">
-                            <div class="college-name">{{ college.college }}</div>
-                            <span class="chance-badge badge-{{ cat }}">
-                                {% if cat == 'safe' %}<i class="fas fa-check-circle me-1"></i>
-                                {% elif cat == 'moderate' %}<i class="fas fa-thumbs-up me-1"></i>
-                                {% elif cat == 'ambitious' %}<i class="fas fa-fire me-1"></i>
-                                {% else %}<i class="fas fa-star me-1"></i>{% endif %}
+                    <div class="mhcet-card {{ cat }}-card animate-on-scroll" data-id="{{ college.id }}" data-name="{{ college.college }}" data-loc="{{ college.location }}" data-lat="" data-lng="" style="animation-delay:{{ loop.index * 0.08 }}s;">
+                        <!-- Card Header -->
+                        <div class="mhcet-card-top">
+                            <div class="mhcet-card-name">{{ college.college }}</div>
+                            <span class="mhcet-card-rank"><i class="fas fa-trophy"></i> NIRF #{{ college.nirf_rank }}</span>
+                            <span class="mhcet-card-badge badge-{{ cat }}">
+                                {% if cat == 'safe' %}<i class="fas fa-check-circle"></i>
+                                {% elif cat == 'moderate' %}<i class="fas fa-thumbs-up"></i>
+                                {% elif cat == 'ambitious' %}<i class="fas fa-fire"></i>
+                                {% else %}<i class="fas fa-star"></i>{% endif %}
                                 {{ data.category_type }}
                             </span>
                         </div>
 
-                        <div class="college-meta">
-                            <span class="meta-tag"><i class="fas fa-map-marker-alt"></i>{{ college.location }}</span>
-                            <span class="meta-tag"><i class="fas fa-code-branch"></i>{{ college.branch }}</span>
-                            <span class="meta-tag"><i class="fas fa-trophy"></i>NIRF #{{ college.nirf_rank }}</span>
+                        <!-- Meta -->
+                        <div class="mhcet-card-meta">
+                            <span class="mhcet-meta-tag"><i class="fas fa-map-marker-alt"></i>{{ college.location }}</span>
+                            <span class="mhcet-meta-tag"><i class="fas fa-code-branch"></i>{{ college.branch }}</span>
                             {% if data.has_real_data %}
-                            <span class="meta-tag" style="color:var(--safe);border-color:rgba(34,197,94,.25);"><i class="fas fa-database"></i>Real Cutoff</span>
+                            <span class="mhcet-meta-tag real-data"><i class="fas fa-database"></i>Real Cutoff</span>
                             {% else %}
-                            <span class="meta-tag" style="color:var(--moderate);border-color:rgba(245,158,11,.25);"><i class="fas fa-calculator"></i>Estimated</span>
+                            <span class="mhcet-meta-tag estimated"><i class="fas fa-calculator"></i>Estimated</span>
                             {% endif %}
                         </div>
 
-                        <div class="college-stats">
-                            <div class="stat-box">
-                                <div class="stat-label">Fees</div>
-                                <div class="stat-val" style="color:var(--safe);font-size:.78rem;">₹{{ "{:,.0f}".format(college.fees) }}</div>
+                        <!-- Stats Grid -->
+                        <div class="mhcet-card-stats">
+                            <div class="mhcet-stat-item">
+                                <div class="mhcet-stat-label">Fees</div>
+                                <div class="mhcet-stat-value fees">₹{{ "{:,.0f}".format(college.fees) }}</div>
                             </div>
-                            <div class="stat-box">
-                                <div class="stat-label">Placement</div>
-                                <div class="stat-val" style="color:#06b6d4;">{{ "%.0f"|format(college.placement_rate) }}%</div>
+                            <div class="mhcet-stat-item">
+                                <div class="mhcet-stat-label">Placement</div>
+                                <div class="mhcet-stat-value placement">{{ "%.0f"|format(college.placement_rate) }}%</div>
                             </div>
-                            <div class="stat-box">
-                                <div class="stat-label">Rating</div>
-                                <div class="stat-val" style="color:#f59e0b;">{{ "%.1f"|format(college.rating) }}</div>
+                            <div class="mhcet-stat-item">
+                                <div class="mhcet-stat-label">Rating</div>
+                                <div class="mhcet-stat-value rating">{{ "%.1f"|format(college.rating) }}</div>
                             </div>
-                            <div class="stat-box">
-                                <div class="stat-label">Cutoff</div>
-                                <div class="stat-val" style="color:var(--text-muted);font-size:.78rem;">
+                            <div class="mhcet-stat-item">
+                                <div class="mhcet-stat-label">Cutoff</div>
+                                <div class="mhcet-stat-value cutoff">
                                     {% if data.has_real_data %}{{ "%.1f"|format(data.latest_cutoff) }}%{% else %}~{{ "%.0f"|format(data.estimated_cutoff) }}%{% endif %}
                                 </div>
                             </div>
-                            <div class="stat-box">
-                                <div class="stat-label">Chance</div>
-                                <div class="stat-val" style="color:{% if cat=='safe' %}var(--safe){% elif cat=='moderate' %}var(--moderate){% elif cat=='ambitious' %}var(--ambitious){% else %}var(--dream){% endif %};">
-                                    {{ (data.probability * 100)|round|int }}%
-                                </div>
-                                <div class="chance-bar-wrap">
-                                    <div class="chance-bar bar-{{ cat }}" style="width:{{ (data.probability*100)|round|int }}%;"></div>
+                            <div class="mhcet-stat-item" style="grid-column: span 4;">
+                                <div class="mhcet-stat-label">Admission Chance</div>
+                                <div class="mhcet-stat-value chance-{{ cat }}">{{ (data.probability * 100)|round|int }}%</div>
+                                <div class="mhcet-chance-bar">
+                                    <div class="bar-track">
+                                        <div class="bar-fill fill-{{ cat }}" style="width:{{ (data.probability*100)|round|int }}%;"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Trend Row -->
                         {% if data.has_real_data and data.cutoff_trend %}
-                        <div class="cutoff-note">
-                            <i class="fas fa-arrow-{{ 'up' if data.cutoff_trend == 'Increasing' else ('down' if data.cutoff_trend == 'Decreasing' else 'right') }} me-1"></i>
-                            Trend ({{ data.years_analyzed|join(', ') }}): <strong>{{ data.cutoff_trend }}</strong>
-                            &nbsp;·&nbsp; Avg: {{ "%.1f"|format(data.average_cutoff) }}%ile
+                        <div class="mhcet-card-trend">
+                            <span class="mhcet-trend-icon trend-{{ 'up' if data.cutoff_trend == 'Increasing' else ('down' if data.cutoff_trend == 'Decreasing' else 'stable') }}">
+                                <i class="fas fa-arrow-{{ 'up' if data.cutoff_trend == 'Increasing' else ('down' if data.cutoff_trend == 'Decreasing' else 'right') }}"></i>
+                            </span>
+                            <span>Trend: <strong>{{ data.cutoff_trend }}</strong></span>
+                            <span>Avg: {{ "%.1f"|format(data.average_cutoff) }}%ile</span>
+                            <div class="mhcet-trend-chart trend-chart-{{ cat }}">
+                                {% if data.cutoff_data %}
+                                {% set max_val = data.cutoff_data | map(attribute='cutoff_percentile') | max %}
+                                {% set min_val = data.cutoff_data | map(attribute='cutoff_percentile') | min %}
+                                {% set range_val = max_val - min_val if max_val > min_val else 1 %}
+                                {% for c in data.cutoff_data %}
+                                <div class="trend-bar" style="height:{{ ((c.cutoff_percentile - min_val) / range_val * 24 + 4)|round|int }}px;" title="{{ c.year }}: {{ c.cutoff_percentile }}%"></div>
+                                {% endfor %}
+                                {% endif %}
+                            </div>
+                            <div class="mhcet-trend-years">
+                                {% for y in data.years_analyzed %}
+                                <span class="mhcet-trend-year">{{ y }}</span>
+                                {% endfor %}
+                            </div>
                         </div>
                         {% endif %}
 
-                        <!-- Action buttons -->
-                        <div class="card-actions">
-                            <button class="btn-card-action" id="bm-{{ college.id }}"
+                        <!-- Actions -->
+                        <div class="mhcet-card-actions">
+                            <button class="mhcet-card-action" id="bm-{{ college.id }}"
                                     onclick="toggleBookmark({{ college.id }}, '{{ college.college|replace("'","\\'")|e }}')">
                                 <i class="fas fa-bookmark"></i> <span id="bm-lbl-{{ college.id }}">Save</span>
                             </button>
-                            <button class="btn-card-action" id="cmp-{{ college.id }}"
+                            <button class="mhcet-card-action" id="cmp-{{ college.id }}"
                                     onclick="toggleCompare({{ college.id }}, '{{ college.college|replace("'","\\'")|e }}')">
                                 <i class="fas fa-columns"></i> <span id="cmp-lbl-{{ college.id }}">Compare</span>
                             </button>
-                            <a class="btn-card-action" href="/college/{{ college.id }}">
+                            <a class="mhcet-card-action" href="/college/{{ college.id }}">
                                 <i class="fas fa-external-link-alt"></i> Details
                             </a>
                         </div>
                     </div>
                     {% endfor %}
 
-                    <!-- Map -->
-                    <div id="map-section">
-                        <h5><i class="fas fa-map-marker-alt me-2" style="color:#ef4444;"></i>College Locations</h5>
+                    <!-- Map Section -->
+                    <div class="mhcet-map-section animate-on-scroll">
+                        <div class="mhcet-map-header">
+                            <i class="fas fa-map-marker-alt"></i> College Locations
+                        </div>
                         <div id="map"></div>
                     </div>
 
                 {% else %}
-                    <div class="empty-state">
-                        <div class="icon-circle"><i class="fas fa-search"></i></div>
-                        <h4>How does it work?</h4>
+                    <!-- Premium Empty State -->
+                    <div class="mhcet-empty animate-on-scroll">
+                        <div class="mhcet-empty-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h3>How does it work?</h3>
                         <p>We compare your percentile against 3 years of CAP cutoff data to predict realistic admission possibilities from top to low.</p>
-                        <div class="step-list">
-                            <div class="step-item"><span class="step-num">1</span>Enter your MH-CET percentile</div>
-                            <div class="step-item"><span class="step-num">2</span>Select your category and gender</div>
-                            <div class="step-item"><span class="step-num">3</span>Add optional budget & location filters</div>
-                            <div class="step-item"><span class="step-num">4</span>See colleges ranked from top to low with realistic chance %</div>
+                        <div class="mhcet-steps">
+                            <div class="mhcet-step">
+                                <span class="mhcet-step-num">1</span>
+                                <span>Enter your MH-CET percentile</span>
+                            </div>
+                            <div class="mhcet-step">
+                                <span class="mhcet-step-num">2</span>
+                                <span>Select your category and gender</span>
+                            </div>
+                            <div class="mhcet-step">
+                                <span class="mhcet-step-num">3</span>
+                                <span>Add optional budget & location filters</span>
+                            </div>
+                            <div class="mhcet-step">
+                                <span class="mhcet-step-num">4</span>
+                                <span>See colleges ranked from top to low with realistic chance %</span>
+                            </div>
+                        </div>
+                        <div style="margin-top:var(--space-6);">
+                            <button class="mhcet-submit-btn" style="display:inline-flex;width:auto;" onclick="document.getElementById('mhcetForm').scrollIntoView({behavior:'smooth'})">
+                                <i class="fas fa-arrow-down"></i> Get Started
+                            </button>
                         </div>
                     </div>
                 {% endif %}
@@ -568,188 +454,264 @@
         </div>
     </div>
 
-    <!-- Floating compare bar -->
+    <!-- ════════════════════════════════════════════════════════
+         FLOATING COMPARE BAR
+         ════════════════════════════════════════════════════════ -->
     <div class="compare-bar" id="compareBar" style="display:none;">
         <div class="compare-bar-text"><span id="compareCount">0</span> selected</div>
         <button class="btn-compare-go" onclick="goCompare(null)"><i class="fas fa-columns me-1"></i>Compare Now</button>
         <button class="btn-compare-clear" onclick="clearCompare()" title="Clear selection"><i class="fas fa-times"></i></button>
     </div>
 
-    <!-- Toast notification -->
-    <div class="toast-notif" id="toast"><i class="fas fa-check-circle" style="color:var(--safe);"></i><span id="toastMsg"></span></div>
+    <!-- ════════════════════════════════════════════════════════
+         TOAST NOTIFICATION
+         ════════════════════════════════════════════════════════ -->
+    <div class="toast-notif" id="toast">
+        <i class="fas fa-check-circle" style="color:var(--color-safe);"></i>
+        <span id="toastMsg"></span>
+    </div>
 
+    <!-- ════════════════════════════════════════════════════════
+         FOOTER
+         ════════════════════════════════════════════════════════ -->
     <footer>
-        <i class="fas fa-calculator me-2"></i>MH-CET Portal · Based on Historical CAP Cutoff Data (2022–2024)
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="navbar-brand-icon" style="width:28px;height:28px;font-size:0.65rem;">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <span style="font-weight:800;color:var(--text-primary);font-size:var(--text-sm);">College<span style="color:var(--color-primary);">Khoj</span></span>
+            </div>
+            <p class="footer-copyright">Based on Historical CAP Cutoff Data (2022–2024) · Maharashtra MH-CET</p>
+        </div>
     </footer>
 
+    <!-- ════════════════════════════════════════════════════════
+         JAVASCRIPT
+         ════════════════════════════════════════════════════════ -->
     <script>
-        /* ── Theme ── */
-        const html = document.documentElement;
-        const themeBtn = document.getElementById('themeToggle');
-        const themeIcon = document.getElementById('themeIcon');
-        function applyTheme(t) {
-            html.setAttribute('data-bs-theme', t);
-            html.setAttribute('data-theme', t);
-            themeIcon.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-            localStorage.setItem('cf-theme', t);
-        }
-        applyTheme(localStorage.getItem('cf-theme') || 'dark');
-        themeBtn.addEventListener('click', () => applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
-
-        /* ── Toast ── */
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            document.getElementById('toastMsg').textContent = msg;
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2500);
-        }
-
-        /* ── Bookmarks ── */
-        function getBookmarks() { return JSON.parse(localStorage.getItem('cf-bookmarks') || '{}'); }
-        function toggleBookmark(id, name) {
-            const bm = getBookmarks();
-            if (bm[id]) { delete bm[id]; showToast('Removed from saved'); }
-            else         { bm[id] = name; showToast('Saved! ★'); }
-            localStorage.setItem('cf-bookmarks', JSON.stringify(bm));
-            updateBookmarkUI(id);
-        }
-        function updateBookmarkUI(id) {
-            const bm = getBookmarks();
-            const btn = document.getElementById('bm-' + id);
-            const lbl = document.getElementById('bm-lbl-' + id);
-            if (!btn) return;
-            if (bm[id]) { btn.classList.add('bookmarked'); lbl.textContent = 'Saved ★'; }
-            else         { btn.classList.remove('bookmarked'); lbl.textContent = 'Save'; }
-        }
-
-        /* ── Compare ── */
-        function getCompare() { return JSON.parse(localStorage.getItem('cf-compare') || '{}'); }
-        function toggleCompare(id, name) {
-            const cmp = getCompare();
-            if (cmp[id]) { delete cmp[id]; showToast('Removed from compare'); }
-            else if (Object.keys(cmp).length >= 4) { showToast('Max 4 colleges to compare'); return; }
-            else          { cmp[id] = name; showToast('Added to compare'); }
-            localStorage.setItem('cf-compare', JSON.stringify(cmp));
-            updateCompareUI(id);
-            updateCompareBar();
-        }
-        function updateCompareUI(id) {
-            const cmp = getCompare();
-            const btn = document.getElementById('cmp-' + id);
-            const lbl = document.getElementById('cmp-lbl-' + id);
-            if (!btn) return;
-            if (cmp[id]) { btn.classList.add('in-compare'); lbl.textContent = 'Selected ✓'; }
-            else          { btn.classList.remove('in-compare'); lbl.textContent = 'Compare'; }
-        }
-        function updateCompareBar() {
-            const cmp = getCompare();
-            const cnt = Object.keys(cmp).length;
-            const bar = document.getElementById('compareBar');
-            document.getElementById('compareCount').textContent = cnt;
-            bar.style.display = cnt >= 2 ? 'flex' : 'none';
-        }
-        function clearCompare() {
-            localStorage.removeItem('cf-compare');
-            document.querySelectorAll('.btn-card-action.in-compare').forEach(b => {
-                b.classList.remove('in-compare');
-                const lbl = b.querySelector('span');
-                if (lbl) lbl.textContent = 'Compare';
-            });
-            document.getElementById('compareBar').style.display = 'none';
-        }
-        function goCompare(e) {
-            if (e) e.preventDefault();
-            const cmp = getCompare();
-            const ids = Object.keys(cmp);
-            if (ids.length < 2) { showToast('Select at least 2 colleges to compare'); return; }
-            window.location.href = '/compare?' + ids.map(i => 'ids=' + i).join('&');
-        }
-        function goBookmarks(e) {
-            if (e) e.preventDefault();
-            const bm = getBookmarks();
-            const ids = Object.keys(bm);
-            if (ids.length === 0) { showToast('No saved colleges yet — click Save on a card'); return; }
-            window.location.href = '/bookmarks?' + ids.map(i => 'ids=' + i).join('&');
-        }
-
-        /* ── Share ── */
-        function shareResults() {
-            {% if form_data %}
-            const p = new URLSearchParams();
-            {% if form_data.percentile %}p.set('percentile', '{{ form_data.percentile }}');{% endif %}
-            {% if form_data.category %}p.set('category', '{{ form_data.category }}');{% endif %}
-            {% if form_data.gender %}p.set('gender', '{{ form_data.gender }}');{% endif %}
-            {% if form_data.budget %}p.set('budget', '{{ form_data.budget }}');{% endif %}
-            {% if form_data.top_n %}p.set('top_n', '{{ form_data.top_n }}');{% endif %}
-            {% if form_data.locations %}{% for l in form_data.locations %}p.append('locations', '{{ l }}');{% endfor %}{% endif %}
-            {% if form_data.branches %}{% for b in form_data.branches %}p.append('branches', '{{ b }}');{% endfor %}{% endif %}
-            const url = window.location.origin + '/mhcet/recommend?' + p.toString();
-            navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard!')).catch(() => {
-                prompt('Copy this link:', url);
-            });
-            {% else %}
-            showToast('Run a search first, then share the link');
-            {% endif %}
-        }
-
-        /* ── Map ── */
-        const cityCoords = {
-            'Mumbai': [19.0760, 72.8777], 'Pune': [18.5204, 73.8567],
-            'Nagpur': [21.1458, 79.0882], 'Nashik': [19.9975, 73.7898],
-            'Aurangabad': [19.8762, 75.3433], 'Solapur': [17.6868, 75.9064],
-            'Kolhapur': [16.7050, 74.2433], 'Amravati': [20.9374, 77.7796],
-            'Nanded': [19.1383, 77.3210], 'Thane': [19.2183, 72.9781],
-            'Navi Mumbai': [19.0330, 73.0297], 'Latur': [18.4088, 76.5604],
-            'Pimpri-Chinchwad': [18.6279, 73.8009], 'Sangli': [16.8524, 74.5815],
-            'Jalgaon': [21.0077, 75.5626], 'Dhule': [20.9042, 74.7749],
-        };
-        const catColor = { safe: '#22c55e', moderate: '#f59e0b', ambitious: '#818cf8', dream: '#ec4899' };
-
-        {% if recommendations %}
-        const mapEl = document.getElementById('map');
-        if (mapEl) {
-            const map = L.map('map').setView([19.7515, 75.7139], 7);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>'
-            }).addTo(map);
-
-            const cards = document.querySelectorAll('.college-card[data-id]');
-            cards.forEach(card => {
-                const loc  = card.dataset.loc;
-                const name = card.dataset.name;
-                const id   = card.dataset.id;
-                const cls  = [...card.classList].find(c => c.endsWith('-card') && c !== 'college-card');
-                const cat  = cls ? cls.replace('-card','') : 'safe';
-                const coords = cityCoords[loc];
-                if (!coords) return;
-                const color = catColor[cat] || '#4f8ef7';
-                const marker = L.circleMarker(coords, {
-                    radius: 9, fillColor: color, color: '#fff',
-                    weight: 2, opacity: 1, fillOpacity: 0.85
-                }).addTo(map);
-                marker.bindPopup(`<b>${name}</b><br><span style="color:${color};font-weight:700;">${cat.charAt(0).toUpperCase()+cat.slice(1)}</span> · ${loc}`);
-                marker.on('click', () => {
-                    const el = document.querySelector(`.college-card[data-id="${id}"]`);
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                });
-            });
-        }
-        {% endif %}
-
-        /* ── Init UI state on load ── */
         (function() {
-            const bm  = getBookmarks();
-            const cmp = getCompare();
-            Object.keys(bm).forEach(id => updateBookmarkUI(id));
-            Object.keys(cmp).forEach(id => updateCompareUI(id));
-            updateCompareBar();
-        })();
+            'use strict';
 
-        /* ── Sign out ── */
-        async function doSignOut() {
-            try { if (window.Clerk) await window.Clerk.signOut(); } catch(e) {}
-            window.location.href = '/logout';
-        }
+            /* ── Scroll Reveal ── */
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+                document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+            } else {
+                document.querySelectorAll('.animate-on-scroll').forEach(el => el.classList.add('visible'));
+            }
+
+            /* ── Animated Counters ── */
+            function animateCounters() {
+                document.querySelectorAll('.stat-num').forEach(el => {
+                    const target = parseInt(el.dataset.target);
+                    if (!target) return;
+                    const duration = 1500;
+                    const step = Math.ceil(target / (duration / 16));
+                    let current = 0;
+                    const update = () => {
+                        current += step;
+                        if (current >= target) {
+                            el.textContent = target.toLocaleString();
+                            return;
+                        }
+                        el.textContent = current.toLocaleString();
+                        requestAnimationFrame(update);
+                    };
+                    update();
+                });
+            }
+
+            if ('IntersectionObserver' in window) {
+                const counterObs = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            animateCounters();
+                            counterObs.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.5 });
+                const statRow = document.querySelector('.mhcet-hero-stats');
+                if (statRow) counterObs.observe(statRow);
+            } else {
+                animateCounters();
+            }
+
+            /* ── Toast ── */
+            function showToast(msg) {
+                const t = document.getElementById('toast');
+                document.getElementById('toastMsg').textContent = msg;
+                t.classList.add('show');
+                setTimeout(() => t.classList.remove('show'), 2500);
+            }
+
+            /* ── Bookmarks ── */
+            function getBookmarks() { return JSON.parse(localStorage.getItem('cf-bookmarks') || '{}'); }
+            function toggleBookmark(id, name) {
+                const bm = getBookmarks();
+                if (bm[id]) { delete bm[id]; showToast('Removed from saved'); }
+                else         { bm[id] = name; showToast('Saved! ★'); }
+                localStorage.setItem('cf-bookmarks', JSON.stringify(bm));
+                updateBookmarkUI(id);
+            }
+            function updateBookmarkUI(id) {
+                const bm = getBookmarks();
+                const btn = document.getElementById('bm-' + id);
+                const lbl = document.getElementById('bm-lbl-' + id);
+                if (!btn) return;
+                if (bm[id]) { btn.classList.add('bookmarked'); lbl.textContent = 'Saved ★'; }
+                else         { btn.classList.remove('bookmarked'); lbl.textContent = 'Save'; }
+            }
+
+            /* ── Compare ── */
+            function getCompare() { return JSON.parse(localStorage.getItem('cf-compare') || '{}'); }
+            function toggleCompare(id, name) {
+                const cmp = getCompare();
+                if (cmp[id]) { delete cmp[id]; showToast('Removed from compare'); }
+                else if (Object.keys(cmp).length >= 4) { showToast('Max 4 colleges to compare'); return; }
+                else          { cmp[id] = name; showToast('Added to compare'); }
+                localStorage.setItem('cf-compare', JSON.stringify(cmp));
+                updateCompareUI(id);
+                updateCompareBar();
+            }
+            function updateCompareUI(id) {
+                const cmp = getCompare();
+                const btn = document.getElementById('cmp-' + id);
+                const lbl = document.getElementById('cmp-lbl-' + id);
+                if (!btn) return;
+                if (cmp[id]) { btn.classList.add('in-compare'); lbl.textContent = 'Selected ✓'; }
+                else          { btn.classList.remove('in-compare'); lbl.textContent = 'Compare'; }
+            }
+            function updateCompareBar() {
+                const cmp = getCompare();
+                const cnt = Object.keys(cmp).length;
+                const bar = document.getElementById('compareBar');
+                document.getElementById('compareCount').textContent = cnt;
+                bar.style.display = cnt >= 2 ? 'flex' : 'none';
+            }
+            function clearCompare() {
+                localStorage.removeItem('cf-compare');
+                document.querySelectorAll('.mhcet-card-action.in-compare').forEach(b => {
+                    b.classList.remove('in-compare');
+                    const lbl = b.querySelector('span');
+                    if (lbl) lbl.textContent = 'Compare';
+                });
+                document.getElementById('compareBar').style.display = 'none';
+            }
+            function goCompare(e) {
+                if (e) e.preventDefault();
+                const cmp = getCompare();
+                const ids = Object.keys(cmp);
+                if (ids.length < 2) { showToast('Select at least 2 colleges to compare'); return; }
+                window.location.href = '/compare?' + ids.map(i => 'ids=' + i).join('&');
+            }
+
+            /* ── Share ── */
+            function shareResults() {
+                {% if form_data %}
+                const p = new URLSearchParams();
+                {% if form_data.percentile %}p.set('percentile', '{{ form_data.percentile }}');{% endif %}
+                {% if form_data.category %}p.set('category', '{{ form_data.category }}');{% endif %}
+                {% if form_data.gender %}p.set('gender', '{{ form_data.gender }}');{% endif %}
+                {% if form_data.budget %}p.set('budget', '{{ form_data.budget }}');{% endif %}
+                {% if form_data.top_n %}p.set('top_n', '{{ form_data.top_n }}');{% endif %}
+                {% if form_data.locations %}{% for l in form_data.locations %}p.append('locations', '{{ l }}');{% endfor %}{% endif %}
+                {% if form_data.branches %}{% for b in form_data.branches %}p.append('branches', '{{ b }}');{% endfor %}{% endif %}
+                const url = window.location.origin + '/mhcet/recommend?' + p.toString();
+                navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard!')).catch(() => {
+                    prompt('Copy this link:', url);
+                });
+                {% else %}
+                showToast('Run a search first, then share the link');
+                {% endif %}
+            }
+
+            /* ── Filter Toggle (Mobile) ── */
+            window.toggleFilter = function() {
+                const panel = document.getElementById('filterPanel');
+                const toggle = document.getElementById('filterToggle');
+                panel.classList.toggle('collapsed');
+                toggle.classList.toggle('active');
+                localStorage.setItem('cf-filter-collapsed', panel.classList.contains('collapsed') ? '1' : '0');
+            };
+
+            /* ── Init filter state on mobile ── */
+            (function() {
+                if (window.innerWidth <= 991) {
+                    const collapsed = localStorage.getItem('cf-filter-collapsed');
+                    if (collapsed === '1') {
+                        document.getElementById('filterPanel').classList.add('collapsed');
+                        document.getElementById('filterToggle').classList.add('active');
+                    }
+                }
+            })();
+
+            /* ── Map ── */
+            const cityCoords = {
+                'Mumbai': [19.0760, 72.8777], 'Pune': [18.5204, 73.8567],
+                'Nagpur': [21.1458, 79.0882], 'Nashik': [19.9975, 73.7898],
+                'Aurangabad': [19.8762, 75.3433], 'Solapur': [17.6868, 75.9064],
+                'Kolhapur': [16.7050, 74.2433], 'Amravati': [20.9374, 77.7796],
+                'Nanded': [19.1383, 77.3210], 'Thane': [19.2183, 72.9781],
+                'Navi Mumbai': [19.0330, 73.0297], 'Latur': [18.4088, 76.5604],
+                'Pimpri-Chinchwad': [18.6279, 73.8009], 'Sangli': [16.8524, 74.5815],
+                'Jalgaon': [21.0077, 75.5626], 'Dhule': [20.9042, 74.7749],
+            };
+            const catColor = { safe: '#22c55e', moderate: '#f59e0b', ambitious: '#818cf8', dream: '#ec4899' };
+
+            {% if recommendations %}
+            const mapEl = document.getElementById('map');
+            if (mapEl) {
+                const map = L.map('map').setView([19.7515, 75.7139], 7);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>'
+                }).addTo(map);
+
+                const cards = document.querySelectorAll('.mhcet-card[data-id]');
+                cards.forEach(card => {
+                    const loc  = card.dataset.loc;
+                    const name = card.dataset.name;
+                    const id   = card.dataset.id;
+                    const cls  = [...card.classList].find(c => c.endsWith('-card') && c !== 'mhcet-card');
+                    const cat  = cls ? cls.replace('-card','') : 'safe';
+                    const coords = cityCoords[loc];
+                    if (!coords) return;
+                    const color = catColor[cat] || '#4f8ef7';
+                    const marker = L.circleMarker(coords, {
+                        radius: 9, fillColor: color, color: '#fff',
+                        weight: 2, opacity: 1, fillOpacity: 0.85
+                    }).addTo(map);
+                    marker.bindPopup(`<b>${name}</b><br><span style="color:${color};font-weight:700;">${cat.charAt(0).toUpperCase()+cat.slice(1)}</span> · ${loc}`);
+                    marker.on('click', () => {
+                        const el = document.querySelector(`.mhcet-card[data-id="${id}"]`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    });
+                });
+            }
+            {% endif %}
+
+            /* ── Init UI state on load ── */
+            (function() {
+                const bm  = getBookmarks();
+                const cmp = getCompare();
+                Object.keys(bm).forEach(id => updateBookmarkUI(id));
+                Object.keys(cmp).forEach(id => updateCompareUI(id));
+                updateCompareBar();
+            })();
+
+            /* ── Sign out ── */
+            async function doSignOut() {
+                try { if (window.Clerk) await window.Clerk.signOut(); } catch(e) {}
+                window.location.href = '/logout';
+            }
+        })();
     </script>
 
     {% if clerk_publishable_key %}
@@ -758,7 +720,6 @@
             data-clerk-publishable-key="{{ clerk_publishable_key }}">
     </script>
     <script>
-        /* Auto-sync user to DB after Clerk sign-in (client-side) */
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await window.Clerk.load();
@@ -770,7 +731,7 @@
                     });
                     if (resp.ok) location.reload();
                 }
-            } catch(e) { /* Clerk not loaded or user not signed in */ }
+            } catch(e) {}
         });
     </script>
     {% endif %}

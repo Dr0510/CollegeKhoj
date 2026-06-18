@@ -1055,3 +1055,315 @@ def dashboard_stats_api():
         'total_courses': courses,
         'years': years,
     })
+
+
+# ── Full Dashboard API (v2 — used by new dashboard UI) ──────────────────────
+
+
+@admin_bp.route('/api/dashboard-full')
+@admin_required
+def dashboard_full_api():
+    """
+    Full dashboard JSON — exam-type-aware analytics.
+    Query param ?exam_type= filters by CollegeCutoff.exam_type (MHT-CET, DSE, POLYTECHNIC).
+    Returns all data needed for the v2 dashboard, monitors, charts, and timeline.
+    """
+    exam_type = request.args.get('exam_type', '').upper().strip()
+    exam_type = exam_type if exam_type in ('MHT-CET', 'DSE', 'POLYTECHNIC') else None
+
+    # ── Filter builder ──
+    def _filter_cutoff(q):
+        return q.filter(CollegeCutoff.exam_type == exam_type) if exam_type else q
+
+    # ── 1. Analytics Cards ──
+    total_colleges = College.query.count()
+
+    cutoff_query = CollegeCutoff.query
+    if exam_type:
+        cutoff_query = cutoff_query.filter(CollegeCutoff.exam_type == exam_type)
+    total_cutoff_records = cutoff_query.count()
+
+    # Distinct branches from CollegeCutoff (course_name)
+    branch_q = db.session.query(func.count(db.distinct(CollegeCutoff.course_name)))
+    branch_q = _filter_cutoff(branch_q) if exam_type else branch_q.filter(
+        CollegeCutoff.course_name.isnot(None), CollegeCutoff.course_name != ''
+    )
+    total_branches = branch_q.scalar() or 0
+
+    total_users = User.query.count()
+
+    pending_approvals = ImportJob.query.filter(
+        ImportJob.approval_status == 'pending_approval'
+    ).count()
+
+    failed_imports = ImportJob.query.filter(
+        ImportJob.status == 'FAILED'
+    ).count()
+
+    stats = {
+        'total_colleges': total_colleges,
+        'total_branches': total_branches,
+        'total_cutoff_records': total_cutoff_records,
+        'total_users': total_users,
+        'pending_approvals': pending_approvals,
+        'failed_imports': failed_imports,
+    }
+
+    # ── 2. College Management Overview ──
+    # Top locations
+    location_rows = db.session.query(
+        College.location, func.count(College.id).label('cnt')
+    ).group_by(College.location).order_by(func.count(College.id).desc()).limit(10).all()
+    top_locations = [{'location': r.location, 'count': r.cnt} for r in location_rows]
+
+    # Recently added colleges
+    recent_colleges = College.query.order_by(College.id.desc()).limit(5).all()
+    recently_added = [{
+        'id': c.id,
+        'college': c.college,
+        'branch': c.branch,
+        'location': c.location,
+        'fees': c.fees,
+        'nirf_rank': c.nirf_rank,
+        'rating': c.rating,
+    } for c in recent_colleges]
+
+    college_overview = {
+        'total_colleges': total_colleges,
+        'total_branches': total_branches,
+        'top_locations': top_locations,
+        'recently_added': recently_added,
+    }
+
+    # ── 3. Charts Data ──
+    # Records by year
+    year_q = db.session.query(
+        CollegeCutoff.year, func.count(CollegeCutoff.id).label('cnt')
+    )
+    if exam_type:
+        year_q = year_q.filter(CollegeCutoff.exam_type == exam_type)
+    year_q = year_q.group_by(CollegeCutoff.year).order_by(CollegeCutoff.year)
+    records_by_year = [{'year': r.year, 'count': r.cnt} for r in year_q.all()]
+
+    # Branch popularity — reuse existing trend_service
+    branch_pop = compute_branch_popularity(top_n=15)
+
+    # Import success rate (always unfiltered)
+    import_status_counts = db.session.query(
+        ImportJob.status, func.count(ImportJob.id).label('cnt')
+    ).group_by(ImportJob.status).all()
+    import_success_rate = {}
+    for r in import_status_counts:
+        import_success_rate[r.status] = r.cnt
+
+    # College distribution by location
+    dist_q = db.session.query(
+        College.location, func.count(College.id).label('cnt')
+    ).group_by(College.location).order_by(func.count(College.id).desc()).all()
+    college_distribution = [{'location': r.location, 'count': r.cnt} for r in dist_q]
+
+    charts = {
+        'records_by_year': records_by_year,
+        'branch_popularity': branch_pop,
+        'import_success_rate': import_success_rate,
+        'college_distribution': college_distribution,
+    }
+
+    # ── 4. Import Monitoring ──
+    from admin.background_worker import get_active_jobs
+    active_job_ids = get_active_jobs()
+
+    recent_jobs_raw = ImportJob.query.order_by(ImportJob.id.desc()).limit(10).all()
+    recent_jobs = []
+    for j in recent_jobs_raw:
+        d = j.to_dict()
+        d['progress_pct'] = round(
+            (j.processed_pages / j.total_pages) * 100, 1
+        ) if j.total_pages > 0 else 0
+        recent_jobs.append(d)
+
+    import_monitoring = {
+        'recent_jobs': recent_jobs,
+        'active_job_ids': active_job_ids,
+    }
+
+    # ── 5. Activity Timeline ──
+    timeline_entries = AuditLog.query.order_by(
+        AuditLog.created_at.desc()
+    ).limit(20).all()
+
+    timeline = []
+    for entry in timeline_entries:
+        user_name = entry.user.display_name() if entry.user else 'System'
+        timeline.append({
+            'id': entry.id,
+            'action': entry.action,
+            'resource_type': entry.resource_type,
+            'resource_id': entry.resource_id,
+            'user': user_name,
+            'details': entry.details,
+            'timestamp': entry.created_at.isoformat() if entry.created_at else None,
+        })
+
+    return jsonify({
+        'ok': True,
+        'exam_type': exam_type or 'ALL',
+        'stats': stats,
+        'college_overview': college_overview,
+        'charts': charts,
+        'import_monitoring': import_monitoring,
+        'timeline': timeline,
+    })
+
+
+# ── Recommendation Test API ─────────────────────────────────────────────────
+
+
+@admin_bp.route('/api/dashboard/recommendation-test', methods=['POST'])
+@admin_required
+def dashboard_recommendation_test():
+    """
+    Test Safe / Moderate / Dream classification using the actual recommendation engine.
+    Uses existing trend_service.get_safe_moderate_dream().
+    """
+    data = request.get_json() or {}
+    try:
+        percentile = float(data.get('percentile', 0))
+        category = data.get('category', 'Open')
+        gender = data.get('gender', 'Gender-Neutral')
+        branch_filter = data.get('branch', '').strip()
+        district = data.get('district', '').strip()
+    except (ValueError, TypeError):
+        return jsonify({'ok': False, 'error': 'Invalid numeric value for percentile'}), 400
+
+    if percentile <= 0 or percentile > 100:
+        return jsonify({'ok': False, 'error': 'Percentile must be between 0 and 100'}), 400
+
+    valid_categories = ['Open', 'OBC', 'SC', 'ST', 'NT', 'EWS']
+    if category not in valid_categories:
+        return jsonify({'ok': False, 'error': f'Invalid category. Must be one of: {", ".join(valid_categories)}'}), 400
+
+    try:
+        # Use the actual recommendation engine
+        result = get_safe_moderate_dream(
+            student_percentile=percentile,
+            category=category,
+            gender=gender,
+            top_n=20
+        )
+
+        # Post-filter by branch if specified
+        if branch_filter and branch_filter != 'all':
+            def _filter_branch(lst):
+                return [c for c in lst if branch_filter.lower() in c.get('branch', '').lower()]
+            result['safe'] = _filter_branch(result.get('safe', []))
+            result['moderate'] = _filter_branch(result.get('moderate', []))
+            result['dream'] = _filter_branch(result.get('dream', []))
+
+        # Count summary
+        summary = {
+            'safe_count': len(result.get('safe', [])),
+            'moderate_count': len(result.get('moderate', [])),
+            'dream_count': len(result.get('dream', [])),
+            'latest_year': result.get('latest_year'),
+        }
+
+        return jsonify({
+            'ok': True,
+            'summary': summary,
+            'safe': result.get('safe', []),
+            'moderate': result.get('moderate', []),
+            'dream': result.get('dream', []),
+        })
+
+    except Exception as e:
+        logger.error(f"Recommendation test error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# ── College Master Upload ────────────────────────────────────────────────────
+
+
+@admin_bp.route('/college-upload', methods=['GET', 'POST'])
+@admin_required
+def college_upload():
+    """Upload CSV/Excel for college master data with preview."""
+    if request.method == 'GET':
+        return render_template('college_upload.html')
+
+    # Handle POST: parse + preview
+    if 'file' not in request.files:
+        return jsonify({'ok': False, 'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'ok': False, 'error': 'No file selected'}), 400
+
+    try:
+        from admin.college_upload_service import parse_upload, commit_upload
+
+        # Parse and preview
+        preview = parse_upload(file)
+
+        if preview.total_rows == 0:
+            return jsonify({'ok': False, 'error': preview.errors[0] if preview.errors else 'No data found'}), 400
+
+        return jsonify({
+            'ok': True,
+            'preview': preview.to_dict(),
+            'message': (
+                f'Parsed {preview.total_rows} rows: '
+                f'{preview.valid_rows} valid ({preview.to_create} new, {preview.to_update} updates), '
+                f'{preview.error_rows} errors.'
+            ),
+        })
+
+    except Exception as e:
+        logger.error(f"College upload error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/college-upload/commit', methods=['POST'])
+@admin_required
+def college_upload_commit():
+    """Commit the previewed college upload to the database."""
+    try:
+        from admin.college_upload_service import commit_upload
+
+        data = request.get_json()
+        if not data or 'preview' not in data:
+            return jsonify({'ok': False, 'error': 'No preview data provided'}), 400
+
+        # Reconstruct preview result from stored data
+        preview_dict = data['preview']
+
+        class PreviewWrapper:
+            pass
+
+        preview = PreviewWrapper()
+        preview.total_rows = preview_dict.get('total_rows', 0)
+        preview.valid_rows = preview_dict.get('valid_rows', 0)
+        preview.error_rows = preview_dict.get('error_rows', 0)
+        preview.preview_rows = preview_dict.get('preview_rows', [])
+        preview.errors = preview_dict.get('errors', [])
+
+        result = commit_upload(preview)
+
+        log_action('college_upload_commit', 'college', None, {
+            'created': result.created,
+            'updated': result.updated,
+            'errors': len(result.errors),
+        })
+
+        return jsonify({
+            'ok': True,
+            'result': result.to_dict(),
+            'message': (
+                f'Committed: {result.created} created, {result.updated} updated, '
+                f'{len(result.errors)} errors.'
+            ),
+        })
+
+    except Exception as e:
+        logger.error(f"College upload commit error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500

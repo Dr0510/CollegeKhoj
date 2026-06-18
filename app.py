@@ -94,8 +94,9 @@ recommender = CollegeRecommender(db)
 mhcet_recommender = MHCETRecommender(db)
 
 def init_sample_cutoff_data():
-    """Initialize sample CAP cutoff data for testing"""
-    if CAPCutoff.query.count() == 0:
+    """Initialize sample cutoff data using the unified college_cutoffs table."""
+    from models import CollegeCutoff
+    if CollegeCutoff.query.count() == 0:
         # Get Maharashtra colleges for cutoff data across different tiers
         maharashtra_colleges = College.query.filter(
             College.location.in_(['Mumbai', 'Pune', 'Nagpur'])
@@ -142,22 +143,30 @@ def init_sample_cutoff_data():
                         for gender in genders:
                             cutoff = max(base_cutoff + cat_adj, 30.0)
                             
-                            cutoff_data = CAPCutoff(
-                                college_id=college.id,
+                            # Write to unified college_cutoffs table
+                            cutoff_data = CollegeCutoff(
+                                college_code=str(college.id).zfill(4),
+                                college_name=college.college,
+                                course_code=f'{college.id}000',
+                                course_name=college.branch,
+                                branch=college.branch,
                                 year=year,
-                                round_number=1,
+                                round=1,
                                 category=category,
                                 gender=gender,
-                                cutoff_percentile=round(cutoff, 2),
+                                percentile=round(cutoff, 2),
+                                rank=1000,
                                 opening_rank=1000,
                                 closing_rank=2000,
-                                seats_available=60
+                                seats_available=60,
+                                exam_type='MHT-CET',
+                                approval_status='approved',
                             )
                             db.session.add(cutoff_data)
             
             try:
                 db.session.commit()
-                logging.info("Sample cutoff data initialized successfully")
+                logging.info("Sample cutoff data initialized successfully (college_cutoffs)")
             except Exception as e:
                 db.session.rollback()
                 logging.error(f"Error initializing cutoff data: {e}")
@@ -552,9 +561,13 @@ def mhcet_recommend():
 @app.route('/college/<int:college_id>')
 def college_profile(college_id):
     """Detailed college profile page"""
+    from models import CollegeCutoff
     college = College.query.get_or_404(college_id)
-    cutoffs = CAPCutoff.query.filter_by(college_id=college_id).order_by(
-        CAPCutoff.year.desc(), CAPCutoff.category, CAPCutoff.gender
+    cutoffs = CollegeCutoff.query.filter(
+        CollegeCutoff.college_code == str(college.id).zfill(4),
+        CollegeCutoff.exam_type == 'MHT-CET'
+    ).order_by(
+        CollegeCutoff.year.desc(), CollegeCutoff.category, CollegeCutoff.gender
     ).all()
     years = sorted(set(c.year for c in cutoffs), reverse=True)
     categories = sorted(set(c.category for c in cutoffs))

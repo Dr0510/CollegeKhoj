@@ -1,0 +1,219 @@
+/* ============================================================
+   🎬 CollegeKhoj Animations v5.0 — Premium Edition
+   ============================================================ */
+
+/* ── Keyframes ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(120%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+@keyframes floatParticle {
+  0%   { transform: translateY(0) scale(1); opacity: 0.2; }
+  50%  { transform: translateY(-100px) scale(1.4); opacity: 0.35; }
+  100% { transform: translateY(0) scale(1); opacity: 0.2; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.08); opacity: 0; }
+}
+
+@keyframes cardEntry {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-10px) rotate(1deg); }
+  66% { transform: translateY(5px) rotate(-1deg); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gradientMesh {
+  0% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(10%, -10%) scale(1.1); }
+  50% { transform: translate(-5%, 15%) scale(0.95); }
+  75% { transform: translate(8%, -5%) scale(1.05); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(79, 142, 247, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(79, 142, 247, 0.4); }
+}
+
+@keyframes scalePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* ── Animation utility classes ── */
+.animate-fade-in    { animation: fadeIn var(--duration-normal) var(--ease-out) both; }
+.animate-fade-in-up { animation: fadeInUp var(--duration-normal) var(--ease-out) both; }
+.animate-fade-in-down { animation: fadeInDown var(--duration-normal) var(--ease-out) both; }
+.animate-scale-in   { animation: scaleIn var(--duration-normal) var(--ease-out) both; }
+.animate-pulse      { animation: pulse 2s var(--ease-in-out) infinite; }
+.animate-shake      { animation: shake 0.4s var(--ease-out); }
+.animate-bounce     { animation: bounce 0.6s var(--ease-out) 2; }
+.animate-spin       { animation: spin 0.6s linear infinite; }
+.animate-fade-in-backdrop { animation: fadeInBackdrop var(--duration-normal) var(--ease-out); }
+.animate-float      { animation: float 6s var(--ease-in-out) infinite; }
+.animate-float-slow { animation: float-slow 8s var(--ease-in-out) infinite; }
+.animate-gradient   { animation: gradientShift 8s ease infinite; background-size: 200% 200%; }
+.animate-glow       { animation: glowPulse 2s var(--ease-in-out) infinite; }
+.animate-scale-pulse { animation: scalePulse 2s var(--ease-in-out) infinite; }
+
+/* ── Stagger delays ── */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+.stagger-7 { animation-delay: 0.35s; }
+.stagger-8 { animation-delay: 0.40s; }
+
+/* ── Scroll reveal ── */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s var(--ease-out),
+              transform 0.6s var(--ease-out);
+}
+.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.animate-on-scroll-left {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: opacity 0.6s var(--ease-out),
+              transform 0.6s var(--ease-out);
+}
+.animate-on-scroll-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.animate-on-scroll-right {
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 0.6s var(--ease-out),
+              transform 0.6s var(--ease-out);
+}
+.animate-on-scroll-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.animate-on-scroll-scale {
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.6s var(--ease-out),
+              transform 0.6s var(--ease-out);
+}
+.animate-on-scroll-scale.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ── Skeletons ── (now in skeleton.css, kept for backward compat) */
+
+/* ── Page transition ── */
+.page-transition { animation: fadeIn var(--duration-slow) var(--ease-out); }
+
+/* ── Hover lift ── */
+.hover-lift {
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-large);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

@@ -1,0 +1,162 @@
+/* ============================================================
+   🎬 CollegeKhoj Animations — Consolidated single source
+   ============================================================ */
+
+/* ── Spin ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Fade In ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Fade In Up ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Fade In Down ── */
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Scale In ── */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Shimmer (skeleton loading) ── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Pulse ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+/* ── Slide In Right (toast) ── */
+@keyframes slideInRight {
+  from { transform: translateX(120%); }
+  to   { transform: translateX(0); }
+}
+
+/* ── Slide Up ── */
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Ripple ── */
+@keyframes ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+
+/* ── Float ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
+}
+
+/* ── Slide Down ── */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Shake ── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+/* ── Bounce ── */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+/* ── Pulse Ring ── */
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.08); opacity: 0; }
+}
+
+/* ── Backdrop ── */
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Card Entry ── */
+@keyframes cardEntry {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Animation utility classes ── */
+.animate-fade-in    { animation: fadeIn var(--duration-normal) var(--ease-out) both; }
+.animate-fade-in-up { animation: fadeInUp var(--duration-normal) var(--ease-out) both; }
+.animate-fade-in-down { animation: fadeInDown var(--duration-normal) var(--ease-out) both; }
+.animate-scale-in   { animation: scaleIn var(--duration-normal) var(--ease-out) both; }
+.animate-pulse      { animation: pulse 2s var(--ease-in-out) infinite; }
+.animate-shake      { animation: shake 0.4s var(--ease-out); }
+.animate-bounce     { animation: bounce 0.6s var(--ease-out) 2; }
+.animate-spin       { animation: spin 0.6s linear infinite; }
+
+/* ── Stagger delays ── */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+
+/* ── Scroll reveal ── */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--duration-slow) var(--ease-out),
+              transform var(--duration-slow) var(--ease-out);
+}
+.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Skeleton ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-surface-lg) 50%, var(--bg-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+.skeleton-text { height: 14px; margin-bottom: var(--space-2); width: 80%; }
+.skeleton-text.short { width: 50%; }
+.skeleton-card { height: 180px; border-radius: var(--radius-lg); margin-bottom: var(--space-3); }
+.skeleton-avatar { width: 36px; height: 36px; border-radius: var(--radius-full); }
+.skeleton-badge { width: 60px; height: 20px; border-radius: var(--radius-2xl); }
+
+/* ── Page transition ── */
+.page-transition { animation: fadeIn var(--duration-slow) var(--ease-out); }
+
+/* ── Hover lift ── */
+.hover-lift {
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-large);
+}

@@ -1,0 +1,387 @@
+/* ============================================================
+   ⌨️ CollegeKhoj Input Component v5.0 Premium
+   ============================================================ */
+
+/* ── Form Label ── */
+.form-label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+  letter-spacing: var(--letter-wide);
+  text-transform: uppercase;
+}
+.form-label i {
+  margin-right: var(--space-1);
+}
+
+/* ── Form Text ── */
+.form-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+  line-height: 1.4;
+}
+
+/* ── Base Input ── */
+.form-control {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--space-4);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.form-control::placeholder { color: var(--text-placeholder); }
+.form-control:hover { border-color: var(--border-strong); }
+.form-control:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-glow); }
+.form-control.error { border-color: var(--color-error); box-shadow: 0 0 0 3px var(--color-error-bg); }
+.form-control:disabled { opacity: 0.5; cursor: not-allowed; background: var(--bg-surface); }
+
+/* ── Select ── */
+.form-select {
+  width: 100%;
+  height: 44px;
+  padding: 0 var(--space-4);
+  padding-right: var(--space-10);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: all var(--duration-fast) var(--ease-out);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238892a4' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 12px;
+}
+.form-select:hover { border-color: var(--border-strong); }
+.form-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-glow); }
+
+/* ── Textarea ── */
+textarea.form-control {
+  height: auto;
+  min-height: 100px;
+  padding: var(--space-3) var(--space-4);
+  resize: vertical;
+  line-height: var(--leading-relaxed);
+}
+
+/* ── Floating Label Input ── */
+.floating-label-group {
+  position: relative;
+  margin-bottom: var(--space-5);
+}
+.floating-label-group .form-control {
+  height: 56px;
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-1);
+}
+.floating-label-group label {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--text-sm);
+  color: var(--text-placeholder);
+  pointer-events: none;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-weight: var(--font-normal);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.floating-label-group .form-control:focus + label,
+.floating-label-group .form-control:not(:placeholder-shown) + label {
+  top: var(--space-2);
+  transform: translateY(0);
+  font-size: 0.65rem;
+  color: var(--color-primary);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-wide);
+}
+
+/* ── Input with Icon ── */
+.input-icon-wrap {
+  position: relative;
+}
+.input-icon-wrap i {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  pointer-events: none;
+  z-index: 1;
+}
+.input-icon-wrap .form-control {
+  padding-left: var(--space-10);
+}
+.input-icon-wrap .icon-right {
+  left: auto;
+  right: var(--space-3);
+}
+.input-icon-wrap .form-control.icon-right-pad {
+  padding-left: var(--space-4);
+  padding-right: var(--space-10);
+}
+
+/* ── Input Group ── */
+.input-group {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.input-group .form-control {
+  border-radius: 0;
+  flex: 1;
+}
+.input-group .form-control:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+.input-group .form-control:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+.input-group-text {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+.input-group-text:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-right: none;
+}
+.input-group-text:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-left: none;
+}
+
+/* ── File Upload ── */
+.file-upload {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  text-align: center;
+}
+.file-upload:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-muted);
+}
+.file-upload.drag-over {
+  border-color: var(--color-primary);
+  background: var(--color-primary-muted);
+  transform: scale(1.01);
+}
+.file-upload input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.file-upload-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  font-size: var(--text-xl);
+}
+.file-upload-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+.file-upload-hint {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.file-upload.has-file {
+  border-style: solid;
+  border-color: var(--color-success);
+}
+.file-upload .file-name {
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  font-weight: var(--font-semibold);
+}
+
+/* ── Pill Group (checkbox pills) ── */
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.pill-group input[type="checkbox"] {
+  display: none;
+}
+.pill-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  user-select: none;
+}
+.pill-group label i {
+  font-size: 0.6rem;
+}
+.pill-group label:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.pill-group input:checked + label {
+  background: var(--color-primary-muted);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: var(--font-semibold);
+}
+
+/* ── Custom Checkbox ── */
+.checkbox-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  margin-bottom: var(--space-3);
+}
+.checkbox-group input[type="checkbox"] {
+  display: none;
+}
+.checkbox-group .check-box {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+.checkbox-group .check-box i {
+  font-size: 0.6rem;
+  color: transparent;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.checkbox-group input:checked + .check-box {
+  background: var(--color-primary-gradient);
+  border-color: transparent;
+}
+.checkbox-group input:checked + .check-box i {
+  color: #fff;
+}
+.checkbox-group .check-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* ── Range Input ── */
+.form-range {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-surface-lg);
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+}
+.form-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-gradient);
+  box-shadow: 0 2px 8px rgba(79, 142, 247, 0.3);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.form-range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-gradient);
+  border: none;
+  cursor: pointer;
+}
+
+/* ── Percentile Input ── */
+.percentile-wrap {
+  position: relative;
+}
+.percentile-wrap .form-control {
+  padding-right: var(--space-12);
+}
+.percentile-suffix {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+/* ── Error State ── */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.78rem;
+  color: var(--color-error);
+  margin-top: var(--space-1);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+.field-error.visible {
+  max-height: 40px;
+  opacity: 1;
+  margin-top: var(--space-1);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .form-control { font-size: 16px; } /* Prevent iOS zoom */
+}

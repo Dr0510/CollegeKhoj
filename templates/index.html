@@ -3,12 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CollegeKhoj — Maharashtra</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <title>CollegeKhoj — AI-Powered College Recommendations</title>
+    <meta name="description" content="Find your perfect college with AI-powered recommendations based on cutoff, budget, placement, rankings and preferences. 50,000+ students guided.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;550;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Apply theme before paint to avoid flash -->
+    <!-- CollegeKhoj Design System v5.0 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/globals.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/utilities.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badge.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/input.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/skeleton.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/modal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/dropdown.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/tabs.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/filter.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/pagination.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/home-premium.css') }}">
+
+    <!-- Theme before paint to avoid flash -->
     <script>
         (function(){
             const t = localStorage.getItem('cf-theme') || 'dark';
@@ -18,428 +41,1013 @@
     </script>
 
     <style>
-        /* ── Brand colours (shared) ── */
-        :root {
-            --brand: #4f8ef7;
-            --brand-glow: rgba(79,142,247,.18);
-            --safe: #22c55e;
-            --moderate: #f59e0b;
-            --ambitious: #6366f1;
-            --dream: #ec4899;
+        /* ── Inline critical hero styles ── */
+        .hero-gradient-mesh {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 0% 20%, rgba(79,142,247,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 100% 80%, rgba(99,102,241,0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 50%);
+            pointer-events: none;
+            animation: gradientMesh 20s ease-in-out infinite;
         }
-
-        /* ── DARK theme ── */
-        [data-theme="dark"] {
-            --bg:           #0b1019;
-            --navbar-bg:    rgba(11,16,25,.96);
-            --sidebar-bg:   #0f1520;
-            --card-bg:      #161b27;
-            --card-border:  rgba(255,255,255,.07);
-            --text:         #e2e8f0;
-            --text-muted:   #8892a4;
-            --text-faint:   #5a677d;
-            --label:        #9ba4b5;
-            --input-bg:     #0b1019;
-            --input-border: rgba(255,255,255,.1);
-            --stat-bg:      rgba(255,255,255,.03);
-            --meta-bg:      rgba(255,255,255,.05);
-            --rank-bg:      rgba(245,158,11,.12);
-            --rank-border:  rgba(245,158,11,.25);
-            --bar-bg:       rgba(255,255,255,.07);
-            --footer:       #4a5568;
-            --star-off:     #2a3244;
-            --upload-border:rgba(255,255,255,.07);
+        .hero-glow-orb {
+            position: absolute;
+            width: 600px; height: 600px;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            pointer-events: none;
         }
-
-        /* ── LIGHT theme ── */
-        [data-theme="light"] {
-            --bg:           #f0f4ff;
-            --navbar-bg:    rgba(255,255,255,.95);
-            --sidebar-bg:   #ffffff;
-            --card-bg:      #ffffff;
-            --card-border:  rgba(0,0,0,.09);
-            --text:         #1a202c;
-            --text-muted:   #4a5568;
-            --text-faint:   #718096;
-            --label:        #4a5568;
-            --input-bg:     #f7f9ff;
-            --input-border: rgba(0,0,0,.13);
-            --stat-bg:      #f7f9ff;
-            --meta-bg:      #f0f4ff;
-            --rank-bg:      rgba(245,158,11,.1);
-            --rank-border:  rgba(245,158,11,.3);
-            --bar-bg:       rgba(0,0,0,.07);
-            --footer:       #a0aec0;
-            --star-off:     #cbd5e0;
-            --upload-border:rgba(0,0,0,.1);
+        .hero-glow-orb:nth-child(1) {
+            top: -20%; right: -10%;
+            background: radial-gradient(circle, rgba(79,142,247,0.2) 0%, transparent 70%);
         }
-
-        /* ── Base ── */
-        *, *::before, *::after { transition: background-color .25s, border-color .25s, color .15s; box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; }
-
-        /* ── Navbar ── */
-        .navbar { background: var(--navbar-bg); border-bottom: 1px solid var(--card-border); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; }
-        .navbar-brand { font-weight: 800; font-size: 1.3rem; color: var(--brand) !important; letter-spacing: -.3px; text-decoration: none; }
-        .navbar-brand span { color: var(--text); }
-        .nav-right { display: flex; gap: 8px; align-items: center; }
-        .nav-pill { background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); border-radius: 8px; padding: 6px 14px; font-size: .84rem; transition: all .2s; text-decoration: none; }
-        .nav-pill:hover { border-color: var(--brand); color: var(--brand); }
-        .nav-pill.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-
-        /* Theme toggle */
-        .theme-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--card-border); background: var(--stat-bg); color: var(--text-muted); font-size: .9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
-        .theme-btn:hover { border-color: var(--brand); color: var(--brand); }
-
-        /* ── Hero ── */
-        .hero { padding: 52px 0 36px; text-align: center; }
-        .hero h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -.5px; margin-bottom: 10px; color: var(--text); }
-        .hero h1 span { color: var(--brand); }
-        .hero p { color: var(--text-muted); font-size: 1.05rem; }
-
-        /* ── Layout ── */
-        .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
-        @media(max-width:991px){ .main-grid { grid-template-columns: 1fr; } }
-
-        /* ── Sidebar card ── */
-        .sidebar-card { background: var(--sidebar-bg); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-        .card-head { padding: 16px 20px; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 10px; }
-        .card-head h5 { margin: 0; font-size: .97rem; font-weight: 700; color: var(--text); }
-        .card-body-inner { padding: 20px; }
-
-        /* ── Form elements ── */
-        .form-label { font-size: .78rem; font-weight: 600; color: var(--label); margin-bottom: 6px; letter-spacing: .3px; text-transform: uppercase; display: block; }
-        .form-control, .form-select { background: var(--input-bg) !important; border: 1px solid var(--input-border) !important; color: var(--text) !important; border-radius: 10px; font-size: .91rem; padding: 10px 13px; width: 100%; outline: none; }
-        .form-control::placeholder { color: var(--text-faint); }
-        .form-control:focus, .form-select:focus { border-color: var(--brand) !important; box-shadow: 0 0 0 3px var(--brand-glow) !important; }
-        .form-text { font-size: .73rem; color: var(--text-faint); margin-top: 4px; }
-        .mb-3 { margin-bottom: 14px; }
-        .mb-4 { margin-bottom: 18px; }
-
-        /* Range */
-        .form-range { width: 100%; accent-color: var(--brand); }
-        .range-val { display: inline-block; background: var(--brand); color: #fff; border-radius: 20px; padding: 2px 10px; font-size: .78rem; font-weight: 700; }
-
-        /* Submit btn */
-        .btn-brand { background: var(--brand); border: none; color: #fff; border-radius: 10px; padding: 12px; font-weight: 700; font-size: .95rem; width: 100%; cursor: pointer; transition: all .2s; }
-        .btn-brand:hover { background: #3b75e0; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(79,142,247,.28); }
-
-        /* Upload card */
-        .upload-card { background: var(--sidebar-bg); border: 1px dashed var(--upload-border); border-radius: 16px; padding: 18px; margin-top: 16px; }
-        .upload-card h6 { font-size: .86rem; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; }
-        .btn-outline-ghost { border: 1px solid var(--card-border); background: transparent; color: var(--text-muted); border-radius: 10px; padding: 10px; width: 100%; font-size: .87rem; cursor: pointer; transition: all .2s; }
-        .btn-outline-ghost:hover { border-color: var(--brand); color: var(--brand); }
-
-        /* ── Results ── */
-        .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-        .results-header h4 { font-size: 1.08rem; font-weight: 700; margin: 0; color: var(--text); }
-        .results-count { background: var(--brand-glow); border: 1px solid var(--brand); color: var(--brand); border-radius: 20px; padding: 3px 12px; font-size: .78rem; font-weight: 700; }
-
-        /* ── College card ── */
-        .college-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 18px 20px; margin-bottom: 12px; transition: border-color .2s, transform .15s; box-shadow: 0 1px 6px rgba(0,0,0,.05); }
-        .college-card:hover { border-color: rgba(79,142,247,.4); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.1); }
-        .college-name { font-size: .98rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-        .college-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-        .meta-tag { background: var(--meta-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 3px 9px; font-size: .76rem; color: var(--text-muted); }
-        .meta-tag i { margin-right: 4px; }
-        .college-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
-        @media(max-width:600px){ .college-stats { grid-template-columns: repeat(2,1fr); } }
-        .stat-box { background: var(--stat-bg); border-radius: 10px; padding: 9px 10px; text-align: center; }
-        .stat-label { font-size: .66rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
-        .stat-val { font-size: .95rem; font-weight: 800; color: var(--text); }
-        .match-bar-wrap { background: var(--bar-bg); border-radius: 6px; height: 5px; margin-top: 5px; overflow: hidden; }
-        .match-bar { height: 5px; border-radius: 6px; background: linear-gradient(90deg, var(--brand), #7c3aed); }
-        .rank-badge { background: var(--rank-bg); border: 1px solid var(--rank-border); color: var(--moderate); border-radius: 8px; padding: 2px 9px; font-size: .77rem; font-weight: 700; white-space: nowrap; }
-        .stars-on { color: #f59e0b; font-size: .72rem; }
-        .stars-off { color: var(--star-off); font-size: .72rem; }
-
-        /* ── Empty state ── */
-        .empty-state { text-align: center; padding: 80px 24px; }
-        .icon-circle { width: 78px; height: 78px; background: rgba(79,142,247,.1); border: 1px solid rgba(79,142,247,.2); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--brand); margin-bottom: 22px; }
-        .empty-state h4 { font-size: 1.3rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
-        .empty-state p { color: var(--text-muted); max-width: 360px; margin: 0 auto 28px; }
-        .feature-chips { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-        .feature-chip { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 30px; padding: 7px 16px; font-size: .82rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
-        .feature-chip i { color: var(--brand); }
-
-        /* ── Pill group (radio / checkbox) ── */
-        .pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
-        .pill-group input[type=radio],
-        .pill-group input[type=checkbox] { display: none; }
-        .pill-group label {
-            display: inline-flex; align-items: center; gap: 5px;
-            background: var(--input-bg); border: 1px solid var(--input-border);
-            border-radius: 20px; padding: 4px 12px; font-size: .76rem;
-            color: var(--text-muted); cursor: pointer; user-select: none;
-            transition: all .15s;
+        .hero-glow-orb:nth-child(2) {
+            bottom: -30%; left: -10%;
+            background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%);
+            animation: float-slow 10s ease-in-out infinite;
         }
-        .pill-group label:hover { border-color: var(--brand); color: var(--brand); }
-        .pill-group input:checked + label { background: var(--brand); border-color: var(--brand); color: #fff; }
-
-        /* ── Footer ── */
-        footer { border-top: 1px solid var(--card-border); padding: 26px 0; margin-top: 60px; text-align: center; color: var(--footer); font-size: .82rem; }
     </style>
 </head>
 <body>
 
-    <!-- Navbar -->
-    <nav class="navbar">
-        <a class="navbar-brand" href="{{ url_for('index') }}">
-            <i class="fas fa-graduation-cap me-2"></i>College<span>Khoj</span>
-        </a>
-        <div class="nav-right">
-            <a href="{{ url_for('index') }}" class="nav-pill active">General Search</a>
-            <a href="{{ url_for('mhcet_page') }}" class="nav-pill">MH-CET Portal</a>
+    {% include 'navbar.html' %}
 
-            {% if current_user %}
-            <a href="/profile" style="display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:20px;padding:4px 12px 4px 4px;text-decoration:none;transition:border-color .2s;" title="My Profile">
-                {% if current_user.profile_image_url %}
-                <img src="{{ current_user.profile_image_url }}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;" alt="">
-                {% else %}
-                <span style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#4f8ef7,#818cf8);display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;color:#fff;">{{ current_user.initials() }}</span>
-                {% endif %}
-                <span style="font-size:.82rem;font-weight:600;color:var(--text);">{{ current_user.first_name or 'Me' }}</span>
-            </a>
-            <button class="nav-pill" onclick="doSignOut()" style="cursor:pointer;" title="Sign out">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
-            {% else %}
-            <a href="/login" class="nav-pill" style="border-color:#4f8ef7;color:#4f8ef7;">
-                <i class="fas fa-user me-1"></i>Login
-            </a>
-            {% endif %}
-
-            <button class="theme-btn" id="themeToggle" title="Toggle light/dark mode">
-                <i class="fas fa-sun" id="themeIcon"></i>
-            </button>
-        </div>
-    </nav>
-
-    <!-- Flash Messages -->
+    <!-- ════════════════════════════════════════════════════════
+         FLASH MESSAGES
+         ════════════════════════════════════════════════════════ -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div style="max-width:1200px;margin:12px auto;padding:0 16px;">
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show border-0 rounded-3" role="alert">
+                    <div class="flash flash-{{ 'error' if category == 'error' else 'success' }}">
+                        <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'check-circle' }}"></i>
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
     {% endwith %}
 
-    <div class="container-lg px-3 px-md-4">
-        <!-- Hero -->
-        <div class="hero">
-            <h1>Find Your <span>Perfect College</span></h1>
-            <p>ML-powered recommendations based on budget, placement, rankings & ratings</p>
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 1: PREMIUM HERO
+         ════════════════════════════════════════════════════════ -->
+    <section class="premium-hero" id="hero">
+        <!-- Animated gradient mesh background -->
+        <div class="hero-gradient-mesh"></div>
+        <div class="hero-glow-orb"></div>
+        <div class="hero-glow-orb"></div>
+
+        <!-- Floating Particles -->
+        <div class="premium-hero-particles">
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
         </div>
 
-        <!-- Main Grid -->
-        <div class="main-grid pb-5">
-            <!-- Sidebar -->
-            <div>
-                <div class="sidebar-card">
-                    <div class="card-head">
-                        <i class="fas fa-sliders-h" style="color:var(--brand);"></i>
-                        <h5>Search Preferences</h5>
-                    </div>
-                    <div class="card-body-inner">
-                        <form method="POST" action="{{ url_for('recommend') }}">
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-rupee-sign me-1"></i>Max Budget (₹)</label>
-                                <input type="number" class="form-control" name="budget"
-                                       placeholder="e.g., 2,00,000"
-                                       value="{{ form_data.budget if form_data else '' }}">
-                                <div class="form-text">Leave empty for no limit</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-map-marker-alt me-1"></i>Location</label>
-                                <div class="pill-group">
-                                    <input type="radio" name="location" value="" id="loc_any"
-                                           {{ 'checked' if not form_data or not form_data.location }}>
-                                    <label for="loc_any">Any</label>
-                                    {% for loc in locations %}
-                                    {% set lid = "loc_" ~ loop.index %}
-                                    <input type="radio" name="location" value="{{ loc }}" id="{{ lid }}"
-                                           {{ 'checked' if form_data and form_data.location == loc }}>
-                                    <label for="{{ lid }}">{{ loc }}</label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-code-branch me-1"></i>Branch</label>
-                                <div class="pill-group">
-                                    <input type="radio" name="branch" value="" id="br_any"
-                                           {{ 'checked' if not form_data or not form_data.branch }}>
-                                    <label for="br_any">Any</label>
-                                    {% for br in branches %}
-                                    {% set bid = "br_" ~ loop.index %}
-                                    <input type="radio" name="branch" value="{{ br }}" id="{{ bid }}"
-                                           {{ 'checked' if form_data and form_data.branch == br }}>
-                                    <label for="{{ bid }}">{{ br }}</label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label">
-                                    <i class="fas fa-list-ol me-1"></i>Results &nbsp;
-                                    <span class="range-val" id="top_n_value">{{ form_data.top_n if form_data else 5 }}</span>
-                                </label>
-                                <input type="range" class="form-range mt-1" name="top_n"
-                                       min="1" max="20"
-                                       value="{{ form_data.top_n if form_data else 5 }}"
-                                       oninput="document.getElementById('top_n_value').textContent = this.value">
-                            </div>
-                            <button type="submit" class="btn-brand">
-                                <i class="fas fa-magic me-2"></i>Get Recommendations
-                            </button>
-                        </form>
-                    </div>
-                </div>
+        <!-- Floating geometric shapes -->
+        <div class="hero-floating-shapes">
+            <div class="hero-shape shape-1"><i class="fas fa-graduation-cap"></i></div>
+            <div class="hero-shape shape-2"><i class="fas fa-chart-line"></i></div>
+            <div class="hero-shape shape-3"><i class="fas fa-brain"></i></div>
+            <div class="hero-shape shape-4"><i class="fas fa-university"></i></div>
+        </div>
 
-                <!-- Upload -->
-                <div class="upload-card">
-                    <h6><i class="fas fa-upload me-2"></i>Upload College Data (CSV)</h6>
-                    <form method="POST" action="{{ url_for('upload_csv') }}" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <input type="file" class="form-control" name="file" accept=".csv" required>
-                            <div class="form-text">Columns: College, Location, Branch, Fees, PlacementRate, NIRFRank, Rating</div>
-                        </div>
-                        <button type="submit" class="btn-outline-ghost">
-                            <i class="fas fa-file-upload me-2"></i>Upload CSV
-                        </button>
-                    </form>
+        <div class="premium-hero-content">
+            <div class="premium-hero-badge">
+                <span class="badge-dot"></span>
+                AI-Powered College Matching Engine
+                <span class="badge-shine"></span>
+            </div>
+
+            <h1>
+                Find Your<br>
+                <span class="text-gradient">Perfect College</span>
+            </h1>
+
+            <p class="hero-sub">
+                AI-powered college recommendations based on cutoff, budget, placement, rankings and preferences.
+                Discover the best institutions tailored to your unique profile.
+            </p>
+
+            <!-- Search Bar -->
+            <div class="hero-search-wrapper">
+                <div class="hero-search">
+                    <i class="fas fa-search hero-search-icon"></i>
+                    <input type="text" class="hero-search-input" placeholder="Search colleges, branches, locations..." id="heroSearch">
+                    <button class="hero-search-btn" onclick="window.location.href='{{ url_for('mhcet_page') }}'">
+                        Find Colleges
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="hero-search-suggestions" id="heroSuggestions">
+                    <div class="suggestion-item" onclick="window.location.href='{{ url_for('mhcet_page') }}?percentile=99&category=General'">
+                        <i class="fas fa-robot"></i>
+                        <span>Try AI Recommendation</span>
+                    </div>
+                    <div class="suggestion-item" onclick="window.location.href='/colleges'">
+                        <i class="fas fa-building"></i>
+                        <span>Browse All Colleges</span>
+                    </div>
+                    <div class="suggestion-item" onclick="window.location.href='{{ url_for('compare_page') }}'">
+                        <i class="fas fa-columns"></i>
+                        <span>Compare Colleges</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Results -->
-            <div>
-                {% if recommendations %}
-                    <div class="results-header">
-                        <h4><i class="fas fa-star me-2" style="color:#f59e0b;"></i>Recommended Colleges</h4>
-                        <span class="results-count">{{ recommendations|length }} results</span>
-                    </div>
+            <!-- CTA Buttons -->
+            <div class="hero-actions">
+                <a href="{{ url_for('mhcet_page') }}" class="hero-btn hero-btn-primary">
+                    <i class="fas fa-magic"></i> Check Admission Chances
+                </a>
+                <a href="/colleges" class="hero-btn hero-btn-secondary">
+                    <i class="fas fa-building"></i> Explore Colleges
+                </a>
+                <a href="{{ url_for('mhcet_page') }}?percentile=85&category=OBC" class="hero-btn hero-btn-tertiary">
+                    <i class="fas fa-rocket"></i> Quick Predict
+                </a>
+            </div>
 
-                    {% for college, score in recommendations %}
-                    <div class="college-card">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">
-                            <div class="college-name">{{ college.college }}</div>
-                            <span class="rank-badge">#{{ college.nirf_rank }} NIRF</span>
-                        </div>
-                        <div class="college-meta">
-                            <span class="meta-tag"><i class="fas fa-map-marker-alt"></i>{{ college.location }}</span>
-                            <span class="meta-tag"><i class="fas fa-code-branch"></i>{{ college.branch }}</span>
-                        </div>
-                        <div class="college-stats">
-                            <div class="stat-box">
-                                <div class="stat-label">Fees</div>
-                                <div class="stat-val" style="color:#22c55e;font-size:.85rem;">₹{{ "{:,.0f}".format(college.fees) }}</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-label">Placement</div>
-                                <div class="stat-val" style="color:#06b6d4;">{{ "%.0f"|format(college.placement_rate) }}%</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-label">Rating</div>
-                                <div class="stat-val">
-                                    {% for i in range(5) %}
-                                        <i class="fas fa-star {{ 'stars-on' if i < college.rating|int else 'stars-off' }}"></i>
-                                    {% endfor %}
-                                    <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">{{ "%.1f"|format(college.rating) }}</div>
+            <!-- Trust Indicators -->
+            <div class="hero-trust">
+                <div class="trust-item"><i class="fas fa-database"></i> <strong>1,000+</strong> Colleges</div>
+                <div class="trust-item"><i class="fas fa-users"></i> <strong>50,000+</strong> Students Guided</div>
+                <div class="trust-item"><i class="fas fa-clock"></i> <strong>3 Years</strong> Cutoff Data</div>
+                <div class="trust-item"><i class="fas fa-brain"></i> <strong>AI</strong> Powered</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 2: STATISTICS COUNTER
+         ════════════════════════════════════════════════════════ -->
+    <section class="stats-section animate-on-scroll" id="stats">
+        <div class="container-xl">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" data-count="50000">0</div>
+                    <div class="stat-label">Students Guided</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" data-count="1000">0</div>
+                    <div class="stat-label">Colleges Listed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" data-count="98">0<span style="font-size:1.5rem;">%</span></div>
+                    <div class="stat-label">Recommendation Accuracy</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" data-count="3">0</div>
+                    <div class="stat-label">Years of Cutoff Data</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 3: FEATURED COLLEGES
+         ════════════════════════════════════════════════════════ -->
+    <section class="premium-section premium-section-alt" id="featured">
+        <div class="premium-section-inner">
+            <div class="premium-section-header animate-on-scroll">
+                <span class="badge-pill badge-primary"><i class="fas fa-star"></i> Top Institutions</span>
+                <h2>Featured <span class="text-gradient">Colleges</span></h2>
+                <p>Explore Maharashtra's top colleges across Engineering, Pharmacy, and Polytechnic streams</p>
+            </div>
+
+            <!-- Category Tabs (Pills) -->
+            <div class="tabs tabs-pills animate-on-scroll" id="collegeTabs" role="tablist">
+                <button class="tab active" data-tab="engineering" role="tab">
+                    <i class="fas fa-microchip"></i> Engineering
+                </button>
+                <button class="tab" data-tab="pharmacy" role="tab">
+                    <i class="fas fa-pills"></i> Pharmacy
+                </button>
+                <button class="tab" data-tab="polytechnic" role="tab">
+                    <i class="fas fa-tools"></i> Polytechnic
+                </button>
+            </div>
+
+            <!-- College Cards Grid -->
+            <div class="featured-colleges-grid" id="featuredColleges">
+                <!-- Engineering Colleges -->
+                <div class="tab-content active" id="tab-engineering">
+                    <div class="college-scroll-row">
+                        <div class="premium-rec-card">
+                            <div class="premium-rec-card-top">
+                                <div>
+                                    <div class="rec-name">College of Engineering Pune (COEP)</div>
+                                    <div class="rec-location"><i class="fas fa-map-marker-alt"></i> Pune</div>
                                 </div>
+                                <span class="rec-rank-badge">#1 NIRF</span>
                             </div>
-                            <div class="stat-box">
-                                <div class="stat-label">Match</div>
-                                <div class="stat-val" style="color:var(--brand);">{{ "%.0f"|format(score * 100) }}%</div>
-                                <div class="match-bar-wrap"><div class="match-bar" style="width:{{ (score*100)|round }}%;"></div></div>
+                            <div class="premium-rec-meta">
+                                <span class="meta-tag"><i class="fas fa-code-branch"></i> Computer Engineering</span>
+                                <span class="meta-tag"><i class="fas fa-rupee-sign"></i> ₹85,000/yr</span>
+                                <span class="meta-tag"><i class="fas fa-briefcase"></i> 95% Placement</span>
+                            </div>
+                            <div class="premium-rec-stats">
+                                <div class="rec-stat"><span class="rec-stat-label">Fees</span><span class="rec-stat-value fees">₹85K</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Placement</span><span class="rec-stat-value placement">95%</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Rating</span><span class="rec-stat-value">4.7/5</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Cutoff</span><span class="rec-stat-value">99.6%ile</span></div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn-card-action"><i class="fas fa-bookmark"></i> Save</button>
+                                <button class="btn-card-action"><i class="fas fa-columns"></i> Compare</button>
+                                <a href="/college/1" class="btn-card-action"><i class="fas fa-external-link-alt"></i> Details</a>
                             </div>
                         </div>
-                    </div>
-                    {% endfor %}
 
-                {% else %}
-                    <div class="empty-state">
-                        <div class="icon-circle"><i class="fas fa-university"></i></div>
-                        <h4>Discover Your Best Fit</h4>
-                        <p>Set your budget, preferred location and branch, then click Get Recommendations.</p>
-                        <div class="feature-chips">
-                            <div class="feature-chip"><i class="fas fa-brain"></i>ML-Powered Matching</div>
-                            <div class="feature-chip"><i class="fas fa-filter"></i>Smart Filtering</div>
-                            <div class="feature-chip"><i class="fas fa-chart-line"></i>Placement & Rank Data</div>
-                            <div class="feature-chip"><i class="fas fa-calculator"></i>MH-CET Portal Available</div>
+                        <div class="premium-rec-card">
+                            <div class="premium-rec-card-top">
+                                <div>
+                                    <div class="rec-name">VJTI Mumbai</div>
+                                    <div class="rec-location"><i class="fas fa-map-marker-alt"></i> Mumbai</div>
+                                </div>
+                                <span class="rec-rank-badge">#2 NIRF</span>
+                            </div>
+                            <div class="premium-rec-meta">
+                                <span class="meta-tag"><i class="fas fa-code-branch"></i> Computer Engineering</span>
+                                <span class="meta-tag"><i class="fas fa-rupee-sign"></i> ₹1,20,000/yr</span>
+                                <span class="meta-tag"><i class="fas fa-briefcase"></i> 92% Placement</span>
+                            </div>
+                            <div class="premium-rec-stats">
+                                <div class="rec-stat"><span class="rec-stat-label">Fees</span><span class="rec-stat-value fees">₹1.2L</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Placement</span><span class="rec-stat-value placement">92%</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Rating</span><span class="rec-stat-value">4.6/5</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Cutoff</span><span class="rec-stat-value">99.3%ile</span></div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn-card-action"><i class="fas fa-bookmark"></i> Save</button>
+                                <button class="btn-card-action"><i class="fas fa-columns"></i> Compare</button>
+                                <a href="/college/2" class="btn-card-action"><i class="fas fa-external-link-alt"></i> Details</a>
+                            </div>
+                        </div>
+
+                        <div class="premium-rec-card">
+                            <div class="premium-rec-card-top">
+                                <div>
+                                    <div class="rec-name">Sardar Patel Institute of Technology</div>
+                                    <div class="rec-location"><i class="fas fa-map-marker-alt"></i> Mumbai</div>
+                                </div>
+                                <span class="rec-rank-badge">#5 NIRF</span>
+                            </div>
+                            <div class="premium-rec-meta">
+                                <span class="meta-tag"><i class="fas fa-code-branch"></i> Information Technology</span>
+                                <span class="meta-tag"><i class="fas fa-rupee-sign"></i> ₹1,35,000/yr</span>
+                                <span class="meta-tag"><i class="fas fa-briefcase"></i> 88% Placement</span>
+                            </div>
+                            <div class="premium-rec-stats">
+                                <div class="rec-stat"><span class="rec-stat-label">Fees</span><span class="rec-stat-value fees">₹1.35L</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Placement</span><span class="rec-stat-value placement">88%</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Rating</span><span class="rec-stat-value">4.5/5</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Cutoff</span><span class="rec-stat-value">98.7%ile</span></div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn-card-action"><i class="fas fa-bookmark"></i> Save</button>
+                                <button class="btn-card-action"><i class="fas fa-columns"></i> Compare</button>
+                                <a href="/college/3" class="btn-card-action"><i class="fas fa-external-link-alt"></i> Details</a>
+                            </div>
                         </div>
                     </div>
+                    <div class="section-view-all">
+                        <a href="/colleges?category=engineering" class="btn-soft">
+                            View All Engineering Colleges <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Pharmacy Colleges -->
+                <div class="tab-content" id="tab-pharmacy">
+                    <div class="college-scroll-row">
+                        <div class="premium-rec-card">
+                            <div class="premium-rec-card-top">
+                                <div>
+                                    <div class="rec-name">Government College of Pharmacy, Karad</div>
+                                    <div class="rec-location"><i class="fas fa-map-marker-alt"></i> Karad</div>
+                                </div>
+                                <span class="rec-rank-badge">Top Pharmacy</span>
+                            </div>
+                            <div class="premium-rec-meta">
+                                <span class="meta-tag"><i class="fas fa-code-branch"></i> B.Pharm</span>
+                                <span class="meta-tag"><i class="fas fa-rupee-sign"></i> ₹40,000/yr</span>
+                                <span class="meta-tag"><i class="fas fa-briefcase"></i> 85% Placement</span>
+                            </div>
+                            <div class="premium-rec-stats">
+                                <div class="rec-stat"><span class="rec-stat-label">Fees</span><span class="rec-stat-value fees">₹40K</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Placement</span><span class="rec-stat-value placement">85%</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Rating</span><span class="rec-stat-value">4.4/5</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Cutoff</span><span class="rec-stat-value">92%ile</span></div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn-card-action"><i class="fas fa-bookmark"></i> Save</button>
+                                <button class="btn-card-action"><i class="fas fa-columns"></i> Compare</button>
+                                <a href="/college/4" class="btn-card-action"><i class="fas fa-external-link-alt"></i> Details</a>
+                            </div>
+                        </div>
+
+                        <div class="premium-rec-card">
+                            <div class="premium-rec-card-top">
+                                <div>
+                                    <div class="rec-name">Poona College of Pharmacy, Pune</div>
+                                    <div class="rec-location"><i class="fas fa-map-marker-alt"></i> Pune</div>
+                                </div>
+                                <span class="rec-rank-badge">Top Pharmacy</span>
+                            </div>
+                            <div class="premium-rec-meta">
+                                <span class="meta-tag"><i class="fas fa-code-branch"></i> B.Pharm</span>
+                                <span class="meta-tag"><i class="fas fa-rupee-sign"></i> ₹75,000/yr</span>
+                                <span class="meta-tag"><i class="fas fa-briefcase"></i> 82% Placement</span>
+                            </div>
+                            <div class="premium-rec-stats">
+                                <div class="rec-stat"><span class="rec-stat-label">Fees</span><span class="rec-stat-value fees">₹75K</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Placement</span><span class="rec-stat-value placement">82%</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Rating</span><span class="rec-stat-value">4.3/5</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Cutoff</span><span class="rec-stat-value">89%ile</span></div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn-card-action"><i class="fas fa-bookmark"></i> Save</button>
+                                <button class="btn-card-action"><i class="fas fa-columns"></i> Compare</button>
+                                <a href="/college/5" class="btn-card-action"><i class="fas fa-external-link-alt"></i> Details</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-view-all">
+                        <a href="/colleges?category=pharmacy" class="btn-soft">
+                            View All Pharmacy Colleges <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Polytechnic Colleges -->
+                <div class="tab-content" id="tab-polytechnic">
+                    <div class="college-scroll-row">
+                        <div class="premium-rec-card">
+                            <div class="premium-rec-card-top">
+                                <div>
+                                    <div class="rec-name">Government Polytechnic, Pune</div>
+                                    <div class="rec-location"><i class="fas fa-map-marker-alt"></i> Pune</div>
+                                </div>
+                                <span class="rec-rank-badge">Top Polytechnic</span>
+                            </div>
+                            <div class="premium-rec-meta">
+                                <span class="meta-tag"><i class="fas fa-code-branch"></i> Civil Engineering</span>
+                                <span class="meta-tag"><i class="fas fa-rupee-sign"></i> ₹15,000/yr</span>
+                                <span class="meta-tag"><i class="fas fa-briefcase"></i> 78% Placement</span>
+                            </div>
+                            <div class="premium-rec-stats">
+                                <div class="rec-stat"><span class="rec-stat-label">Fees</span><span class="rec-stat-value fees">₹15K</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Placement</span><span class="rec-stat-value placement">78%</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Rating</span><span class="rec-stat-value">4.2/5</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Cutoff</span><span class="rec-stat-value">85%ile</span></div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn-card-action"><i class="fas fa-bookmark"></i> Save</button>
+                                <button class="btn-card-action"><i class="fas fa-columns"></i> Compare</button>
+                                <a href="/college/6" class="btn-card-action"><i class="fas fa-external-link-alt"></i> Details</a>
+                            </div>
+                        </div>
+
+                        <div class="premium-rec-card">
+                            <div class="premium-rec-card-top">
+                                <div>
+                                    <div class="rec-name">Government Polytechnic, Mumbai</div>
+                                    <div class="rec-location"><i class="fas fa-map-marker-alt"></i> Mumbai</div>
+                                </div>
+                                <span class="rec-rank-badge">Top Polytechnic</span>
+                            </div>
+                            <div class="premium-rec-meta">
+                                <span class="meta-tag"><i class="fas fa-code-branch"></i> Mechanical Engineering</span>
+                                <span class="meta-tag"><i class="fas fa-rupee-sign"></i> ₹18,000/yr</span>
+                                <span class="meta-tag"><i class="fas fa-briefcase"></i> 75% Placement</span>
+                            </div>
+                            <div class="premium-rec-stats">
+                                <div class="rec-stat"><span class="rec-stat-label">Fees</span><span class="rec-stat-value fees">₹18K</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Placement</span><span class="rec-stat-value placement">75%</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Rating</span><span class="rec-stat-value">4.1/5</span></div>
+                                <div class="rec-stat"><span class="rec-stat-label">Cutoff</span><span class="rec-stat-value">82%ile</span></div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn-card-action"><i class="fas fa-bookmark"></i> Save</button>
+                                <button class="btn-card-action"><i class="fas fa-columns"></i> Compare</button>
+                                <a href="/college/7" class="btn-card-action"><i class="fas fa-external-link-alt"></i> Details</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-view-all">
+                        <a href="/colleges?category=polytechnic" class="btn-soft">
+                            View All Polytechnic Colleges <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 4: AI RECOMMENDATION SHOWCASE
+         ════════════════════════════════════════════════════════ -->
+    <section class="premium-section" id="ai-showcase">
+        <div class="premium-section-inner">
+            <div class="premium-section-header animate-on-scroll">
+                <span class="badge-pill badge-primary"><i class="fas fa-brain"></i> AI-Powered Engine</span>
+                <h2>Smart <span class="text-gradient">Recommendations</span></h2>
+                <p>Our ML model analyzes cutoff trends, placement data, and your preferences to find your perfect match</p>
+            </div>
+
+            <div class="ai-showcase-layout animate-on-scroll">
+                <!-- Left: Student Profile Card -->
+                <div class="ai-profile-card">
+                    <div class="ai-profile-header">
+                        <div class="ai-profile-badge">Sample Profile</div>
+                        <div class="ai-profile-student">
+                            <div class="ai-profile-avatar">AR</div>
+                            <div class="ai-profile-info">
+                                <h4>Aditya Raj</h4>
+                                <p>MH-CET 2024 Candidate</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ai-profile-stats">
+                        <div class="ai-profile-stat">
+                            <span class="ai-stat-label">Percentile</span>
+                            <span class="ai-stat-value highlight">95.6%ile</span>
+                        </div>
+                        <div class="ai-profile-stat">
+                            <span class="ai-stat-label">Category</span>
+                            <span class="ai-stat-value">General</span>
+                        </div>
+                        <div class="ai-profile-stat">
+                            <span class="ai-stat-label">Budget</span>
+                            <span class="ai-stat-value">₹1.5 Lakh</span>
+                        </div>
+                        <div class="ai-profile-stat">
+                            <span class="ai-stat-label">Location</span>
+                            <span class="ai-stat-value">Pune, Mumbai</span>
+                        </div>
+                    </div>
+                    <div class="ai-profile-action">
+                        <a href="{{ url_for('mhcet_page') }}" class="btn-primary" style="width:100%;justify-content:center;">
+                            <i class="fas fa-magic"></i> Try Your Profile
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Right: AI Results -->
+                <div class="ai-results">
+                    <div class="ai-results-header">
+                        <span class="ai-match-badge"><i class="fas fa-check-circle"></i> 4 colleges matched</span>
+                    </div>
+
+                    <div class="ai-result-item safe-result">
+                        <div class="ai-result-rank">1</div>
+                        <div class="ai-result-info">
+                            <div class="ai-result-name">College of Engineering Pune (COEP)</div>
+                            <div class="ai-result-meta">
+                                <span>Computer Engineering</span>
+                                <span>•</span>
+                                <span>Pune</span>
+                                <span>•</span>
+                                <span>₹85K/yr</span>
+                            </div>
+                        </div>
+                        <div class="ai-result-match">
+                            <div class="match-gauge gauge-safe">
+                                <svg viewBox="0 0 36 36">
+                                    <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    <path class="gauge-fill gauge-fill-safe" stroke-dasharray="92, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                </svg>
+                                <span class="match-percent">92%</span>
+                            </div>
+                            <span class="match-label safe">Safe</span>
+                        </div>
+                    </div>
+
+                    <div class="ai-result-item safe-result">
+                        <div class="ai-result-rank">2</div>
+                        <div class="ai-result-info">
+                            <div class="ai-result-name">VJTI Mumbai</div>
+                            <div class="ai-result-meta">
+                                <span>Computer Engineering</span>
+                                <span>•</span>
+                                <span>Mumbai</span>
+                                <span>•</span>
+                                <span>₹1.2L/yr</span>
+                            </div>
+                        </div>
+                        <div class="ai-result-match">
+                            <div class="match-gauge gauge-safe">
+                                <svg viewBox="0 0 36 36">
+                                    <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    <path class="gauge-fill gauge-fill-safe" stroke-dasharray="88, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                </svg>
+                                <span class="match-percent">88%</span>
+                            </div>
+                            <span class="match-label safe">Safe</span>
+                        </div>
+                    </div>
+
+                    <div class="ai-result-item moderate-result">
+                        <div class="ai-result-rank">3</div>
+                        <div class="ai-result-info">
+                            <div class="ai-result-name">SPIT Mumbai</div>
+                            <div class="ai-result-meta">
+                                <span>Information Technology</span>
+                                <span>•</span>
+                                <span>Mumbai</span>
+                                <span>•</span>
+                                <span>₹1.35L/yr</span>
+                            </div>
+                        </div>
+                        <div class="ai-result-match">
+                            <div class="match-gauge gauge-moderate">
+                                <svg viewBox="0 0 36 36">
+                                    <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    <path class="gauge-fill gauge-fill-moderate" stroke-dasharray="65, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                </svg>
+                                <span class="match-percent">65%</span>
+                            </div>
+                            <span class="match-label moderate">Moderate</span>
+                        </div>
+                    </div>
+
+                    <div class="ai-result-item ambitious-result">
+                        <div class="ai-result-rank">4</div>
+                        <div class="ai-result-info">
+                            <div class="ai-result-name">PICT Pune</div>
+                            <div class="ai-result-meta">
+                                <span>Computer Engineering</span>
+                                <span>•</span>
+                                <span>Pune</span>
+                                <span>•</span>
+                                <span>₹1.4L/yr</span>
+                            </div>
+                        </div>
+                        <div class="ai-result-match">
+                            <div class="match-gauge gauge-ambitious">
+                                <svg viewBox="0 0 36 36">
+                                    <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    <path class="gauge-fill gauge-fill-ambitious" stroke-dasharray="40, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                </svg>
+                                <span class="match-percent">40%</span>
+                            </div>
+                            <span class="match-label ambitious">Ambitious</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 5: CAP CUTOFF TREND ANALYSIS (Premium)
+         ════════════════════════════════════════════════════════ -->
+    <section class="premium-section premium-section-alt" id="cutoff-predictor">
+        <div class="premium-section-inner">
+            <div class="trend-section-header animate-on-scroll">
+                <span class="section-badge"><i class="fas fa-chart-line"></i> Cutoff Analytics</span>
+                <h2>CAP Cutoff <span class="gradient-text">Trend Analysis</span></h2>
+                <p>Visualize cutoff trends across years, categories, and colleges — make data-driven decisions</p>
+            </div>
+
+            <div class="trend-grid animate-on-scroll">
+                <!-- Interactive Predictor (Left) -->
+                <div class="trend-predictor-card">
+                    <div class="trend-predictor-header">
+                        <i class="fas fa-sliders-h"></i>
+                        <h4>Check Your Chances</h4>
+                    </div>
+                    <div class="trend-predictor-body">
+                        <div class="trend-field">
+                            <label>Your Percentile</label>
+                            <div class="percentile-wrap">
+                                <input type="number" class="form-control" id="predictorPercentile"
+                                       placeholder="Enter your percentile" min="0" max="100" value="85">
+                                <span class="percentile-suffix">%ile</span>
+                            </div>
+                        </div>
+                        <div class="trend-field">
+                            <label>Category</label>
+                            <select class="form-control" id="predictorCategory">
+                                <option>General</option>
+                                <option>OBC</option>
+                                <option>SC</option>
+                                <option>ST</option>
+                                <option>EWS</option>
+                            </select>
+                        </div>
+                        <div class="trend-field">
+                            <label>Gender</label>
+                            <select class="form-control" id="predictorGender">
+                                <option>All</option>
+                                <option>Female Only</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" style="width:100%;justify-content:center;" onclick="window.location.href='{{ url_for('mhcet_page') }}'">
+                            <i class="fas fa-chart-bar"></i> Predict Chances
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SVG Line Chart (Right) -->
+                <div class="trend-chart-card">
+                    <div class="trend-chart-header">
+                        <div class="trend-chart-header-left">
+                            <i class="fas fa-chart-area"></i>
+                            <h4>Cutoff Trends <span class="trend-value-badge decreasing" id="trendSummaryBadge"><i class="fas fa-arrow-down"></i> Declining</span></h4>
+                        </div>
+                        <div class="trend-chart-actions">
+                            <div class="trend-filter-pills" id="trendFilterPills">
+                                <button class="trend-pill active" data-category="General">General</button>
+                                <button class="trend-pill" data-category="OBC">OBC</button>
+                                <button class="trend-pill" data-category="SC">SC</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="trend-chart-body" id="trendChartBody">
+                        <svg class="trend-svg-chart" id="trendSvg" viewBox="0 0 600 240" preserveAspectRatio="xMidYMid meet">
+                            <!-- Y-axis grid lines -->
+                            <line class="grid-line" x1="60" y1="30" x2="560" y2="30"/>
+                            <line class="grid-line" x1="60" y1="70" x2="560" y2="70"/>
+                            <line class="grid-line" x1="60" y1="110" x2="560" y2="110"/>
+                            <line class="grid-line" x1="60" y1="150" x2="560" y2="150"/>
+                            <line class="grid-line" x1="60" y1="190" x2="560" y2="190"/>
+
+                            <!-- Y-axis labels -->
+                            <text class="chart-label-year" x="52" y="34" text-anchor="end">100</text>
+                            <text class="chart-label-year" x="52" y="74" text-anchor="end">90</text>
+                            <text class="chart-label-year" x="52" y="114" text-anchor="end">80</text>
+                            <text class="chart-label-year" x="52" y="154" text-anchor="end">70</text>
+                            <text class="chart-label-year" x="52" y="194" text-anchor="end">60</text>
+
+                            <!-- X-axis labels (years) -->
+                            <text class="chart-label-year" x="160" y="220" text-anchor="middle">2022</text>
+                            <text class="chart-label-year" x="310" y="220" text-anchor="middle">2023</text>
+                            <text class="chart-label-year" x="460" y="220" text-anchor="middle">2024</text>
+
+                            <!-- COEP line (blue) — decreasing trend from 99.2 → 98.8 → 97.5 -->
+                            <polyline class="chart-line coep-line" points="160,36 310,40 460,56"/>
+                            <circle class="chart-dot coep-dot" cx="160" cy="36" data-value="99.2" data-college="COEP"/>
+                            <circle class="chart-dot coep-dot" cx="310" cy="40" data-value="98.8" data-college="COEP"/>
+                            <circle class="chart-dot coep-dot" cx="460" cy="56" data-value="97.5" data-college="COEP"/>
+
+                            <!-- VJTI line (indigo) — stable → decreasing 97.8 → 97.5 → 95.0 -->
+                            <polyline class="chart-line vjti-line" points="160,46 310,52 460,72"/>
+                            <circle class="chart-dot vjti-dot" cx="160" cy="46" data-value="97.8" data-college="VJTI"/>
+                            <circle class="chart-dot vjti-dot" cx="310" cy="52" data-value="97.5" data-college="VJTI"/>
+                            <circle class="chart-dot vjti-dot" cx="460" cy="72" data-value="95.0" data-college="VJTI"/>
+
+                            <!-- SPIT line (purple) — decreasing 95.5 → 94.2 → 92.0 -->
+                            <polyline class="chart-line spit-line" points="160,56 310,64 460,80"/>
+                            <circle class="chart-dot spit-dot" cx="160" cy="56" data-value="95.5" data-college="SPIT"/>
+                            <circle class="chart-dot spit-dot" cx="310" cy="64" data-value="94.2" data-college="SPIT"/>
+                            <circle class="chart-dot spit-dot" cx="460" cy="80" data-value="92.0" data-college="SPIT"/>
+
+                            <!-- PICT line (amber) — stable 90.2 → 89.8 → 88.5 -->
+                            <polyline class="chart-line pict-line" points="160,72 310,76 460,84"/>
+                            <circle class="chart-dot pict-dot" cx="160" cy="72" data-value="90.2" data-college="PICT"/>
+                            <circle class="chart-dot pict-dot" cx="310" cy="76" data-value="89.8" data-college="PICT"/>
+                            <circle class="chart-dot pict-dot" cx="460" cy="84" data-value="88.5" data-college="PICT"/>
+
+                            <!-- DYP line (cyan) — stable 82.5 → 81.0 → 80.0 -->
+                            <polyline class="chart-line dyp-line" points="160,96 310,100 460,104"/>
+                            <circle class="chart-dot dyp-dot" cx="160" cy="96" data-value="82.5" data-college="DYP"/>
+                            <circle class="chart-dot dyp-dot" cx="310" cy="100" data-value="81.0" data-college="DYP"/>
+                            <circle class="chart-dot dyp-dot" cx="460" cy="104" data-value="80.0" data-college="DYP"/>
+
+                            <!-- College labels (bottom) -->
+                            <text class="chart-label" x="160" y="232" text-anchor="middle" fill="var(--color-primary)">COEP</text>
+                            <text class="chart-label" x="310" y="232" text-anchor="middle" fill="var(--color-secondary)">VJTI</text>
+                            <text class="chart-label" x="460" y="232" text-anchor="middle" fill="var(--color-tertiary)">SPIT</text>
+                        </svg>
+                    </div>
+
+                    <!-- Chart Legend -->
+                    <div class="trend-chart-legend">
+                        <div class="trend-legend-item active" data-college="COEP">
+                            <span class="legend-dot" style="background:var(--color-primary);"></span>
+                            <span class="legend-name">COEP</span>
+                            <span class="trend-value-badge decreasing"><i class="fas fa-arrow-down"></i> -1.7</span>
+                        </div>
+                        <div class="trend-legend-item" data-college="VJTI">
+                            <span class="legend-dot" style="background:var(--color-secondary);"></span>
+                            <span class="legend-name">VJTI</span>
+                            <span class="trend-value-badge decreasing"><i class="fas fa-arrow-down"></i> -2.8</span>
+                        </div>
+                        <div class="trend-legend-item" data-college="SPIT">
+                            <span class="legend-dot" style="background:var(--color-tertiary);"></span>
+                            <span class="legend-name">SPIT</span>
+                            <span class="trend-value-badge decreasing"><i class="fas fa-arrow-down"></i> -3.5</span>
+                        </div>
+                        <div class="trend-legend-item" data-college="PICT">
+                            <span class="legend-dot" style="background:var(--color-warning);"></span>
+                            <span class="legend-name">PICT</span>
+                            <span class="trend-value-badge stable"><i class="fas fa-minus"></i> -1.7</span>
+                        </div>
+                        <div class="trend-legend-item" data-college="DYP">
+                            <span class="legend-dot" style="background:var(--color-info);"></span>
+                            <span class="legend-name">DYP</span>
+                            <span class="trend-value-badge stable"><i class="fas fa-minus"></i> -2.5</span>
+                        </div>
+                    </div>
+
+                    <div class="trend-chart-footer">
+                        <a href="{{ url_for('mhcet_page') }}" class="btn-soft">
+                            <i class="fas fa-search"></i> Explore Detailed Cutoffs
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trend Insights Strip -->
+            <div class="trend-insights-strip animate-on-scroll">
+                <div class="trend-insight-item">
+                    <div class="trend-insight-icon trend-down">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="trend-insight-content">
+                        <h5>COEP — Decreasing</h5>
+                        <p>Computer Engineering cutoff dropped from 99.2%ile to 97.5%ile over 3 years</p>
+                    </div>
+                </div>
+                <div class="trend-insight-item">
+                    <div class="trend-insight-icon trend-down">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="trend-insight-content">
+                        <h5>VJTI — Decreasing</h5>
+                        <p>Computer Engineering cutoff dropped from 97.8%ile to 95.0%ile. Good opportunity.</p>
+                    </div>
+                </div>
+                <div class="trend-insight-item">
+                    <div class="trend-insight-icon trend-stable">
+                        <i class="fas fa-minus"></i>
+                    </div>
+                    <div class="trend-insight-content">
+                        <h5>PICT — Stable</h5>
+                        <p>Cutoff decreased marginally from 90.2%ile to 88.5%ile — consistent pattern</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 6: TESTIMONIALS
+         ════════════════════════════════════════════════════════ -->
+    <section class="premium-section" id="testimonials">
+        <div class="premium-section-inner">
+            <div class="premium-section-header animate-on-scroll">
+                <span class="badge-pill badge-primary"><i class="fas fa-quote-right"></i> Student Stories</span>
+                <h2>Trusted by <span class="text-gradient">Thousands</span></h2>
+                <p>Hear from students who found their perfect college with CollegeKhoj</p>
+            </div>
+
+            <div class="testimonials-grid animate-on-scroll">
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p class="testimonial-text">"CollegeKhoj made my MH-CET counselling so much easier. The CAP cutoff analysis was spot-on — I got into my dream college at COEP!"</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">AP</div>
+                        <div>
+                            <strong>Aditya Patil</strong>
+                            <span>COEP Pune • Computer Engineering</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testimonial-card featured">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p class="testimonial-text">"The AI recommendation engine suggested colleges I hadn't even considered. Saved me from making a huge mistake. Ended up at VJTI — best decision ever!"</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">PJ</div>
+                        <div>
+                            <strong>Priya Joshi</strong>
+                            <span>VJTI Mumbai • Electronics Engineering</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <p class="testimonial-text">"Compare feature helped me evaluate 4 colleges side by side. The fee vs placement analysis was a game-changer for our family's budget planning."</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">RS</div>
+                        <div>
+                            <strong>Rahul Sharma</strong>
+                            <span>PICT Pune • Information Technology</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonials-cta animate-on-scroll">
+                <a href="{{ url_for('mhcet_page') }}" class="btn-ghost">
+                    <i class="fas fa-arrow-right"></i> Join 50,000+ Students
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 7: FINAL CTA
+         ════════════════════════════════════════════════════════ -->
+    <section class="cta-section" id="cta">
+        <div class="cta-gradient-bg"></div>
+        <div class="cta-content">
+            <div class="cta-badge animate-on-scroll">🚀 Start Your Journey</div>
+            <h2 class="animate-on-scroll">Your Dream College <span class="text-gradient">Awaits</span></h2>
+            <p class="animate-on-scroll">Join 50,000+ students who've found their perfect college. Get AI-powered recommendations, compare colleges, and make confident decisions.</p>
+            <div class="cta-actions animate-on-scroll">
+                <a href="{{ url_for('mhcet_page') }}" class="hero-btn hero-btn-primary">
+                    <i class="fas fa-magic"></i> Check Your Chances
+                </a>
+                <a href="/colleges" class="hero-btn hero-btn-secondary">
+                    <i class="fas fa-building"></i> Browse Colleges
+                </a>
+            </div>
+            <div class="cta-trust animate-on-scroll">
+                <span><i class="fas fa-shield-alt"></i> No registration required</span>
+                <span><i class="fas fa-clock"></i> 30-second setup</span>
+                <span><i class="fas fa-lock"></i> 100% free</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="navbar-brand-icon" style="width:32px;height:32px;font-size:0.75rem;">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <span style="font-weight:800;color:var(--text-primary);">College<span style="color:var(--color-primary);">Khoj</span></span>
+            </div>
+            <div class="footer-links">
+                <a href="/">Home</a>
+                <a href="{{ url_for('mhcet_page') }}">MH-CET</a>
+                <a href="/colleges">Colleges</a>
+                <a href="{{ url_for('compare_page') }}">Compare</a>
+                {% if current_user %}
+                <a href="{{ url_for('profile_page') }}">Profile</a>
                 {% endif %}
             </div>
+            <p class="footer-copyright">© 2025 CollegeKhoj · AI-Powered MH-CET College Finder for Maharashtra</p>
         </div>
-    </div>
-
-    <footer>
-        <i class="fas fa-graduation-cap me-2"></i>CollegeKhoj · Powered by Machine Learning
     </footer>
 
+    <!-- ════════════════════════════════════════════════════════
+         JAVASCRIPT
+         ════════════════════════════════════════════════════════ -->
     <script>
-        /* ── Theme toggle ── */
-        const html = document.documentElement;
-        const btn  = document.getElementById('themeToggle');
-        const icon = document.getElementById('themeIcon');
+        (function() {
+            'use strict';
 
-        function applyTheme(t) {
-            html.setAttribute('data-bs-theme', t);
-            html.setAttribute('data-theme', t);
-            icon.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-            localStorage.setItem('cf-theme', t);
-        }
-
-        // Set correct icon on load
-        applyTheme(localStorage.getItem('cf-theme') || 'dark');
-
-        btn.addEventListener('click', function() {
-            const current = html.getAttribute('data-theme');
-            applyTheme(current === 'dark' ? 'light' : 'dark');
-        });
-
-        /* ── CSV file type check ── */
-        const fileInput = document.querySelector('input[type=file]');
-        if (fileInput) {
-            fileInput.addEventListener('change', function(e) {
-                const f = e.target.files[0];
-                if (f && !f.name.toLowerCase().endsWith('.csv')) {
-                    alert('Please select a CSV file.');
-                    e.target.value = '';
-                }
-            });
-        }
-
-        /* ── Sign out ── */
-        async function doSignOut() {
-            try { if (window.Clerk) await window.Clerk.signOut(); } catch(e) {}
-            window.location.href = '/logout';
-        }
-    </script>
-
-    {% if clerk_publishable_key %}
-    <script async crossorigin="anonymous"
-            src="https://{{ clerk_frontend_api }}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
-            data-clerk-publishable-key="{{ clerk_publishable_key }}">
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                await window.Clerk.load();
-                if (window.Clerk.user && !{{ 'true' if current_user else 'false' }}) {
-                    const token = await window.Clerk.session.getToken();
-                    const resp = await fetch('/auth/sync', {
-                        method: 'POST',
-                        headers: { 'Authorization': 'Bearer ' + token }
+            /* ── Scroll Reveal (Intersection Observer) ── */
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            observer.unobserve(entry.target);
+                        }
                     });
-                    if (resp.ok) location.reload();
-                }
-            } catch(e) {}
-        });
+                }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+                document.querySelectorAll('.animate-on-scroll, .animate-on-scroll-left, .animate-on-scroll-right, .animate-on-scroll-scale').forEach(el => {
+                    observer.observe(el);
+                });
+            } else {
+                document.querySelectorAll('.animate-on-scroll, .animate-on-scroll-left, .animate-on-scroll-right, .animate-on-scroll-scale').forEach(el => {
+                    el.classList.add('visible');
+                });
+            }
+
+            /* ── Animated Counters ── */
+            function animateCounters() {
+                const counters = document.querySelectorAll('.stat-number[data-count]');
+                counters.forEach(counter => {
+                    const target = parseInt(counter.dataset.count);
+                    const duration = 2000;
+                    const steps = 60;
+                    const increment = target / steps;
+                    let current = 0;
+                    let step = 0;
+                    const timer = setInterval(() => {
+                        step++;
+                        current = Math.min(current + increment, target);
+                        counter.textContent = Math.floor(current);
+                        if (step >= steps || current >= target) {
+                            clearInterval(timer);
+                            counter.textContent = target.toLocaleString();
+                        }
+                    }, duration / steps);
+                });
+            }
+
+            /* Observe stats section for counter animation */
+            const statsSection = document.getElementById('stats');
+            if (statsSection) {
+                const statsObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            animateCounters();
+                            statsObserver.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.3 });
+                statsObserver.observe(statsSection);
+            }
+
+            /* ── Featured Colleges Tabs ── */
+            const tabContainer = document.getElementById('collegeTabs');
+            if (tabContainer) {
+                const tabs = tabContainer.querySelectorAll('.tab');
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        const tabId = this.dataset.tab;
+                        tabs.forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        document.querySelectorAll('.featured-colleges-grid .tab-content').forEach(tc => tc.classList.remove('active'));
+                        const target = document.getElementById('tab-' + tabId);
+                        if (target) target.classList.add('active');
+                    });
+                });
+            }
+
+            /* ── Hero Search Suggestions ── */
+            const heroSearch = document.getElementById('heroSearch');
+            const heroSuggestions = document.getElementById('heroSuggestions');
+            if (heroSearch && heroSuggestions) {
+                heroSearch.addEventListener('focus', function() {
+                    heroSuggestions.classList.add('open');
+                });
+                heroSearch.addEventListener('blur', function() {
+                    setTimeout(() => heroSuggestions.classList.remove('open'), 200);
+                });
+                heroSearch.addEventListener('input', function() {
+                    if (this.value.length > 0) {
+                        heroSuggestions.classList.add('open');
+                    }
+                });
+            }
+
+            /* ── Mobile Menu Enhancement ── */
+            const mobileToggle = document.getElementById('mobile-menu-toggle');
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileToggle && mobileMenu) {
+                mobileToggle.addEventListener('click', function() {
+                    const isOpen = mobileMenu.classList.contains('open');
+                    mobileMenu.classList.toggle('open');
+                    mobileToggle.setAttribute('aria-expanded', !isOpen);
+                    const icon = mobileToggle.querySelector('i');
+                    if (icon) {
+                        icon.className = isOpen ? 'fas fa-bars' : 'fas fa-times';
+                    }
+                    document.body.style.overflow = isOpen ? '' : 'hidden';
+                });
+
+                // Close on link click
+                mobileMenu.querySelectorAll('.nav-link.mobile').forEach(link => {
+                    link.addEventListener('click', function() {
+                        mobileMenu.classList.remove('open');
+                        mobileToggle.setAttribute('aria-expanded', 'false');
+                        if (mobileToggle.querySelector('i')) {
+                            mobileToggle.querySelector('i').className = 'fas fa-bars';
+                        }
+                        document.body.style.overflow = '';
+                    });
+                });
+            }
+
+            /* ── Theme Toggle (if exists) ── */
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            if (themeToggle && themeIcon) {
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    document.documentElement.setAttribute('data-bs-theme', newTheme);
+                    localStorage.setItem('cf-theme', newTheme);
+                    themeIcon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+                });
+            }
+
+            /* ── Logout handlers ── */
+            function handleLogout(e) {
+                e.preventDefault();
+                window.location.href = '/logout';
+            }
+            const logoutBtns = document.querySelectorAll('#logout-btn, #logout-btn-mobile');
+            logoutBtns.forEach(btn => {
+                if (btn) btn.addEventListener('click', handleLogout);
+            });
+        })();
     </script>
-    {% endif %}
+
 </body>
 </html>

@@ -1,8 +1,8 @@
 """Trend calculation service for cutoff history.
 
 Computes 3-year trends, branch popularity, and college ranking trends
-from the CAPCutoff table. Stores computed trend results in the
-college_trends table (production Neon PostgreSQL).
+from the CollegeCutoff table (unified single source of truth).
+Stores computed trend results in the college_trends table.
 """
 import logging
 from collections import defaultdict
@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 def compute_college_trends(college_code: str = None, limit: int = 10):
     """Compute year-over-year cutoff trends for colleges.
 
+    Uses the unified college_cutoffs table.
+
     Args:
         college_code: Optional specific college code to filter
         limit: Max results
@@ -21,48 +23,44 @@ def compute_college_trends(college_code: str = None, limit: int = 10):
     Returns:
         list of dicts: { college_code, college_name, branch, category, trends }
     """
-    from models import CAPCutoff, College
+    from models import CollegeCutoff
 
     query = db.session.query(
-        CAPCutoff.college_code,
-        CAPCutoff.college_id,
-        CAPCutoff.branch,
-        CAPCutoff.category,
-        CAPCutoff.year,
-        db.func.avg(CAPCutoff.cutoff_percentile).label('avg_cutoff')
+        CollegeCutoff.college_code,
+        CollegeCutoff.college_name,
+        CollegeCutoff.course_name,
+        CollegeCutoff.category,
+        CollegeCutoff.year,
+        db.func.avg(CollegeCutoff.percentile).label('avg_cutoff')
     ).filter(
-        CAPCutoff.college_code.isnot(None),
-        CAPCutoff.validation_status == 'validated'
+        CollegeCutoff.college_code.isnot(None),
+        CollegeCutoff.exam_type == 'MHT-CET',
     )
 
     if college_code:
-        query = query.filter(CAPCutoff.college_code == college_code)
+        query = query.filter(CollegeCutoff.college_code == college_code)
 
     query = query.group_by(
-        CAPCutoff.college_code, CAPCutoff.college_id,
-        CAPCutoff.branch, CAPCutoff.category, CAPCutoff.year
+        CollegeCutoff.college_code, CollegeCutoff.college_name,
+        CollegeCutoff.course_name, CollegeCutoff.category, CollegeCutoff.year
     ).order_by(
-        CAPCutoff.college_code, CAPCutoff.branch, CAPCutoff.category, CAPCutoff.year
+        CollegeCutoff.college_code, CollegeCutoff.course_name, CollegeCutoff.category, CollegeCutoff.year
     )
 
     rows = query.all()
 
-    # Group by college_code + branch + category
+    # Group by college_code + course_name + category
     grouped = defaultdict(lambda: defaultdict(dict))
     college_names = {}
 
     for row in rows:
-        key = (row.college_code, row.branch, row.category)
-        grouped[key][row.year] = round(float(row.avg_cutoff), 2)
-
-        # Get college name
-        if row.college_code not in college_names:
-            college = db.session.get(College, row.college_id)
-            if college:
-                college_names[row.college_code] = college.college
+        key = (row.college_code, row.course_name, row.category)
+        if row.avg_cutoff is not None:
+            grouped[key][row.year] = round(float(row.avg_cutoff), 2)
+        college_names[row.college_code] = row.college_name or college_names.get(row.college_code, '')
 
     results = []
-    for (code, branch, cat), year_data in grouped.items():
+    for (code, course, cat), year_data in grouped.items():
         sorted_years = sorted(year_data.keys())
         if len(sorted_years) < 1:
             continue
@@ -87,7 +85,7 @@ def compute_college_trends(college_code: str = None, limit: int = 10):
         results.append({
             'college_code': code,
             'college_name': college_names.get(code, ''),
-            'branch': branch,
+            'branch': course,
             'category': cat,
             'trends': trend_data,
             'years': [str(y) for y in sorted_years],
@@ -101,30 +99,33 @@ def compute_college_trends(college_code: str = None, limit: int = 10):
 
 
 def compute_branch_popularity(year: int = None, top_n: int = 10):
-    """Rank branches by their average cutoff (higher = more popular)."""
-    from models import CAPCutoff
+    """Rank branches by their average cutoff (higher = more popular).
+
+    Uses the unified college_cutoffs table.
+    """
+    from models import CollegeCutoff
 
     query = db.session.query(
-        CAPCutoff.branch,
-        db.func.avg(CAPCutoff.cutoff_percentile).label('avg_cutoff'),
-        db.func.count(CAPCutoff.id).label('count')
+        CollegeCutoff.course_name,
+        db.func.avg(CollegeCutoff.percentile).label('avg_cutoff'),
+        db.func.count(CollegeCutoff.id).label('count')
     ).filter(
-        CAPCutoff.branch.isnot(None),
-        CAPCutoff.branch != '',
-        CAPCutoff.validation_status == 'validated'
+        CollegeCutoff.course_name.isnot(None),
+        CollegeCutoff.course_name != '',
+        CollegeCutoff.exam_type == 'MHT-CET',
     )
 
     if year:
-        query = query.filter(CAPCutoff.year == year)
+        query = query.filter(CollegeCutoff.year == year)
 
-    query = query.group_by(CAPCutoff.branch).order_by(
+    query = query.group_by(CollegeCutoff.course_name).order_by(
         db.desc('avg_cutoff')
     ).limit(top_n)
 
     return [
         {
-            'branch': row.branch,
-            'avg_cutoff': round(float(row.avg_cutoff), 2),
+            'branch': row.course_name,
+            'avg_cutoff': round(float(row.avg_cutoff), 2) if row.avg_cutoff else 0,
             'college_count': row.count,
         }
         for row in query.all()
@@ -135,17 +136,17 @@ def get_safe_moderate_dream(student_percentile: float, category: str,
                             gender: str = 'Gender-Neutral', top_n: int = 20):
     """Classify colleges into Safe / Moderate / Dream based on 3-year trends.
 
-    Uses the latest available cutoff for each college+branch+category.
+    Uses the unified college_cutoffs table.
     """
-    from models import CAPCutoff, College
+    from models import CollegeCutoff, College
 
     # Get the latest year available
     latest_year_row = db.session.query(
-        db.func.max(CAPCutoff.year)
+        db.func.max(CollegeCutoff.year)
     ).filter(
-        CAPCutoff.validation_status == 'validated',
-        CAPCutoff.category == category,
-        CAPCutoff.gender == gender,
+        CollegeCutoff.category == category,
+        CollegeCutoff.gender == gender,
+        CollegeCutoff.exam_type == 'MHT-CET',
     ).scalar()
 
     if not latest_year_row:
@@ -154,30 +155,36 @@ def get_safe_moderate_dream(student_percentile: float, category: str,
     latest_year = int(latest_year_row)
 
     # Get all cutoffs for the latest year
-    cutoffs = db.session.query(CAPCutoff).filter(
-        CAPCutoff.year == latest_year,
-        CAPCutoff.category == category,
-        CAPCutoff.gender == gender,
-        CAPCutoff.validation_status == 'validated',
+    cutoffs = db.session.query(CollegeCutoff).filter(
+        CollegeCutoff.year == latest_year,
+        CollegeCutoff.category == category,
+        CollegeCutoff.gender == gender,
+        CollegeCutoff.exam_type == 'MHT-CET',
     ).all()
 
     safe, moderate, dream = [], [], []
 
     for cutoff in cutoffs:
-        college = db.session.get(College, cutoff.college_id)
+        # Try to find matching college by code or name
+        college = College.query.filter(
+            College.college.ilike(f'%{cutoff.college_name}%')
+        ).first()
+
         if not college:
             continue
+
+        percentile_val = float(cutoff.percentile) if cutoff.percentile else 0
 
         entry = {
             'college_code': cutoff.college_code,
             'college_name': college.college,
             'location': college.location,
-            'branch': cutoff.branch if hasattr(cutoff, 'branch') else college.branch,
-            'cutoff': cutoff.cutoff_percentile,
+            'branch': cutoff.course_name or cutoff.branch or college.branch,
+            'cutoff': percentile_val,
             'nirf_rank': college.nirf_rank,
         }
 
-        diff = student_percentile - cutoff.cutoff_percentile
+        diff = student_percentile - percentile_val
 
         if diff >= 2.0:
             safe.append(entry)
@@ -202,8 +209,7 @@ def store_trend_results():
     """Compute all trends and store/update them in the college_trends table.
 
     This is called after every import commit to keep trend data current.
-    Reads data from Neon PostgreSQL cap_cutoffs table and writes to
-    the college_trends table.
+    Reads data from college_cutoffs table and writes to college_trends table.
     """
     from models import CollegeTrend
     from datetime import datetime

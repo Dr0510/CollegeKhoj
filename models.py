@@ -7,10 +7,15 @@ import secrets
 
 
 class CollegeCutoff(db.Model):
-    """Main storage table for MHT-CET/DSE CAP cutoff data.
+    """Main storage table for MHT-CET/DSE/Polytechnic CAP cutoff data.
 
-    Created per user requirements: stores year, round, college_code,
-    college_name, course_code, course_name, category, rank, percentile.
+    SINGLE SOURCE OF TRUTH for all cutoff data.
+    Populated via admin PDF import (bulk_import_engine.py).
+
+    Unified architecture:
+    - `exam_type` discriminates MHT-CET vs POLYTECHNIC
+    - `gender`, `opening_rank`, `closing_rank`, `seats_available` imported from cap_cutoffs
+    - Branch-wise, category-aware, gender-aware recommendations use this table
 
     Approval workflow: records are hidden from user-facing queries until the
     associated ImportJob's approval_status is set to 'approved'.
@@ -21,6 +26,7 @@ class CollegeCutoff(db.Model):
     __table_args__ = (
         UniqueConstraint('year', 'round', 'college_code', 'course_code', 'category',
                          name='uq_cutoff_unique'),
+        # Single-column indexes
         Index('idx_cc_year', 'year'),
         Index('idx_cc_round', 'round'),
         Index('idx_cc_college_name', 'college_name'),
@@ -29,6 +35,13 @@ class CollegeCutoff(db.Model):
         Index('idx_cc_percentile', 'percentile'),
         Index('idx_cc_college_code', 'college_code'),
         Index('idx_cc_approval', 'approval_status'),
+        Index('idx_cc_course_code', 'course_code'),
+        Index('idx_cc_gender', 'gender'),
+        Index('idx_cc_exam_type', 'exam_type'),
+        # Composite indexes for common query patterns
+        Index('idx_cc_year_round_code', 'year', 'round', 'college_code'),
+        Index('idx_cc_code_course', 'college_code', 'course_code'),
+        Index('idx_cc_year_code', 'year', 'college_code'),
     )
 
     id = Column(Integer, primary_key=True)
@@ -43,6 +56,14 @@ class CollegeCutoff(db.Model):
     percentile = Column(Numeric(5, 2), nullable=True)
     source_file_id = Column(Integer, ForeignKey('uploaded_files.id'), nullable=True, index=True)
     imported_at = Column(DateTime, default=datetime.utcnow)
+
+    # ── Unified architecture columns (migrated from cap_cutoffs) ────────────
+    gender = Column(String(10), default='Gender-Neutral', nullable=False)
+    opening_rank = Column(Integer, nullable=True)
+    closing_rank = Column(Integer, nullable=True)
+    seats_available = Column(Integer, nullable=True)
+    branch = Column(String(200), nullable=True)  # Denormalized alias for course_name
+    exam_type = Column(String(20), default='MHT-CET', nullable=False)  # MHT-CET | POLYTECHNIC
 
     # Approval workflow — denormalized from ImportJob for fast filtering
     approval_status = Column(String(20), default='pending_approval', nullable=False, index=True)
@@ -70,6 +91,12 @@ class CollegeCutoff(db.Model):
             'category': self.category,
             'rank': self.rank,
             'percentile': float(self.percentile) if self.percentile else None,
+            'gender': self.gender,
+            'opening_rank': self.opening_rank,
+            'closing_rank': self.closing_rank,
+            'seats_available': self.seats_available,
+            'branch': self.branch,
+            'exam_type': self.exam_type,
             'approval_status': self.approval_status,
             'approved_at': self.approved_at.isoformat() if self.approved_at else None,
             'approved_by': self.approved_by,
@@ -91,7 +118,7 @@ class College(db.Model):
     nirf_rank = Column(Integer, nullable=False)
     rating = Column(Float, nullable=False)  # Out of 5
 
-    # Relationship to cutoff data
+    # Relationship to cutoff data (legacy — kept for backward compat)
     cutoff_data = relationship("CAPCutoff", back_populates="college")
 
     def __repr__(self):
@@ -121,7 +148,12 @@ class College(db.Model):
 
 
 class CAPCutoff(db.Model):
-    """Single source-of-truth for CAP cutoff data (populated via admin PDF import)."""
+    """DEPRECATED — kept for backward compatibility.
+
+    Use CollegeCutoff (college_cutoffs table) instead.
+    This table is no longer written to by the import system.
+    Existing data will be migrated to college_cutoffs.
+    """
 
     __tablename__ = 'cap_cutoffs'
 
@@ -133,26 +165,24 @@ class CAPCutoff(db.Model):
 
     id = Column(Integer, primary_key=True)
     college_id = Column(Integer, ForeignKey('colleges.id'), nullable=False)
-    college_code = Column(String(20), nullable=True, index=True)  # MH-CET institute code
-    college_name = Column(String(200), nullable=True)  # Denormalized for fast lookup
+    college_code = Column(String(20), nullable=True, index=True)
+    college_name = Column(String(200), nullable=True)
     year = Column(Integer, nullable=False, index=True)
     round_number = Column(Integer, nullable=False)
-    branch = Column(String(100), nullable=True)  # Denormalized branch name
-    category = Column(String(20), nullable=False)  # Open, OBC, SC, ST, NT, EWS
-    gender = Column(String(10), nullable=False)  # Male, Female, Other
+    branch = Column(String(100), nullable=True)
+    category = Column(String(20), nullable=False)
+    gender = Column(String(10), nullable=False)
     cutoff_percentile = Column(Float, nullable=False)
     opening_rank = Column(Integer, nullable=True)
     closing_rank = Column(Integer, nullable=True)
     seats_available = Column(Integer, nullable=True)
 
-    # New columns for admin import tracking
     source_file_id = Column(Integer, ForeignKey('uploaded_files.id'), nullable=True, index=True)
     is_auto_generated = Column(Boolean, default=False)
-    validation_status = Column(String(20), default='validated')  # validated | flagged | rejected
+    validation_status = Column(String(20), default='validated')
     raw_pdf_text = Column(Text, nullable=True)
     imported_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationships
     college = relationship("College", back_populates="cutoff_data")
     source_file = relationship("UploadedFile", back_populates="cutoff_records")
 
@@ -222,7 +252,7 @@ class User(db.Model):
     last_name = Column(String(100), nullable=True)
     password_hash = Column(String(255), nullable=True)
     profile_image_url = Column(Text, nullable=True)
-    role = Column(String(20), default='user', nullable=False)  # user | admin
+    role = Column(String(20), default='user', nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     verification_code = Column(String(6), nullable=True)
     verification_code_expiry = Column(DateTime, nullable=True)
@@ -293,29 +323,24 @@ class UploadedFile(db.Model):
     file_size = Column(Integer, nullable=True)
     mime_type = Column(String(50), nullable=True)
 
-    # Auto-detected metadata
     year = Column(Integer, nullable=True, index=True)
     round_number = Column(Integer, nullable=True)
 
-    # Processing state
-    processed_status = Column(String(20), default='pending')  # pending | preview | committed | failed
+    processed_status = Column(String(20), default='pending')
     total_rows = Column(Integer, default=0)
     valid_rows = Column(Integer, default=0)
     rejected_rows = Column(Integer, default=0)
     duplicate_rows = Column(Integer, default=0)
-    preview_data = Column(JSON, nullable=True)  # cached parsed preview
+    preview_data = Column(JSON, nullable=True)
     validation_report = Column(JSON, nullable=True)
 
-    # Extraction metadata
-    extraction_method = Column(String(20), default='pdfplumber')  # pdfplumber | ai_fallback
+    extraction_method = Column(String(20), default='pdfplumber')
     extraction_confidence = Column(Float, nullable=True)
 
-    # Audit
     uploaded_by = Column(Integer, ForeignKey('users.id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     committed_at = Column(DateTime, nullable=True)
 
-    # Relationships
     uploader = relationship("User", foreign_keys=[uploaded_by])
     cutoff_records = relationship("CAPCutoff", back_populates="source_file",
                                   foreign_keys='CAPCutoff.source_file_id')
@@ -331,17 +356,6 @@ class ImportJob(db.Model):
     """
     Tracks the status of a PDF import process (background processing).
 
-    Enhanced with fields for the Bulk PDF Import Engine:
-    - checkpoint_page: last successfully processed page (for resume)
-    - rows_extracted: total rows parsed from PDF
-    - rows_imported: rows actually inserted (after dedup)
-    - rows_failed: rows that failed validation
-    - failed_pages: JSON list of page numbers that failed
-    - error_log: JSON list of error details
-    - page_range_start / page_range_end: smart page range import
-    - memory_usage_mb: peak memory usage during processing
-    - log_every_n_pages: logging frequency (default 10)
-
     Approval Workflow:
     Status life cycle: UPLOADED → PROCESSING → COMPLETED → PENDING_APPROVAL → APPROVED | REJECTED
     Failed/Cancelled are terminal error states.
@@ -352,19 +366,15 @@ class ImportJob(db.Model):
     id = Column(Integer, primary_key=True)
     file_id = Column(Integer, ForeignKey('uploaded_files.id'), nullable=False, index=True)
 
-    # Status life cycle: UPLOADED → PROCESSING → COMPLETED → PENDING_APPROVAL → APPROVED | REJECTED
     status = Column(String(20), default='PENDING', nullable=False, index=True)
 
-    # ── Approval Workflow Fields ────────────────────────────────────────────
-    approval_status = Column(String(20), nullable=True, index=True)  # pending_approval | approved | rejected | None
+    approval_status = Column(String(20), nullable=True, index=True)
     approved_by = Column(Integer, ForeignKey('users.id'), nullable=True)
     approved_at = Column(DateTime, nullable=True)
     rejection_reason = Column(Text, nullable=True)
 
-    # Denormalized uploader reference (the admin who uploaded the file)
     uploaded_by = Column(Integer, ForeignKey('users.id'), nullable=True)
 
-    # Progress tracking
     total_pages = Column(Integer, default=0)
     processed_pages = Column(Integer, default=0)
     checkpoint_page = Column(Integer, default=0)
@@ -372,25 +382,20 @@ class ImportJob(db.Model):
     rows_imported = Column(Integer, default=0)
     rows_failed = Column(Integer, default=0)
 
-    # Failed/error tracking
-    failed_pages = Column(JSON, default=list)   # [1, 5, 23, ...]
-    error_log = Column(JSON, default=list)       # [{"page": 5, "error": "..."}, ...]
+    failed_pages = Column(JSON, default=list)
+    error_log = Column(JSON, default=list)
 
-    # Page range (smart import)
     page_range_start = Column(Integer, default=1)
-    page_range_end = Column(Integer, nullable=True)  # None = all pages
+    page_range_end = Column(Integer, nullable=True)
 
-    # Performance metrics
     memory_usage_mb = Column(Float, nullable=True)
     extraction_method = Column(String(20), default='pdfplumber')
     confidence_score = Column(Float, nullable=True)
 
-    # Timing
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)
 
-    # Relationships
     file = relationship("UploadedFile", back_populates="import_jobs")
     approver = relationship("User", foreign_keys=[approved_by])
     uploaded_by_user = relationship("User", foreign_keys=[uploaded_by])
@@ -441,8 +446,8 @@ class CollegeTrend(db.Model):
     college_name = Column(String(200), nullable=True)
     branch = Column(String(100), nullable=True)
     category = Column(String(20), nullable=True)
-    trend_data = Column(JSON, nullable=True)  # {"2022": 95.5, "2023": 97.2, "2024": 98.1}
-    direction = Column(String(20), nullable=True)  # increasing | decreasing | stable
+    trend_data = Column(JSON, nullable=True)
+    direction = Column(String(20), nullable=True)
     difference = Column(Float, nullable=True)
     computed_at = Column(DateTime, default=datetime.utcnow)
 
@@ -472,7 +477,7 @@ class BackupHistory(db.Model):
     backup_date = Column(DateTime, default=datetime.utcnow)
     backup_file = Column(String(500), nullable=False)
     file_size = Column(Integer, nullable=True)
-    db_type = Column(String(20), nullable=True)  # postgresql | sqlite
+    db_type = Column(String(20), nullable=True)
     record_count = Column(Integer, nullable=True)
     status = Column(String(20), default='success')
     created_by = Column(Integer, ForeignKey('users.id'), nullable=True)
@@ -491,8 +496,8 @@ class AuditLog(db.Model):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True, index=True)
-    action = Column(String(50), nullable=False)  # login, logout, upload, import_commit, delete, restore, backup
-    resource_type = Column(String(50), nullable=True)  # cutoff, college, user, backup, uploaded_file
+    action = Column(String(50), nullable=False)
+    resource_type = Column(String(50), nullable=True)
     resource_id = Column(Integer, nullable=True)
     details = Column(JSON, nullable=True)
     ip_address = Column(String(45), nullable=True)
@@ -515,21 +520,18 @@ class ApprovalRequest(db.Model):
     email = Column(String(200), nullable=False, index=True)
     request_type = Column(String(100), nullable=False, index=True)
     submitted_date = Column(DateTime, default=datetime.utcnow, index=True)
-    status = Column(String(20), default='PENDING', nullable=False, index=True)  # PENDING | APPROVED | REJECTED
+    status = Column(String(20), default='PENDING', nullable=False, index=True)
 
-    # Approval tracking
     approved_at = Column(DateTime, nullable=True)
     approved_by = Column(Integer, ForeignKey('users.id'), nullable=True)
     rejected_at = Column(DateTime, nullable=True)
     rejected_by = Column(Integer, ForeignKey('users.id'), nullable=True)
 
-    # Metadata
     notes = Column(Text, nullable=True)
-    data_snapshot = Column(JSON, nullable=True)  # extra request data
+    data_snapshot = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
     approver = relationship("User", foreign_keys=[approved_by])
     rejecter = relationship("User", foreign_keys=[rejected_by])
 
@@ -559,11 +561,11 @@ class BulkActionBackup(db.Model):
     __tablename__ = 'bulk_action_backups'
 
     id = Column(Integer, primary_key=True)
-    action_type = Column(String(50), nullable=False, index=True)  # approve_selected | reject_selected | delete_selected | approve_all | reject_all | delete_all
+    action_type = Column(String(50), nullable=False, index=True)
     admin_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
     affected_count = Column(Integer, default=0)
-    snapshot_data = Column(JSON, nullable=False)  # Array of request dicts before modification
-    status_filter = Column(String(20), nullable=True)  # PENDING | APPROVED | REJECTED | None
+    snapshot_data = Column(JSON, nullable=False)
+    status_filter = Column(String(20), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     admin = relationship("User", foreign_keys=[admin_id])

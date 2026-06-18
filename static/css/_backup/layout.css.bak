@@ -1,0 +1,90 @@
+/* ============================================================
+   📐 CollegeKhoj Layout — Part 1
+   ============================================================ */
+
+/* ── Hero ── */
+.hero { padding: var(--space-12) 0 var(--space-8); text-align: center; }
+.hero h1 { font-size: var(--text-3xl); font-weight: var(--font-extrabold); letter-spacing: -0.5px; margin-bottom: var(--space-2); color: var(--text-primary); }
+.hero h1 span { color: var(--brand-primary); }
+.hero p { color: var(--text-secondary); font-size: var(--text-base); max-width: 600px; margin: 0 auto; }
+@media (max-width: 640px) {
+  .hero { padding: var(--space-8) 0 var(--space-6); }
+  .hero h1 { font-size: var(--text-2xl); }
+}
+
+/* ── Hero Banner (college profile) ── */
+.hero-banner { background: var(--brand-gradient-soft); border-bottom: 1px solid var(--border-primary); padding: var(--space-8) 0 var(--space-6); }
+.college-title { font-size: var(--text-2xl); font-weight: var(--font-extrabold); color: var(--text-primary); margin-bottom: var(--space-1); }
+.college-subtitle { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.action-row { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
+
+/* ── Main Grid ── */
+.main-grid { display: grid; grid-template-columns: 340px 1fr; gap: var(--space-6); align-items: start; }
+@media (max-width: 991px) { .main-grid { grid-template-columns: 1fr; } }
+
+/* ── Container ── */
+.container-lg { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-4); }
+
+/* ── Page Hero ── */
+.page-hero { padding: var(--space-8) 0 var(--space-5); }
+.page-hero h1 { font-size: var(--text-2xl); font-weight: var(--font-extrabold); color: var(--text-primary); }
+.page-hero p { color: var(--text-secondary); font-size: var(--text-sm); }
+
+.back-link {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  color: var(--text-secondary); font-size: var(--text-xs);
+  text-decoration: none; margin-bottom: var(--space-3);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.back-link:hover { color: var(--brand-primary); }
+
+/* ── Footer ── */
+footer { border-top: 1px solid var(--border-primary); padding: var(--space-6) 0; margin-top: var(--space-12); text-align: center; color: var(--footer-color); font-size: var(--text-xs); }
+
+/* ── Strategy box ── */
+.strategy-box { background: var(--brand-primary-muted); border: 1px solid rgba(79, 142, 247, 0.15); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); margin-top: var(--space-2); font-size: var(--text-xs); color: var(--text-secondary); line-height: var(--leading-relaxed); }
+
+/* ============================================================
+   📐 CollegeKhoj Layout — Part 2: Auth & Misc
+   ============================================================ */
+
+/* ── Auth page layout ── */
+.auth-page { display: flex; min-height: 100vh; }
+.left-panel { flex: 1; background: var(--bg-secondary); display: flex; flex-direction: column; justify-content: center; padding: var(--space-12); position: relative; overflow: hidden; }
+.right-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--space-8); }
+.auth-card-wrap { width: 100%; max-width: 440px; }
+@media (max-width: 868px) { .left-panel { display: none; } .right-panel { flex: 1; padding: var(--space-6); } }
+
+/* ── User chip ── */
+.user-chip { display: inline-flex; align-items: center; gap: var(--space-1); background: var(--bg-surface); border: 1px solid var(--border-primary); border-radius: var(--radius-2xl); padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1); text-decoration: none; transition: border-color var(--duration-fast) var(--ease-out); }
+.user-chip:hover { border-color: var(--brand-primary); }
+.user-chip-name { font-size: var(--text-xs); font-weight: var(--font-semibold); color: var(--text-primary); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Verification code ── */
+.verify-section { display: none; }
+.verify-section.active { display: block; animation: fadeIn 0.4s var(--ease-out); }
+.verify-section .code-inputs { display: flex; gap: var(--space-2); justify-content: center; margin: var(--space-6) 0; }
+.verify-section .code-input { width: 48px; height: 56px; text-align: center; font-size: var(--text-xl); font-weight: var(--font-bold); font-family: var(--font-family); color: var(--text-primary); background: var(--bg-input); border: 1.5px solid var(--border-secondary); border-radius: var(--radius-md); outline: none; transition: all var(--duration-fast) var(--ease-out); -moz-appearance: textfield; }
+.verify-section .code-input:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 3px var(--brand-primary-glow); }
+.verify-section .code-input.filled { border-color: var(--brand-primary); background: var(--brand-primary-muted); }
+.verify-section .verify-email { font-size: var(--text-sm); color: var(--text-secondary); text-align: center; margin-bottom: var(--space-2); }
+.verify-section .verify-email strong { color: var(--text-primary); }
+.verify-section .resend-link { display: block; text-align: center; font-size: var(--text-xs); color: var(--brand-primary); text-decoration: none; font-weight: var(--font-medium); margin-top: var(--space-4); cursor: pointer; }
+.verify-section .resend-link:hover { color: var(--brand-primary-hover); text-decoration: underline; }
+.form-section.hidden { display: none; }
+
+/* ── Benefits grid ── */
+.benefits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-6); }
+.benefit-item { background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: var(--radius-md); padding: var(--space-3); }
+.benefit-item .benefit-icon { width: 32px; height: 32px; background: var(--brand-primary-muted); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--brand-primary); margin-bottom: var(--space-2); }
+.benefit-item strong { display: block; font-size: var(--text-xs); color: var(--text-primary); margin-bottom: var(--space-1); }
+.benefit-item span { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+.trust-row { display: flex; gap: var(--space-6); margin-top: var(--space-6); }
+.trust-item { display: flex; align-items: center; gap: var(--space-2); }
+.trust-icon { width: 36px; height: 36px; background: var(--brand-primary-muted); border-radius: var(--radius-circle); display: flex; align-items: center; justify-content: center; color: var(--brand-primary); }
+.trust-text strong { display: block; font-size: var(--text-sm); color: var(--text-primary); }
+.trust-text span { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+@media (max-width: 600px) { .benefits-grid { grid-template-columns: 1fr; } .trust-row { flex-wrap: wrap; gap: var(--space-4); } }
+

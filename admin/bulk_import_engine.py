@@ -29,7 +29,7 @@ import tracemalloc
 from datetime import datetime, timezone
 from typing import Optional, Generator, Any
 
-from sqlalchemy import text as sql_text
+from sqlalchemy import text as sql_text, inspect
 
 logger = logging.getLogger(__name__)
 
@@ -350,14 +350,17 @@ class BulkImportEngine:
     # ── Database Operations ────────────────────────────────────────────────
 
     def _flush_buffer(self):
-        """Batch-insert buffered rows into the database."""
+        """Batch-insert buffered rows using bulk_insert_mappings (optimised)."""
         if not self.buffer:
             return
 
         chunk = self.buffer[:BATCH_SIZE]
         self.buffer = self.buffer[BATCH_SIZE:]
 
+        from models import CollegeCutoff
+
         try:
+            # First pass: try bulk insert via raw SQL for conflict handling
             batch_imported = 0
             for rec in chunk:
                 try:
@@ -368,7 +371,6 @@ class BulkImportEngine:
                     logger.warning(
                         f"[Job {self.job_id}] Insert error for {rec.get('college_code')}: {e}"
                     )
-                    # Store failed row to error records
                     self._store_error_row(rec, str(e))
                     self.rows_failed += 1
 

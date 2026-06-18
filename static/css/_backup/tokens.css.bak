@@ -1,0 +1,173 @@
+/* ============================================================
+   🎨 CollegeKhoj Design Tokens v3.0
+   Single source of truth for all visual properties
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700;800;900&display=swap');
+
+/* ── Typography ── */
+:root {
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+  --text-5xl: 3rem;
+
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+  --font-black: 900;
+
+  --leading-tight: 1.15;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+  --letter-wide: 0.02em;
+  --letter-wider: 0.06em;
+
+  /* ── Brand Colors ── */
+  --brand: #4f8ef7;
+  --brand-hover: #3b75e0;
+  --brand-muted: rgba(79, 142, 247, 0.12);
+  --brand-glow: rgba(79, 142, 247, 0.18);
+  --brand-gradient: linear-gradient(135deg, #4f8ef7 0%, #818cf8 100%);
+  --brand-soft: linear-gradient(135deg, rgba(79,142,247,.12), rgba(79,142,247,.04));
+
+  /* ── Semantic Colors ── */
+  --safe: #22c55e;
+  --safe-bg: rgba(34, 197, 94, 0.12);
+  --safe-border: rgba(34, 197, 94, 0.28);
+  --moderate: #f59e0b;
+  --moderate-bg: rgba(245, 158, 11, 0.12);
+  --moderate-border: rgba(245, 158, 11, 0.28);
+  --ambitious: #818cf8;
+  --ambitious-bg: rgba(129, 140, 248, 0.12);
+  --ambitious-border: rgba(129, 140, 248, 0.28);
+  --dream: #ec4899;
+  --dream-bg: rgba(236, 72, 153, 0.12);
+  --dream-border: rgba(236, 72, 153, 0.28);
+  --info: #06b6d4;
+  --info-bg: rgba(6, 182, 212, 0.12);
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.12);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --danger-border: rgba(239, 68, 68, 0.25);
+
+  /* ── Spacing Scale (4/8/12/16/24/32/48/64/96) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ── Border Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-soft: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-medium: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-large: 0 10px 32px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 60px rgba(0,0,0,0.15), 0 8px 16px rgba(0,0,0,0.06);
+  --shadow-glow: 0 8px 24px rgba(79,142,247,0.28);
+
+  /* ── Transitions ── */
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow: 0.35s;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ── Z-Index ── */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-navbar: 300;
+  --z-overlay: 400;
+  --z-modal: 500;
+  --z-toast: 600;
+
+  /* ── Nav Height ── */
+  --nav-height: 64px;
+}
+
+/* ── DARK THEME (default) ── */
+[data-theme="dark"] {
+  --bg-primary: #0b1019;
+  --bg-secondary: #0f1520;
+  --bg-elevated: #111b2e;
+  --bg-card: #161b27;
+  --bg-input: #0b1019;
+  --bg-surface: rgba(255, 255, 255, 0.03);
+  --bg-surface-md: rgba(255, 255, 255, 0.05);
+  --bg-surface-lg: rgba(255, 255, 255, 0.07);
+  --bg-navbar: rgba(11, 16, 25, 0.96);
+  --text-primary: #e2e8f0;
+  --text-secondary: #8892a4;
+  --text-tertiary: #5a677d;
+  --text-placeholder: #5a677d;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-light: rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --star-off: #2a3244;
+  --footer-color: #4a5568;
+  --scrollbar-track: #0f1520;
+  --scrollbar-thumb: #2a3244;
+  --skeleton-from: rgba(255,255,255,0.04);
+  --skeleton-to: rgba(255,255,255,0.08);
+}
+
+/* ── LIGHT THEME ── */
+[data-theme="light"] {
+  --bg-primary: #f0f4ff;
+  --bg-secondary: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f7f9ff;
+  --bg-surface: #f7f9ff;
+  --bg-surface-md: #f0f4ff;
+  --bg-surface-lg: rgba(0, 0, 0, 0.03);
+  --bg-navbar: rgba(255, 255, 255, 0.95);
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --text-tertiary: #718096;
+  --text-placeholder: #a0aec0;
+  --border: rgba(0, 0, 0, 0.07);
+  --border-light: rgba(0, 0, 0, 0.04);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --star-off: #cbd5e0;
+  --footer-color: #a0aec0;
+  --scrollbar-track: #f0f4ff;
+  --scrollbar-thumb: #cbd5e0;
+  --skeleton-from: rgba(0,0,0,0.04);
+  --skeleton-to: rgba(0,0,0,0.08);
+}
+
+/* ── Responsive Breakpoints Constants (for reference, use in media queries) ──
+   Mobile:  ≤ 640px
+   Tablet:  ≤ 768px
+   Laptop:  ≤ 1024px
+   Desktop: > 1024px
+*/

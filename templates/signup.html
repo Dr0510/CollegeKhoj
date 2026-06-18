@@ -19,78 +19,21 @@
         })();
     </script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
-    <style>
-        /* Verification code step */
-        .verify-section {
-            display: none;
-        }
-        .verify-section.active {
-            display: block;
-            animation: fadeIn 0.4s var(--ease-out);
-        }
-        .verify-section .code-inputs {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin: var(--space-6) 0;
-        }
-        .verify-section .code-input {
-            width: 48px;
-            height: 56px;
-            text-align: center;
-            font-size: 1.4rem;
-            font-weight: 700;
-            font-family: var(--font-family);
-            color: var(--text-primary);
-            background: var(--input-bg);
-            border: 1.5px solid var(--input-border);
-            border-radius: var(--radius-md);
-            outline: none;
-            transition: all var(--duration-fast) var(--ease-out);
-            -moz-appearance: textfield;
-        }
-        .verify-section .code-input::-webkit-outer-spin-button,
-        .verify-section .code-input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        .verify-section .code-input:focus {
-            border-color: var(--brand-primary);
-            box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.15);
-        }
-        .verify-section .code-input.filled {
-            border-color: var(--brand-primary);
-            background: rgba(79, 142, 247, 0.05);
-        }
-        .verify-section .verify-email {
-            font-size: 0.87rem;
-            color: var(--text-secondary);
-            text-align: center;
-            margin-bottom: var(--space-2);
-        }
-        .verify-section .verify-email strong {
-            color: var(--text-primary);
-        }
-        .verify-section .resend-link {
-            display: block;
-            text-align: center;
-            font-size: 0.82rem;
-            color: var(--brand-primary);
-            text-decoration: none;
-            font-weight: 500;
-            margin-top: var(--space-4);
-            cursor: pointer;
-            transition: color var(--duration-fast) var(--ease-out);
-        }
-        .verify-section .resend-link:hover {
-            color: var(--brand-primary-hover);
-            text-decoration: underline;
-        }
-        .form-section.hidden {
-            display: none;
-        }
-    </style>
+    <!-- CollegeKhoj Design System -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/globals.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/utilities.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badge.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/input.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/auth.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/auth-premium.css') }}">
 </head>
 <body>
 
@@ -105,6 +48,11 @@
 
     <!-- ===== LEFT BRANDING PANEL ===== -->
     <div class="left-panel">
+        <div class="auth-mesh-bg">
+            <div class="mesh-blob"></div>
+            <div class="mesh-blob"></div>
+            <div class="mesh-blob"></div>
+        </div>
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
 
@@ -371,6 +319,6 @@
         {% endif %}
     {% endwith %}
 
-    <script src="{{ url_for('static', filename='css/auth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </body>
 </html>

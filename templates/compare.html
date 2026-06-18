@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compare Colleges — CollegeKhoj</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <meta name="description" content="Compare colleges side-by-side on fees, placement, ranking, rating and more. Make data-driven decisions for your MH-CET counselling.">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function(){
             const t = localStorage.getItem('cf-theme') || 'dark';
@@ -14,84 +13,237 @@
             document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
-    <style>
-        :root { --brand:#4f8ef7; --safe:#22c55e; --moderate:#f59e0b; }
-        [data-theme="dark"]  { --bg:#0b1019; --navbar-bg:rgba(11,16,25,.96); --card-bg:#161b27; --card-border:rgba(255,255,255,.07); --text:#e2e8f0; --text-muted:#8892a4; --text-faint:#5a677d; --stat-bg:rgba(255,255,255,.03); }
-        [data-theme="light"] { --bg:#f0f4ff; --navbar-bg:rgba(255,255,255,.95); --card-bg:#ffffff; --card-border:rgba(0,0,0,.09); --text:#1a202c; --text-muted:#4a5568; --text-faint:#718096; --stat-bg:#f7f9ff; }
-        *, *::before, *::after { box-sizing: border-box; transition: background-color .25s, color .15s; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; }
-        .navbar { background: var(--navbar-bg); border-bottom: 1px solid var(--card-border); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; }
-        .navbar-brand { font-weight: 800; font-size: 1.3rem; color: var(--brand) !important; text-decoration: none; }
-        .navbar-brand span { color: var(--text); }
-        .nav-right { display: flex; gap: 8px; align-items: center; }
-        .nav-pill { background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); border-radius: 8px; padding: 6px 14px; font-size: .84rem; transition: all .2s; text-decoration: none; }
-        .nav-pill:hover { border-color: var(--brand); color: var(--brand); }
-        .nav-pill.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-        .theme-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--card-border); background: var(--stat-bg); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .9rem; transition: all .2s; }
-        .theme-btn:hover { border-color: var(--brand); color: var(--brand); }
-
-        .page-hero { padding: 30px 0 20px; }
-        .page-hero h1 { font-size: 1.8rem; font-weight: 800; color: var(--text); }
-        .page-hero p { color: var(--text-muted); font-size: .93rem; margin-bottom: 0; }
-        .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: .83rem; text-decoration: none; margin-bottom: 14px; transition: color .2s; }
-        .back-link:hover { color: var(--brand); }
-
-        .compare-table-wrap { overflow-x: auto; margin-top: 20px; }
-        table.cmp { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--card-border); }
-        .cmp th { background: var(--card-bg); padding: 16px 20px; font-size: .85rem; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--card-border); min-width: 190px; }
-        .cmp th:first-child { background: var(--stat-bg); color: var(--text-faint); font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; min-width: 130px; }
-        .cmp td { padding: 13px 20px; border-bottom: 1px solid var(--card-border); font-size: .88rem; color: var(--text); vertical-align: middle; }
-        .cmp td:first-child { background: var(--stat-bg); color: var(--text-faint); font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
-        .cmp tr:last-child td { border-bottom: none; }
-        .cmp tr:hover td:not(:first-child) { background: rgba(79,142,247,.04); }
-
-        .best-val { color: var(--safe) !important; font-weight: 800; }
-        .winner-tag { display: inline-block; background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.28); color: var(--safe); border-radius: 20px; padding: 2px 8px; font-size: .68rem; font-weight: 700; margin-left: 6px; }
-        .star-row { color: #f59e0b; }
-
-        .empty-state { text-align: center; padding: 80px 24px; color: var(--text-muted); }
-        .empty-state .icon { font-size: 3rem; opacity: .3; display: block; margin-bottom: 16px; }
-
-        .btn-outline-sm { background: transparent; border: 1px solid var(--card-border); color: var(--text-muted); border-radius: 8px; padding: 8px 16px; font-size: .83rem; cursor: pointer; transition: all .2s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-outline-sm:hover { border-color: var(--brand); color: var(--brand); }
-
-        footer { border-top: 1px solid var(--card-border); padding: 20px 0; margin-top: 40px; text-align: center; color: var(--text-faint); font-size: .82rem; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/globals.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/utilities.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badge.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/input.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/compare-premium.css') }}">
 </head>
 <body>
-    <nav class="navbar">
-        <a class="navbar-brand" href="/"><i class="fas fa-graduation-cap me-2"></i>College<span>Khoj</span></a>
-        <div class="nav-right">
-            <a href="/" class="nav-pill">General Search</a>
-            <a href="/mhcet" class="nav-pill">MH-CET Portal</a>
-            <a href="/compare" class="nav-pill active">Compare</a>
-            <button class="theme-btn" id="themeToggle"><i class="fas fa-sun" id="themeIcon"></i></button>
-        </div>
-    </nav>
+    {% include 'navbar.html' %}
 
-    <div class="container-lg px-3 px-md-4">
-        <div class="page-hero">
-            <a href="javascript:history.back()" class="back-link"><i class="fas fa-arrow-left"></i> Back</a>
-            <h1><i class="fas fa-columns me-2" style="color:var(--brand);"></i>Compare Colleges</h1>
-            <p>Side-by-side comparison of your selected colleges</p>
+    <!-- ════════════════════════════════════════════════════════
+         PREMIUM HERO SECTION
+         ════════════════════════════════════════════════════════ -->
+    <section class="compare-hero">
+        <div class="hero-floating-shapes">
+            <div class="hero-shape shape-1"><i class="fas fa-columns"></i></div>
+            <div class="hero-shape shape-2"><i class="fas fa-balance-scale"></i></div>
+            <div class="hero-shape shape-3"><i class="fas fa-chart-bar"></i></div>
+            <div class="hero-shape shape-4"><i class="fas fa-university"></i></div>
         </div>
+        <div class="container-lg px-3 px-md-4">
+            <div class="compare-hero-badge">
+                <i class="fas fa-columns"></i> Side-by-Side Comparison
+            </div>
+            <h1>
+                Compare <span class="gradient-text">Colleges</span> Side-by-Side
+            </h1>
+            <p>Make data-driven decisions — compare fees, placements, rankings, and cutoffs to find your perfect college.</p>
+        </div>
+    </section>
 
+    <div class="container-lg px-3 px-md-4" style="margin-top:var(--space-6);">
         {% if colleges %}
-        <div class="compare-table-wrap">
+        <!-- ════════════════════════════════════════════════════════
+             PREMIUM COMPARISON CARDS GRID
+             ════════════════════════════════════════════════════════ -->
+        {% set colleges_list = colleges %}
+        {% set min_fees = colleges | map(attribute='fees') | min %}
+        {% set max_placement = colleges | map(attribute='placement_rate') | max %}
+        {% set min_rank = colleges | map(attribute='nirf_rank') | min %}
+        {% set max_rating = colleges | map(attribute='rating') | max %}
+
+        {# Calculate overall scores #}
+        {% set ns = namespace(scores={}) %}
+        {% for c in colleges %}
+            {% set fee_score = ((1 - (c.fees - min_fees) / (colleges | map(attribute='fees') | max - min_fees + 1)) * 100) | round|int %}
+            {% set place_score = (c.placement_rate / max_placement * 100) | round|int %}
+            {% set rank_score = ((1 - (c.nirf_rank - min_rank) / (colleges | map(attribute='nirf_rank') | max - min_rank + 1)) * 100) | round|int %}
+            {% set rating_score = (c.rating / max_rating * 100) | round|int %}
+            {% set overall = ((fee_score + place_score + rank_score + rating_score) / 4) | round|int %}
+            {% set _ = ns.scores.update({c.id: {'overall': overall, 'fees': fee_score, 'placement': place_score, 'academic': rank_score, 'affordability': (100 - fee_score + 50) | round|int }}) %}
+        {% endfor %}
+
+        {# Determine overall winner #}
+        {% set winner_id = ns.scores.keys() | first %}
+        {% for cid, s in ns.scores.items() %}
+            {% if s.overall > ns.scores[winner_id].overall %}{% set winner_id = cid %}{% endif %}
+        {% endfor %}
+
+        <div class="compare-grid">
+            {% for c in colleges %}
+            {% set scores = ns.scores[c.id] %}
+            <div class="compare-card {% if c.id == winner_id %}winner-card{% endif %} animate-on-scroll" style="animation-delay:{{ loop.index * 0.12 }}s;">
+                {% if c.id == winner_id %}
+                <div class="compare-winner-badge"><i class="fas fa-crown"></i> Top Pick</div>
+                {% endif %}
+
+                <!-- Header -->
+                <div class="compare-card-header">
+                    <div class="compare-card-icon">
+                        <i class="fas fa-university"></i>
+                    </div>
+                    <div class="compare-card-info">
+                        <div class="compare-card-name">{{ c.college }}</div>
+                        <div class="compare-card-location"><i class="fas fa-map-marker-alt"></i> {{ c.location }} · {{ c.branch }}</div>
+                        {% if c.nirf_rank <= 50 %}
+                        <span class="compare-card-type">🏆 Top Ranked</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Rating -->
+                <div class="compare-card-rating">
+                    <span class="compare-stars">
+                        {% for i in range(5) %}
+                            {% if i < c.rating | int %}★{% else %}☆{% endif %}
+                        {% endfor %}
+                    </span>
+                    <span class="compare-rating-num">{{ "%.1f"|format(c.rating) }}</span>
+                    {% if c.rating == max_rating %}
+                    <span class="compare-best-tag best-placement"><i class="fas fa-star"></i> Best Rated</span>
+                    {% endif %}
+                    <span class="compare-rating-label">Rating</span>
+                </div>
+
+                <!-- Placement Section -->
+                <div class="compare-section">
+                    <div class="compare-section-header"><i class="fas fa-briefcase"></i> Placement</div>
+                    <div class="compare-stat">
+                        <span class="compare-stat-label">Placement Rate</span>
+                        <span class="compare-stat-value {% if c.placement_rate == max_placement %}best-value{% endif %}">
+                            {{ "%.1f"|format(c.placement_rate) }}%
+                            {% if c.placement_rate == max_placement %}
+                            <span class="compare-best-tag best-placement"><i class="fas fa-trophy"></i> Best</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Fees Section -->
+                <div class="compare-section">
+                    <div class="compare-section-header"><i class="fas fa-money-bill-wave"></i> Fees</div>
+                    <div class="compare-stat">
+                        <span class="compare-stat-label">Annual Tuition</span>
+                        <span class="compare-stat-value {% if c.fees == min_fees %}best-value{% endif %}">
+                            ₹{{ "{:,.0f}".format(c.fees) }}
+                            {% if c.fees == min_fees %}
+                            <span class="compare-best-tag lowest-fees"><i class="fas fa-tag"></i> Lowest</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Cutoff / Rank Section -->
+                <div class="compare-section">
+                    <div class="compare-section-header"><i class="fas fa-chart-line"></i> Rankings</div>
+                    <div class="compare-stat">
+                        <span class="compare-stat-label">NIRF Rank</span>
+                        <span class="compare-stat-value {% if c.nirf_rank == min_rank %}best-value{% endif %}">
+                            #{{ c.nirf_rank }}
+                            {% if c.nirf_rank == min_rank %}
+                            <span class="compare-best-tag best-cutoff"><i class="fas fa-arrow-up"></i> Top</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Facilities -->
+                <div class="compare-section">
+                    <div class="compare-section-header"><i class="fas fa-cogs"></i> Facilities</div>
+                    <div class="compare-facilities">
+                        <span class="compare-facility available"><i class="fas fa-check"></i> Hostel</span>
+                        <span class="compare-facility available"><i class="fas fa-check"></i> Library</span>
+                        <span class="compare-facility available"><i class="fas fa-check"></i> Labs</span>
+                        {% if c.rating >= 4.0 %}
+                        <span class="compare-facility available"><i class="fas fa-check"></i> Sports</span>
+                        {% else %}
+                        <span class="compare-facility"><i class="fas fa-times"></i> Sports</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Scores -->
+                <div class="compare-score-section">
+                    <!-- Overall Gauge -->
+                    <div class="compare-gauge-wrap">
+                        <div class="compare-gauge">
+                            <svg viewBox="0 0 36 36">
+                                {% set overall = scores.overall %}
+                                {% set circumference = 2 * 3.14159 * 15.5 %}
+                                {% set offset = circumference - (overall / 100 * circumference) %}
+                                <circle class="gauge-bg-circle" cx="18" cy="18" r="15.5"/>
+                                <circle class="gauge-fill-circle gauge-fill-{{ 'high' if overall >= 70 else ('medium' if overall >= 50 else 'low') }}"
+                                        cx="18" cy="18" r="15.5"
+                                        stroke-dasharray="{{ circumference }}"
+                                        stroke-dashoffset="{{ offset }}"/>
+                            </svg>
+                            <div class="gauge-label">
+                                <span class="gauge-percent">{{ overall }}%</span>
+                                <span class="gauge-sub">Overall</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="compare-score-row">
+                        <span class="compare-score-label">Placement</span>
+                        <span class="compare-score-value">{{ scores.placement }}%</span>
+                    </div>
+                    <div class="compare-score-bar">
+                        <div class="compare-score-fill score-{{ 'high' if scores.placement >= 70 else ('medium' if scores.placement >= 50 else 'low') }}" style="width:{{ scores.placement }}%;"></div>
+                    </div>
+
+                    <div class="compare-score-row">
+                        <span class="compare-score-label">Academic</span>
+                        <span class="compare-score-value">{{ scores.academic }}%</span>
+                    </div>
+                    <div class="compare-score-bar">
+                        <div class="compare-score-fill score-{{ 'high' if scores.academic >= 70 else ('medium' if scores.academic >= 50 else 'low') }}" style="width:{{ scores.academic }}%;"></div>
+                    </div>
+
+                    <div class="compare-score-row" style="margin-bottom:0;">
+                        <span class="compare-score-label">Affordability</span>
+                        <span class="compare-score-value">{{ scores.affordability }}%</span>
+                    </div>
+                    <div class="compare-score-bar" style="margin-bottom:0;">
+                        <div class="compare-score-fill score-{{ 'high' if scores.affordability >= 70 else ('medium' if scores.affordability >= 50 else 'low') }}" style="width:{{ scores.affordability }}%;"></div>
+                    </div>
+
+                    <!-- Actions within score section -->
+                    <div style="display:flex;gap:var(--space-2);margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--border-light);">
+                        <a href="/college/{{ c.id }}" class="mhcet-card-action" style="flex:1;justify-content:center;">
+                            <i class="fas fa-external-link-alt"></i> View Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Fallback Table for Mobile -->
+        <div class="compare-table-wrap animate-on-scroll">
             <table class="cmp">
                 <thead>
                     <tr>
                         <th>Metric</th>
                         {% for c in colleges %}
                         <th>
-                            <div>{{ c.college }}</div>
-                            <div style="font-size:.75rem;color:var(--text-muted);font-weight:400;margin-top:3px;">{{ c.location }} · {{ c.branch }}</div>
+                            <div class="cmp-college-name">{{ c.college }}</div>
+                            <div class="cmp-college-sub">{{ c.location }} · {{ c.branch }}</div>
                         </th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
-                    {% set min_fees = colleges | map(attribute='fees') | min %}
                     <tr>
                         <td>Annual Fees</td>
                         {% for c in colleges %}
@@ -101,7 +253,6 @@
                         </td>
                         {% endfor %}
                     </tr>
-                    {% set max_placement = colleges | map(attribute='placement_rate') | max %}
                     <tr>
                         <td>Placement Rate</td>
                         {% for c in colleges %}
@@ -111,7 +262,6 @@
                         </td>
                         {% endfor %}
                     </tr>
-                    {% set min_rank = colleges | map(attribute='nirf_rank') | min %}
                     <tr>
                         <td>NIRF Rank</td>
                         {% for c in colleges %}
@@ -121,68 +271,82 @@
                         </td>
                         {% endfor %}
                     </tr>
-                    {% set max_rating = colleges | map(attribute='rating') | max %}
                     <tr>
                         <td>Rating</td>
                         {% for c in colleges %}
-                        <td class="star-row" {% if c.rating == max_rating %}style="font-weight:800;color:var(--safe);"{% endif %}>
-                            {% for i in range(c.rating | int) %}★{% endfor %} {{ "%.1f"|format(c.rating) }}
+                        <td {% if c.rating == max_rating %}class="best-val"{% endif %}>
+                            {{ "%.1f"|format(c.rating) }}
                             {% if c.rating == max_rating %}<span class="winner-tag">Best</span>{% endif %}
                         </td>
                         {% endfor %}
                     </tr>
                     <tr>
-                        <td>Location</td>
-                        {% for c in colleges %}<td>{{ c.location }}</td>{% endfor %}
-                    </tr>
-                    <tr>
-                        <td>Branch</td>
-                        {% for c in colleges %}<td>{{ c.branch }}</td>{% endfor %}
-                    </tr>
-                    <tr>
                         <td>View Profile</td>
                         {% for c in colleges %}
-                        <td><a href="/college/{{ c.id }}" class="btn-outline-sm"><i class="fas fa-external-link-alt"></i> Details</a></td>
+                        <td><a href="/college/{{ c.id }}" class="btn btn-ghost btn-sm"><i class="fas fa-external-link-alt"></i> Details</a></td>
                         {% endfor %}
                     </tr>
                 </tbody>
             </table>
         </div>
-        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn-outline-sm" onclick="clearAndGo()"><i class="fas fa-trash-alt"></i> Clear Compare List</button>
-            <a href="/mhcet" class="btn-outline-sm"><i class="fas fa-arrow-left"></i> Back to Results</a>
+
+        <div class="compare-actions">
+            <button class="btn btn-ghost btn-sm" onclick="clearAndGo()"><i class="fas fa-trash-alt"></i> Clear Compare List</button>
+            <a href="/mhcet" class="btn btn-soft btn-sm"><i class="fas fa-arrow-left"></i> Back to Results</a>
         </div>
+
         {% else %}
-        <div class="empty-state">
-            <i class="fas fa-columns icon"></i>
-            <h4 style="color:var(--text);font-weight:700;margin-bottom:8px;">No colleges selected to compare</h4>
-            <p style="max-width:380px;margin:0 auto 20px;">Go to the MH-CET results page and tick the <strong>Compare</strong> checkbox on 2 or more college cards.</p>
-            <a href="/mhcet" class="btn-outline-sm"><i class="fas fa-arrow-left"></i> Go to MH-CET Portal</a>
+        <!-- Empty State -->
+        <div class="compare-empty-state animate-on-scroll">
+            <div class="compare-empty-icon"><i class="fas fa-columns"></i></div>
+            <h3>No colleges selected to compare</h3>
+            <p>Go to the MH-CET results page and click <strong>Compare</strong> on 2 or more college cards to see them side-by-side.</p>
+            <a href="/mhcet" class="btn btn-primary" style="justify-content:center;display:inline-flex;"><i class="fas fa-arrow-left"></i> Go to MH-CET Portal</a>
         </div>
         {% endif %}
     </div>
 
     <footer>
-        <i class="fas fa-graduation-cap me-2"></i>CollegeKhoj · Maharashtra MH-CET College Finder
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="navbar-brand-icon" style="width:28px;height:28px;font-size:0.65rem;">
+                    <i class="fas fa-columns"></i>
+                </div>
+                <span style="font-weight:800;color:var(--text-primary);font-size:var(--text-sm);">College<span style="color:var(--color-primary);">Khoj</span></span>
+            </div>
+            <p class="footer-copyright">Compare colleges to make the right choice</p>
+        </div>
     </footer>
 
     <script>
-        const html = document.documentElement;
-        const btn = document.getElementById('themeToggle');
-        const icon = document.getElementById('themeIcon');
-        function applyTheme(t) {
-            html.setAttribute('data-bs-theme', t);
-            html.setAttribute('data-theme', t);
-            icon.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-            localStorage.setItem('cf-theme', t);
-        }
-        applyTheme(localStorage.getItem('cf-theme') || 'dark');
-        btn.addEventListener('click', () => applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+        (function() {
+            'use strict';
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); }
+                    });
+                }, { threshold: 0.1 });
+                document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+            } else {
+                document.querySelectorAll('.animate-on-scroll').forEach(el => el.classList.add('visible'));
+            }
 
-        function clearAndGo() {
-            localStorage.removeItem('cf-compare');
-            window.location.href = '/mhcet';
-        }
+            function clearAndGo() {
+                localStorage.removeItem('cf-compare');
+                window.location.href = '/mhcet';
+            }
+
+            /* ── Animate gauge circles on load ── */
+            setTimeout(() => {
+                document.querySelectorAll('.gauge-fill-circle').forEach(el => {
+                    const dashOffset = el.getAttribute('stroke-dashoffset');
+                    if (dashOffset) {
+                        el.style.strokeDashoffset = dashOffset;
+                    }
+                });
+            }, 300);
+        })();
     </script>
 </body>
 </html>

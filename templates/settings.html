@@ -16,49 +16,20 @@
             document.documentElement.setAttribute('data-bs-theme', t);
         })();
     </script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
-    <style>
-        body { flex-direction: column; background: var(--bg-primary); }
-        .settings-page { flex: 1; display: flex; justify-content: center; padding: var(--space-10) var(--space-6); }
-        .settings-container { width: 100%; max-width: 640px; }
-        .settings-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius-xl);
-            padding: var(--space-8);
-            box-shadow: var(--card-shadow);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            margin-bottom: var(--space-6);
-        }
-        .settings-card h2 {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-1);
-        }
-        .settings-card .desc {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            margin-bottom: var(--space-6);
-        }
-        .settings-divider { height: 1px; background: var(--border-primary); margin: var(--space-6) 0; }
-        .back-link-settings {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--space-2);
-            color: var(--text-tertiary);
-            font-size: 0.85rem;
-            text-decoration: none;
-            margin-bottom: var(--space-6);
-            transition: color var(--duration-fast) var(--ease-out);
-        }
-        .back-link-settings:hover { color: var(--brand-primary); }
-        @media (max-width: 600px) {
-            .settings-card { padding: var(--space-5); }
-            .settings-page { padding: var(--space-6) var(--space-4); }
-        }
-    </style>
+    <!-- Styles from design system -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/globals.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/utilities.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badge.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/input.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/auth.css') }}">
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -104,7 +75,7 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='css/auth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
     <script>
         async function handlePasswordReset() {
             try {

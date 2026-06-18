@@ -1,89 +1,324 @@
 {% extends "admin/base.html" %}
 {% block title %}Dashboard — Admin{% endblock %}
 {% block heading %}Dashboard{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/static/js/admin/dashboard.js"></script>
+{% endblock %}
+
 {% block content %}
-<div class="stat-grid">
-    <div class="stat-card">
-        <div class="label">Total Colleges</div>
-        <div class="value">{{ total_colleges }}</div>
-    </div>
-    <div class="stat-card">
-        <div class="label">Cutoff Records</div>
-        <div class="value">{{ total_cutoffs }}</div>
-    </div>
-    <div class="stat-card">
-        <div class="label">Total Users</div>
-        <div class="value">{{ total_users }}</div>
-    </div>
-    <div class="stat-card">
-        <div class="label">Uploaded Files</div>
-        <div class="value">{{ total_uploads }}</div>
-        <div class="sub">Backups: {{ backup_count }}</div>
-    </div>
+<!-- ── EXAM TYPE TABS (new) ── -->
+<div class="dash-exam-tabs">
+    <a href="#" class="dash-exam-tab active" data-exam="ALL"><i class="fas fa-layer-group"></i> All Exams</a>
+    <a href="#" class="dash-exam-tab" data-exam="MHT-CET"><i class="fas fa-flask"></i> MHT-CET</a>
+    <a href="#" class="dash-exam-tab" data-exam="DSE"><i class="fas fa-laptop-code"></i> DSE Engineering</a>
+    <a href="#" class="dash-exam-tab" data-exam="POLYTECHNIC"><i class="fas fa-tools"></i> Polytechnic</a>
 </div>
 
-<!-- Approval Stats Row -->
-<div class="stat-grid" style="margin-bottom: 20px;">
-    <div class="stat-card" style="cursor: pointer;" onclick="window.location='/admin/bulk-imports?approval_status=pending_approval'">
-        <div class="label">⏳ Pending Approvals</div>
-        <div class="value" style="color: var(--warning);">{{ pending_approvals or 0 }}</div>
+<!-- ── TOP ANALYTICS CARDS (new — real DB data via API) ── -->
+<div class="dash-stats-grid">
+    <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:var(--color-primary-muted);color:var(--color-primary);"><i class="fas fa-building-columns"></i></div>
+        <div class="dash-stat-info">
+            <div class="dash-stat-label">Total Colleges</div>
+            <div class="dash-stat-value" id="dash-total-colleges">—</div>
+        </div>
     </div>
-    <div class="stat-card" style="cursor: pointer;" onclick="window.location='/admin/bulk-imports?approval_status=approved'">
-        <div class="label">✅ Approved Imports</div>
-        <div class="value" style="color: var(--success);">{{ approved_imports or 0 }}</div>
+    <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:var(--color-info-bg);color:var(--color-info);"><i class="fas fa-code-branch"></i></div>
+        <div class="dash-stat-info">
+            <div class="dash-stat-label">Total Branches</div>
+            <div class="dash-stat-value" id="dash-total-branches">—</div>
+        </div>
     </div>
-    <div class="stat-card" style="cursor: pointer;" onclick="window.location='/admin/bulk-imports?approval_status=rejected'">
-        <div class="label">❌ Rejected Imports</div>
-        <div class="value" style="color: var(--danger);">{{ rejected_imports or 0 }}</div>
+    <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:var(--color-success-bg);color:var(--color-success);"><i class="fas fa-table-list"></i></div>
+        <div class="dash-stat-info">
+            <div class="dash-stat-label">Cutoff Records</div>
+            <div class="dash-stat-value" id="dash-total-records">—</div>
+        </div>
     </div>
-    <div class="stat-card" style="cursor: pointer;" onclick="window.location='/admin/bulk-imports?status=FAILED'">
-        <div class="label">⚠️ Failed Imports</div>
-        <div class="value" style="color: var(--danger);">{{ total_failed or 0 }}</div>
+    <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:var(--color-secondary-muted);color:var(--color-secondary);"><i class="fas fa-users"></i></div>
+        <div class="dash-stat-info">
+            <div class="dash-stat-label">Total Users</div>
+            <div class="dash-stat-value" id="dash-total-users">—</div>
+        </div>
     </div>
-</div>
-
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-    <div class="stat-card">
-        <h3 style="font-size: 1rem; margin-bottom: 16px;">Recent Uploads</h3>
-        {% if recent_uploads %}
-        <table>
-            <tr><th>File</th><th>Status</th><th>Date</th></tr>
-            {% for u in recent_uploads %}
-            <tr>
-                <td>{{ u.filename[:40] }}{% if u.filename|length > 40 %}…{% endif %}</td>
-                <td><span class="badge badge-{{ 'success' if u.processed_status == 'committed' else ('info' if u.processed_status == 'preview' else 'warning') }}">{{ u.processed_status }}</span></td>
-                <td>{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-        <p style="color: var(--text-tertiary); font-size: 0.85rem;">No uploads yet</p>
-        {% endif %}
-        <div style="margin-top: 12px;"><a href="/admin/upload-cutoff" class="btn btn-primary btn-sm"><i class="fas fa-upload"></i> Upload PDF</a></div>
+    <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:var(--color-warning-bg);color:var(--color-warning);"><i class="fas fa-hourglass-half"></i></div>
+        <div class="dash-stat-info">
+            <div class="dash-stat-label">Pending Approvals</div>
+            <div class="dash-stat-value" id="dash-pending-approvals">—</div>
+        </div>
     </div>
-
-    <div class="stat-card">
-        <h3 style="font-size: 1rem; margin-bottom: 16px;">Quick Actions</h3>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-            <a href="/admin/upload-cutoff" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-file-pdf"></i> Upload Cutoff PDF</a>
-            <a href="/admin/cutoffs" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-search"></i> Browse Cutoffs</a>
-            <a href="/admin/backups" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-database"></i> Manage Backups</a>
-            <a href="/admin/trends" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-chart-line"></i> View Trends</a>
-            <button class="btn btn-success" style="justify-content: center;" onclick="createBackup()"><i class="fas fa-cloud-arrow-up"></i> Create Backup Now</button>
+    <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:var(--color-error-bg);color:var(--color-error);"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="dash-stat-info">
+            <div class="dash-stat-label">Failed Imports</div>
+            <div class="dash-stat-value" id="dash-failed-imports">—</div>
         </div>
     </div>
 </div>
 
-{% if last_upload %}
-<div class="stat-card" style="margin-top: 20px;">
-    <h3 style="font-size: 1rem; margin-bottom: 8px;">Last Upload</h3>
-    <p style="color: var(--text-secondary); font-size: 0.85rem;">
-        <strong>{{ last_upload.filename }}</strong> — {{ last_upload.processed_status }}
-        ({{ last_upload.valid_rows }} valid, {{ last_upload.rejected_rows }} rejected)
-        <br>Uploaded {{ last_upload.created_at.strftime('%d %b %Y at %H:%M') if last_upload.created_at else '' }}
-    </p>
+<!-- ── COLLEGE MANAGEMENT OVERVIEW (new) ── -->
+<div class="dash-ov-card">
+    <div class="dash-section-header"><i class="fas fa-building-columns"></i> College Management Overview</div>
+    <div class="dash-ov-stats">
+        <div class="dash-ov-stat">
+            <div class="value" id="dash-ov-total">—</div>
+            <div class="label">Total Colleges</div>
+        </div>
+        <div class="dash-ov-stat">
+            <div class="value" id="dash-ov-branches">—</div>
+            <div class="label">Distinct Branches</div>
+        </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;">
+        <div>
+            <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:8px;">Top Locations</h4>
+            <ul class="dash-ov-locations" id="dash-top-locations"></ul>
+        </div>
+        <div>
+            <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:8px;">Recently Added Colleges</h4>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>College</th><th>Branch</th><th>Location</th><th>Rank</th></tr></thead>
+                    <tbody id="dash-recent-colleges"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div style="margin-top:12px;">
+        <a href="/admin/college-upload" class="btn btn-primary btn-sm"><i class="fas fa-upload"></i> Upload College CSV</a>
+        <a href="/admin/colleges" class="btn btn-outline btn-sm"><i class="fas fa-list"></i> View All Colleges</a>
+    </div>
 </div>
-{% endif %}
+
+<!-- ── UPLOAD CENTER (new) ── -->
+<div class="dash-section-header"><i class="fas fa-cloud-upload-alt"></i> Upload Center</div>
+<div class="dash-upload-grid">
+    <a href="/admin/upload-cutoff" class="dash-upload-card">
+        <i class="fas fa-flask"></i>
+        <div class="title">Upload MHT-CET Cutoffs</div>
+        <div class="subtitle">CAP Round PDF</div>
+    </a>
+    <a href="/admin/upload-cutoff" class="dash-upload-card">
+        <i class="fas fa-laptop-code"></i>
+        <div class="title">Upload DSE Cutoffs</div>
+        <div class="subtitle">DSE Round PDF</div>
+    </a>
+    <a href="/admin/upload-cutoff" class="dash-upload-card">
+        <i class="fas fa-tools"></i>
+        <div class="title">Upload Polytechnic Cutoffs</div>
+        <div class="subtitle">Polytechnic PDF</div>
+    </a>
+    <a href="/admin/college-upload" class="dash-upload-card">
+        <i class="fas fa-building"></i>
+        <div class="title">Upload College Master Data</div>
+        <div class="subtitle">CSV / Excel</div>
+    </a>
+</div>
+
+<!-- ── IMPORT MONITORING (new) ── -->
+<div class="dash-monitor-card">
+    <div class="dash-section-header"><i class="fas fa-chart-simple"></i> Import Monitoring</div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>File</th>
+                    <th>Progress</th>
+                    <th>Imported</th>
+                    <th>Failed</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="dash-import-table-body">
+                <tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);padding:24px;">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+        <a href="/admin/bulk-import" class="btn btn-primary btn-sm"><i class="fas fa-rocket"></i> Bulk PDF Import</a>
+        <a href="/admin/bulk-imports" class="btn btn-outline btn-sm"><i class="fas fa-check-double"></i> Approval Management</a>
+        <a href="/admin/uploads" class="btn btn-outline btn-sm"><i class="fas fa-history"></i> Upload History</a>
+    </div>
+</div>
+
+<!-- ── ANALYTICS CHARTS (new) ── -->
+<div class="dash-section-header"><i class="fas fa-chart-bar"></i> Analytics</div>
+<div class="dash-charts-grid">
+    <div class="dash-chart-card">
+        <canvas id="chart-records-year"></canvas>
+    </div>
+    <div class="dash-chart-card">
+        <canvas id="chart-branch-pop"></canvas>
+    </div>
+    <div class="dash-chart-card">
+        <canvas id="chart-import-rate"></canvas>
+    </div>
+    <div class="dash-chart-card">
+        <canvas id="chart-college-dist"></canvas>
+    </div>
+</div>
+
+<!-- ── RECOMMENDATION TESTING (new) ── -->
+<div class="dash-rec-card">
+    <div class="dash-section-header"><i class="fas fa-magic"></i> Recommendation Testing</div>
+    <p style="color:var(--text-secondary);font-size:var(--text-sm);margin-bottom:16px;">Test the recommendation engine by entering a student profile. Uses actual cutoff data from the database.</p>
+    <form id="dash-rec-form" class="dash-rec-form">
+        <div>
+            <label for="dash-rec-percentile">Percentile</label>
+            <input type="number" id="dash-rec-percentile" step="0.01" min="0" max="100" value="95" required>
+        </div>
+        <div>
+            <label for="dash-rec-category">Category</label>
+            <select id="dash-rec-category">
+                <option value="Open">Open</option>
+                <option value="OBC">OBC</option>
+                <option value="SC">SC</option>
+                <option value="ST">ST</option>
+                <option value="NT">NT</option>
+                <option value="EWS">EWS</option>
+            </select>
+        </div>
+        <div>
+            <label for="dash-rec-gender">Gender</label>
+            <select id="dash-rec-gender">
+                <option value="Gender-Neutral">Gender-Neutral</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+        </div>
+        <div>
+            <label for="dash-rec-branch">Branch (optional)</label>
+            <input type="text" id="dash-rec-branch" placeholder="e.g. Computer Science">
+        </div>
+        <div>
+            <label for="dash-rec-district">District (optional)</label>
+            <input type="text" id="dash-rec-district" placeholder="e.g. Pune">
+        </div>
+        <div style="display:flex;align-items:end;">
+            <button type="submit" class="btn btn-primary" id="dash-rec-btn">
+                <i class="fas fa-magic"></i> Generate Recommendations
+            </button>
+        </div>
+    </form>
+    <div id="dash-rec-loading" class="dash-rec-loading" style="display:none;">
+        <i class="fas fa-spinner fa-spin fa-2x"></i>
+        <p style="margin-top:8px;">Generating recommendations from real cutoff data...</p>
+    </div>
+    <div id="dash-rec-results" style="display:none;"></div>
+</div>
+
+<!-- ── ACTIVITY TIMELINE (new) ── -->
+<div class="dash-timeline-card">
+    <div class="dash-section-header"><i class="fas fa-clock-rotate-left"></i> Activity Timeline</div>
+    <div class="dash-timeline-list" id="dash-timeline-list">
+        <div style="text-align:center;color:var(--text-tertiary);padding:24px;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+    </div>
+    <div style="margin-top:12px;">
+        <a href="/admin/audit-logs" class="btn btn-outline btn-sm"><i class="fas fa-clipboard-list"></i> View All Audit Logs</a>
+    </div>
+</div>
+
+<!-- ── PRESERVED EXISTING DASHBOARD CONTENT ── -->
+<div style="margin-top:32px;padding-top:32px;border-top:2px solid var(--border-light);">
+    <div class="dash-section-header"><i class="fas fa-gauge"></i> Classic Dashboard View</div>
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:var(--brand-muted);color:var(--brand);"><i class="fas fa-building"></i></div>
+            <div class="stat-label">Total Colleges</div>
+            <div class="stat-value">{{ total_colleges }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:var(--info-bg);color:var(--info);"><i class="fas fa-table"></i></div>
+            <div class="stat-label">Cutoff Records</div>
+            <div class="stat-value">{{ total_cutoffs }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:var(--success-bg);color:var(--success);"><i class="fas fa-users"></i></div>
+            <div class="stat-label">Total Users</div>
+            <div class="stat-value">{{ total_users }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:var(--moderate-bg);color:var(--moderate);"><i class="fas fa-file-upload"></i></div>
+            <div class="stat-label">Uploaded Files</div>
+            <div class="stat-value">{{ total_uploads }}</div>
+            <div class="stat-sub">Backups: {{ backup_count }}</div>
+        </div>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom:var(--space-5);">
+        <div class="stat-card" style="cursor:pointer;" onclick="window.location='/admin/bulk-imports?approval_status=pending_approval'">
+            <div class="stat-icon" style="background:var(--warning-bg);color:var(--warning);"><i class="fas fa-hourglass-half"></i></div>
+            <div class="stat-label">Pending Approvals</div>
+            <div class="stat-value" style="color:var(--warning);">{{ pending_approvals or 0 }}</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="window.location='/admin/bulk-imports?approval_status=approved'">
+            <div class="stat-icon" style="background:var(--success-bg);color:var(--success);"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-label">Approved Imports</div>
+            <div class="stat-value" style="color:var(--success);">{{ approved_imports or 0 }}</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="window.location='/admin/bulk-imports?approval_status=rejected'">
+            <div class="stat-icon" style="background:var(--danger-bg);color:var(--danger);"><i class="fas fa-times-circle"></i></div>
+            <div class="stat-label">Rejected Imports</div>
+            <div class="stat-value" style="color:var(--danger);">{{ rejected_imports or 0 }}</div>
+        </div>
+        <div class="stat-card" style="cursor:pointer;" onclick="window.location='/admin/bulk-imports?status=FAILED'">
+            <div class="stat-icon" style="background:var(--danger-bg);color:var(--danger);"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-label">Failed Imports</div>
+            <div class="stat-value" style="color:var(--danger);">{{ total_failed or 0 }}</div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="stat-card">
+            <h3 style="font-size: 1rem; margin-bottom: 16px;">Recent Uploads</h3>
+            {% if recent_uploads %}
+            <table>
+                <tr><th>File</th><th>Status</th><th>Date</th></tr>
+                {% for u in recent_uploads %}
+                <tr>
+                    <td>{{ u.filename[:40] }}{% if u.filename|length > 40 %}…{% endif %}</td>
+                    <td><span class="badge badge-{{ 'success' if u.processed_status == 'committed' else ('info' if u.processed_status == 'preview' else 'warning') }}">{{ u.processed_status }}</span></td>
+                    <td>{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% else %}
+            <p style="color: var(--text-tertiary); font-size: 0.85rem;">No uploads yet</p>
+            {% endif %}
+            <div style="margin-top: 12px;"><a href="/admin/upload-cutoff" class="btn btn-primary btn-sm"><i class="fas fa-upload"></i> Upload PDF</a></div>
+        </div>
+
+        <div class="stat-card">
+            <h3 style="font-size: 1rem; margin-bottom: 16px;">Quick Actions</h3>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <a href="/admin/upload-cutoff" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-file-pdf"></i> Upload Cutoff PDF</a>
+                <a href="/admin/cutoffs" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-search"></i> Browse Cutoffs</a>
+                <a href="/admin/backups" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-database"></i> Manage Backups</a>
+                <a href="/admin/trends" class="btn btn-outline" style="justify-content: center;"><i class="fas fa-chart-line"></i> View Trends</a>
+                <button class="btn btn-success" style="justify-content: center;" onclick="createBackup()"><i class="fas fa-cloud-arrow-up"></i> Create Backup Now</button>
+            </div>
+        </div>
+    </div>
+
+    {% if last_upload %}
+    <div class="stat-card" style="margin-top: 20px;">
+        <h3 style="font-size: 1rem; margin-bottom: 8px;">Last Upload</h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem;">
+            <strong>{{ last_upload.filename }}</strong> — {{ last_upload.processed_status }}
+            ({{ last_upload.valid_rows }} valid, {{ last_upload.rejected_rows }} rejected)
+            <br>Uploaded {{ last_upload.created_at.strftime('%d %b %Y at %H:%M') if last_upload.created_at else '' }}
+        </p>
+    </div>
+    {% endif %}
+</div>
 
 <script>
 function createBackup() {

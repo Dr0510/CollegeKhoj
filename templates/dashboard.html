@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — CollegeKhoj</title>
+    <meta name="description" content="Your personalized CollegeKhoj dashboard — saved colleges, comparisons, recommendations and activity.">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/globals.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/utilities.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/button.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badge.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/input.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/skeleton.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/layout.css') }}">
+    <script>
+        (function(){
+            const t = localStorage.getItem('cf-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container-lg px-3 px-md-4 py-4">
+        <!-- Dashboard Header -->
+        <div class="dash-header animate-on-scroll">
+            <div>
+                <h1><i class="fas fa-th-large" style="color:var(--color-primary);margin-right:var(--space-2);"></i>Dashboard</h1>
+                <p>Welcome back, {{ current_user.first_name or 'Student' }}! Here's your college journey overview.</p>
+            </div>
+            <a href="{{ url_for('mhcet_page') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-search"></i> New Search
+            </a>
+        </div>
+
+        <!-- Analytics Cards -->
+        <div class="dash-kpi-grid animate-on-scroll">
+            <div class="kpi-card">
+                <div class="kpi-card-top">
+                    <div class="kpi-icon" style="background:var(--color-primary-muted);color:var(--color-primary);"><i class="fas fa-bookmark"></i></div>
+                </div>
+                <div class="kpi-value" id="savedCount">0</div>
+                <div class="kpi-label">Saved Colleges</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-card-top">
+                    <div class="kpi-icon" style="background:var(--color-ambitious-bg);color:var(--color-ambitious);"><i class="fas fa-columns"></i></div>
+                </div>
+                <div class="kpi-value" id="compareCount">0</div>
+                <div class="kpi-label">Comparisons</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-card-top">
+                    <div class="kpi-icon" style="background:var(--color-success-bg);color:var(--color-safe);"><i class="fas fa-magic"></i></div>
+                </div>
+                <div class="kpi-value" id="recCount">-</div>
+                <div class="kpi-label">Recommendations</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-card-top">
+                    <div class="kpi-icon" style="background:var(--color-warning-bg);color:var(--color-moderate);"><i class="fas fa-chart-line"></i></div>
+                </div>
+                <div class="kpi-value" id="activityScore">-</div>
+                <div class="kpi-label">Activity Score</div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="dash-grid">
+            <!-- Left: Saved Colleges -->
+            <div class="dash-section animate-on-scroll">
+                <div class="dash-section-header">
+                    <h3><i class="fas fa-bookmark" style="color:var(--color-primary);"></i> Saved Colleges</h3>
+                    <a href="{{ url_for('bookmarks_page') }}" class="btn btn-ghost btn-sm">View All</a>
+                </div>
+                <div class="dash-saved-list" id="savedList">
+                    <div class="empty-state" style="padding:var(--space-8);">
+                        <div class="empty-state-icon" style="width:48px;height:48px;font-size:var(--text-lg);">
+                            <i class="fas fa-bookmark"></i>
+                        </div>
+                        <h3 style="font-size:var(--text-base);">No saved colleges yet</h3>
+                        <p style="font-size:var(--text-xs);">Browse colleges and click the bookmark icon to save them here.</p>
+                        <a href="{{ url_for('mhcet_page') }}" class="btn btn-primary btn-sm" style="justify-content:center;">
+                            <i class="fas fa-search"></i> Find Colleges
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Quick Actions & Activity -->
+            <div>
+                <!-- Quick Actions -->
+                <div class="dash-section animate-on-scroll">
+                    <div class="dash-section-header">
+                        <h3><i class="fas fa-bolt" style="color:var(--color-moderate);"></i> Quick Actions</h3>
+                    </div>
+                    <div class="dash-actions-grid">
+                        <a href="{{ url_for('mhcet_page') }}" class="dash-action-card">
+                            <div class="dash-action-icon" style="background:var(--color-primary-muted);color:var(--color-primary);">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <span>Check Cutoffs</span>
+                        </a>
+                        <a href="/colleges" class="dash-action-card">
+                            <div class="dash-action-icon" style="background:var(--color-success-bg);color:var(--color-safe);">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <span>Browse Colleges</span>
+                        </a>
+                        <a href="{{ url_for('compare_page') }}" class="dash-action-card">
+                            <div class="dash-action-icon" style="background:var(--color-ambitious-bg);color:var(--color-ambitious);">
+                                <i class="fas fa-columns"></i>
+                            </div>
+                            <span>Compare</span>
+                        </a>
+                        <a href="{{ url_for('profile_page') }}" class="dash-action-card">
+                            <div class="dash-action-icon" style="background:var(--color-warning-bg);color:var(--color-moderate);">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span>Edit Profile</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="dash-section animate-on-scroll">
+                    <div class="dash-section-header">
+                        <h3><i class="fas fa-clock" style="color:var(--text-tertiary);"></i> Recent Activity</h3>
+                    </div>
+                    <div class="dash-activity-list">
+                        <div class="empty-state" style="padding:var(--space-8);">
+                            <div class="empty-state-icon" style="width:48px;height:48px;font-size:var(--text-lg);">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <h3 style="font-size:var(--text-base);">No recent activity</h3>
+                            <p style="font-size:var(--text-xs);">Start exploring colleges to see your activity here.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="navbar-brand-icon" style="width:28px;height:28px;font-size:0.65rem;"><i class="fas fa-th-large"></i></div>
+                <span style="font-weight:800;color:var(--text-primary);font-size:var(--text-sm);">College<span style="color:var(--color-primary);">Khoj</span> Dashboard</span>
+            </div>
+            <p class="footer-copyright">Your personalized college journey</p>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            'use strict';
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); } });
+                }, { threshold: 0.1 });
+                document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+            } else {
+                document.querySelectorAll('.animate-on-scroll').forEach(el => el.classList.add('visible'));
+            }
+
+            function getBookmarks() { return JSON.parse(localStorage.getItem('cf-bookmarks') || '{}'); }
+            function getCompare() { return JSON.parse(localStorage.getItem('cf-compare') || '{}'); }
+
+            const bm = getBookmarks();
+            const cmp = getCompare();
+            document.getElementById('savedCount').textContent = Object.keys(bm).length;
+            document.getElementById('compareCount').textContent = Object.keys(cmp).length;
+
+            // Populate saved colleges
+            const savedList = document.getElementById('savedList');
+            const keys = Object.keys(bm);
+            if (keys.length > 0) {
+                savedList.innerHTML = '<div class="dash-saved-items">' + keys.slice(0, 5).map(id =>
+                    '<a href="/college/' + id + '" class="dash-saved-item">' +
+                        '<i class="fas fa-university" style="color:var(--color-primary);"></i>' +
+                        '<span>' + bm[id] + '</span>' +
+                        '<i class="fas fa-chevron-right" style="font-size:0.6rem;color:var(--text-tertiary);"></i>' +
+                    '</a>'
+                ).join('') + '</div>';
+                if (keys.length > 5) {
+                    savedList.innerHTML += '<a href="{{ url_for('bookmarks_page') }}" class="dash-view-all">View all ' + keys.length + ' saved colleges</a>';
+                }
+            }
+
+            // Activity score
+            const score = Math.min(Object.keys(bm).length * 15 + Object.keys(cmp).length * 25, 100);
+            document.getElementById('activityScore').textContent = score + '%';
+        })();
+    </script>
+</body>
+</html>

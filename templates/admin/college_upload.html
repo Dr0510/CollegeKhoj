@@ -1,0 +1,399 @@
+{% extends "admin/base.html" %}
+{% block title %}College Master Upload - Admin{% endblock %}
+
+{% block head %}
+<style>
+    .upload-zone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        background: #fafafa;
+        transition: all 0.3s;
+    }
+    .upload-zone:hover {
+        border-color: #4f46e5;
+        background: #f5f3ff;
+    }
+    .upload-zone.dragover {
+        border-color: #4f46e5;
+        background: #ede9fe;
+    }
+    .upload-zone input[type="file"] {
+        display: none;
+    }
+    .preview-table {
+        font-size: 0.875rem;
+    }
+    .preview-table th {
+        white-space: nowrap;
+    }
+    .badge-create {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+    .badge-update {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+    .badge-error {
+        background: #fce4ec;
+        color: #c62828;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+    .progress-bar {
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: #4f46e5;
+        transition: width 0.3s;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">College Master Upload</h4>
+            <p class="text-muted mb-0">Upload CSV or Excel to create/update college master data</p>
+        </div>
+    </div>
+
+    {% if get_flashed_messages() %}
+    <div class="mb-4">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Upload Section -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="upload-zone" id="uploadZone">
+                <div class="mb-3">
+                    <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #4f46e5;"></i>
+                </div>
+                <h5>Drag & drop your file here</h5>
+                <p class="text-muted mb-3">or click to browse</p>
+                <button class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+                    <i class="bi bi-folder2-open me-1"></i> Browse Files
+                </button>
+                <input type="file" id="fileInput" accept=".csv,.xls,.xlsx" onchange="handleFile(this)">
+                <div class="mt-3">
+                    <small class="text-muted">
+                        Supported formats: CSV, Excel (.xls, .xlsx) &bull;
+                        Required columns: Name, Location, Branch, Fees, NIRF, Rating, Placement
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="text-center py-4" style="display:none;">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-muted">Processing file...</p>
+        <div class="progress-bar mx-auto" style="max-width: 300px;">
+            <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+        </div>
+    </div>
+
+    <!-- Preview Section -->
+    <div id="previewSection" style="display:none;">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Preview</h5>
+                <div>
+                    <span class="badge bg-primary me-1" id="totalBadge">0 total</span>
+                    <span class="badge bg-success me-1" id="createBadge">0 new</span>
+                    <span class="badge bg-warning me-1" id="updateBadge">0 updates</span>
+                    <span class="badge bg-danger" id="errorBadge">0 errors</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0 preview-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Location</th>
+                                <th>Branch</th>
+                                <th>Fees</th>
+                                <th>NIRF Rank</th>
+                                <th>Rating</th>
+                                <th>Placement</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted" id="previewCount"></span>
+                    <div>
+                        <button class="btn btn-outline-secondary me-2" onclick="resetUpload()">
+                            <i class="bi bi-x-circle me-1"></i> Cancel
+                        </button>
+                        <button class="btn btn-primary" id="commitBtn" onclick="commitUpload()">
+                            <i class="bi bi-check-circle me-1"></i> Commit Import
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Section -->
+    <div id="resultSection" style="display:none;">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Import Result</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    <div class="col">
+                        <h2 class="text-success" id="createdCount">0</h2>
+                        <small class="text-muted">Created</small>
+                    </div>
+                    <div class="col">
+                        <h2 class="text-warning" id="updatedCount">0</h2>
+                        <small class="text-muted">Updated</small>
+                    </div>
+                    <div class="col">
+                        <h2 class="text-danger" id="errorResultCount">0</h2>
+                        <small class="text-muted">Errors</small>
+                    </div>
+                </div>
+                <div id="resultErrors" class="alert alert-danger" style="display:none;"></div>
+                <button class="btn btn-outline-primary" onclick="resetUpload()">
+                    <i class="bi bi-upload me-1"></i> Upload Another File
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPreview = null;
+
+function handleFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    uploadFile(file);
+}
+
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('dragover');
+});
+zone.addEventListener('dragleave', () => {
+    zone.classList.remove('dragover');
+});
+zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+});
+
+function uploadFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('loading').style.display = 'block';
+
+    // Simulate progress
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress = Math.min(progress + 10, 90);
+        document.getElementById('progressFill').style.width = progress + '%';
+    }, 200);
+
+    fetch('/admin/college-upload', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+        clearInterval(interval);
+        document.getElementById('progressFill').style.width = '100%';
+
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+
+            if (data.ok) {
+                showPreview(data.preview);
+            } else {
+                showError(data.error || 'Upload failed');
+                document.getElementById('uploadZone').style.display = 'block';
+            }
+        }, 500);
+    })
+    .catch(err => {
+        clearInterval(interval);
+        document.getElementById('loading').style.display = 'none';
+        showError('Error: ' + err.message);
+        document.getElementById('uploadZone').style.display = 'block';
+    });
+}
+
+function showPreview(preview) {
+    currentPreview = preview;
+
+    document.getElementById('totalBadge').textContent = preview.total_rows + ' total';
+    document.getElementById('createBadge').textContent = preview.to_create + ' new';
+    document.getElementById('updateBadge').textContent = preview.to_update + ' updates';
+    document.getElementById('errorBadge').textContent = preview.error_rows + ' errors';
+
+    const tbody = document.getElementById('previewBody');
+    tbody.innerHTML = '';
+
+    preview.preview_rows.forEach((row, idx) => {
+        const tr = document.createElement('tr');
+        const isValid = row._valid;
+        tr.className = isValid ? '' : 'table-danger';
+
+        let statusBadge = '';
+        if (!isValid) {
+            statusBadge = `<span class="badge-error">${row._error || 'Invalid'}</span>`;
+        } else if (row._status === 'create') {
+            statusBadge = '<span class="badge-create">Create</span>';
+        } else {
+            statusBadge = '<span class="badge-update">Update</span>';
+        }
+
+        tr.innerHTML = `
+            <td>${row._row || (idx + 2)}</td>
+            <td>${escapeHtml(row.college || '')}</td>
+            <td>${escapeHtml(row.location || '')}</td>
+            <td>${escapeHtml(row.branch || '')}</td>
+            <td>${row.fees != null ? '₹' + numberFormat(row.fees) : '-'}</td>
+            <td>${row.nirf_rank != null ? row.nirf_rank : '-'}</td>
+            <td>${row.rating != null ? row.rating : '-'}</td>
+            <td>${row.placement_rate != null ? row.placement_rate + '%' : '-'}</td>
+            <td>${statusBadge}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('previewCount').textContent =
+        `Showing ${preview.preview_rows.length} of ${preview.total_rows} rows`;
+
+    document.getElementById('previewSection').style.display = 'block';
+
+    if (preview.errors && preview.errors.length > 0) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-warning mt-2';
+        errorDiv.innerHTML = '<strong>Validation Errors:</strong><ul class="mb-0 mt-1">' +
+            preview.errors.slice(0, 20).map(e => `<li>${escapeHtml(e)}</li>`).join('') +
+            '</ul>';
+        document.getElementById('previewSection').querySelector('.card-body').prepend(errorDiv);
+    }
+}
+
+function commitUpload() {
+    if (!currentPreview) return;
+
+    document.getElementById('commitBtn').disabled = true;
+    document.getElementById('commitBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Committing...';
+
+    fetch('/admin/college-upload/commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview: currentPreview }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            showResult(data.result);
+        } else {
+            showError(data.error || 'Commit failed');
+            document.getElementById('commitBtn').disabled = false;
+            document.getElementById('commitBtn').innerHTML = '<i class="bi bi-check-circle me-1"></i> Commit Import';
+        }
+    })
+    .catch(err => {
+        showError('Error: ' + err.message);
+        document.getElementById('commitBtn').disabled = false;
+        document.getElementById('commitBtn').innerHTML = '<i class="bi bi-check-circle me-1"></i> Commit Import';
+    });
+}
+
+function showResult(result) {
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('resultSection').style.display = 'block';
+    document.getElementById('createdCount').textContent = result.created || 0;
+    document.getElementById('updatedCount').textContent = result.updated || 0;
+    document.getElementById('errorResultCount').textContent = result.error_rows || 0;
+
+    if (result.errors && result.errors.length > 0) {
+        const errDiv = document.getElementById('resultErrors');
+        errDiv.style.display = 'block';
+        errDiv.innerHTML = '<strong>Errors:</strong><ul class="mb-0 mt-1">' +
+            result.errors.slice(0, 20).map(e => `<li>${escapeHtml(e)}</li>`).join('') +
+            '</ul>';
+    }
+}
+
+function showError(msg) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="bi bi-exclamation-triangle me-2"></i> ${escapeHtml(msg)}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container-fluid').prepend(alertDiv);
+}
+
+function resetUpload() {
+    currentPreview = null;
+    document.getElementById('uploadZone').style.display = 'block';
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('fileInput').value = '';
+    document.getElementById('commitBtn').disabled = false;
+    document.getElementById('commitBtn').innerHTML = '<i class="bi bi-check-circle me-1"></i> Commit Import';
+
+    // Remove any error alerts
+    document.querySelectorAll('.alert-warning, .alert-danger:not(.d-none)').forEach(el => el.remove());
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+function numberFormat(num) {
+    return new Intl.NumberFormat('en-IN').format(num || 0);
+}
+</script>
+{% endblock %}

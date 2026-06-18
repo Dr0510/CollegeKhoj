@@ -1,0 +1,253 @@
+/* ============================================================
+   🔍 CollegeKhoj Filter Component
+   ============================================================ */
+
+/* ── Filter Bar ── */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.filter-bar-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-wide);
+  margin-right: var(--space-1);
+}
+
+/* ── Filter Chips ── */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-family: var(--font-family);
+  user-select: none;
+}
+.filter-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.filter-chip.active {
+  background: var(--color-primary-muted);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.filter-chip i {
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+.filter-chip.active i {
+  opacity: 1;
+}
+
+/* ── Filter Group ── */
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.filter-group-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-wide);
+}
+
+/* ── Range Filter ── */
+.range-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.range-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.range-values {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+.range-slider {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-surface-lg);
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+}
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-gradient);
+  box-shadow: 0 2px 8px rgba(79, 142, 247, 0.3);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+.range-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-gradient);
+  border: none;
+  cursor: pointer;
+}
+
+/* ── Dual Range ── */
+.dual-range {
+  position: relative;
+  height: 6px;
+}
+.dual-range input[type="range"] {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  outline: none;
+}
+.dual-range input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-gradient);
+  box-shadow: var(--shadow-glow);
+  cursor: pointer;
+  pointer-events: all;
+}
+.dual-range input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-gradient);
+  border: none;
+  cursor: pointer;
+  pointer-events: all;
+}
+.dual-range-track {
+  position: absolute;
+  top: 0;
+  height: 6px;
+  background: var(--color-primary-muted);
+  border-radius: var(--radius-full);
+}
+
+/* ── Checkbox Grid ── */
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+.checkbox-grid-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.checkbox-grid-item:hover {
+  background: var(--bg-surface);
+}
+.checkbox-grid-item input[type="checkbox"] {
+  accent-color: var(--color-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.checkbox-grid-item label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex: 1;
+}
+
+/* ── Clear Filter Button ── */
+.clear-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-error);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-family: var(--font-family);
+}
+.clear-filters:hover {
+  background: var(--color-error-bg);
+  border-color: var(--color-error-border);
+}
+
+/* ── Active Filter Tags ── */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.active-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-primary-muted);
+  border: 1px solid rgba(79, 142, 247, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+  cursor: default;
+}
+.active-filter-tag i {
+  cursor: pointer;
+  font-size: 0.6rem;
+  opacity: 0.7;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+.active-filter-tag i:hover {
+  opacity: 1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .checkbox-grid { grid-template-columns: 1fr; }
+}

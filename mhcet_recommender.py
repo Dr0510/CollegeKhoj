@@ -5,7 +5,11 @@ import json
 from sqlalchemy import or_
 
 class MHCETRecommender:
-    """MH-CET specific recommendation system using CAP cutoff data"""
+    """MH-CET specific recommendation system using CollegeCutoff data
+
+    Queries the unified college_cutoffs table (single source of truth).
+    Provides branch-wise, category-aware, gender-aware recommendations.
+    """
     
     def __init__(self, db):
         self.db = db
@@ -56,11 +60,14 @@ class MHCETRecommender:
                                  top_n=10, include_years=[2022, 2023, 2024]):
         """
         Get college recommendations for MH-CET students based on cutoff analysis
+
+        Uses the unified college_cutoffs table (single source of truth).
+        Filters by exam_type='MHT-CET' to exclude polytechnic data.
         
         Args:
             percentile: Student's MH-CET percentile
             category: Student's category (Open, OBC, SC, ST, NT, EWS)
-            gender: Student's gender (Male, Female, Other)
+            gender: Student's gender (Male, Female, Other, Gender-Neutral)
             budget: Maximum budget for fees
             preferred_locations: List of preferred locations
             preferred_branches: List of preferred branches
@@ -71,7 +78,7 @@ class MHCETRecommender:
             List of tuples (College object, admission_data)
         """
         try:
-            from models import College, CAPCutoff
+            from models import College, CollegeCutoff
             
             # Build base query for colleges
             college_query = College.query
@@ -102,12 +109,27 @@ class MHCETRecommender:
             recommendations = []
             
             for college in colleges:
-                # Get cutoff data for this college
-                cutoff_query = CAPCutoff.query.filter_by(
-                    college_id=college.id,
-                    category=category,
-                    gender=gender
-                ).filter(CAPCutoff.year.in_(include_years))
+                # Get cutoff data from unified college_cutoffs table
+                # Match by college_code and filter by category, gender, exam_type
+                cutoff_query = CollegeCutoff.query.filter(
+                    CollegeCutoff.college_code == str(college.id).zfill(4),
+                    CollegeCutoff.category == category,
+                    CollegeCutoff.gender == gender,
+                    CollegeCutoff.exam_type == 'MHT-CET',
+                    CollegeCutoff.year.in_(include_years),
+                )
+                
+                # Also try matching by college name as fallback
+                # For colleges stored with actual MH-CET codes, we use college_code
+                # But the College model may not have college_code; we fallback to name
+                if cutoff_query.count() == 0:
+                    cutoff_query = CollegeCutoff.query.filter(
+                        CollegeCutoff.college_name.ilike(f'%{college.college}%'),
+                        CollegeCutoff.category == category,
+                        CollegeCutoff.gender == gender,
+                        CollegeCutoff.exam_type == 'MHT-CET',
+                        CollegeCutoff.year.in_(include_years),
+                    )
                 
                 cutoffs = cutoff_query.all()
                 
@@ -126,28 +148,55 @@ class MHCETRecommender:
                     }
                 else:
                     # Analyze real cutoff data
-                    cutoff_percentiles = [c.cutoff_percentile for c in cutoffs]
-                    avg_cutoff = np.mean(cutoff_percentiles)
-                    latest_cutoff = max(cutoffs, key=lambda x: x.year).cutoff_percentile
+                    cutoff_percentiles = [float(c.percentile) for c in cutoffs if c.percentile]
                     
-                    # Calculate trend
-                    cutoff_trend = self._calculate_trend(cutoffs)
-                    
-                    # Calculate admission probability based on latest cutoff
-                    probability = self.get_admission_probability(percentile, latest_cutoff)
-                    
-                    admission_data = {
-                        'probability': probability,
-                        'category_type': self.categorize_recommendation(probability),
-                        'latest_cutoff': latest_cutoff,
-                        'average_cutoff': avg_cutoff,
-                        'min_cutoff': min(cutoff_percentiles),
-                        'max_cutoff': max(cutoff_percentiles),
-                        'has_real_data': True,
-                        'cutoff_trend': cutoff_trend,
-                        'years_analyzed': list(set([c.year for c in cutoffs])),
-                        'cutoff_data': [c.to_dict() for c in cutoffs]
-                    }
+                    if not cutoff_percentiles:
+                        estimated_cutoff = self._estimate_cutoff(college, category)
+                        probability = self.get_admission_probability(percentile, estimated_cutoff)
+                        admission_data = {
+                            'probability': probability,
+                            'category_type': self.categorize_recommendation(probability),
+                            'estimated_cutoff': estimated_cutoff,
+                            'has_real_data': False,
+                            'cutoff_trend': 'No valid percentile data',
+                            'years_analyzed': []
+                        }
+                    else:
+                        avg_cutoff = np.mean(cutoff_percentiles)
+                        latest_cutoff = max(
+                            (c for c in cutoffs if c.percentile is not None),
+                            key=lambda x: x.year
+                        )
+                        latest_percentile = float(latest_cutoff.percentile)
+                        
+                        # Calculate trend
+                        cutoff_trend = self._calculate_trend(cutoffs)
+                        
+                        # Calculate admission probability based on latest cutoff
+                        probability = self.get_admission_probability(percentile, latest_percentile)
+                        
+                        # Group by branch/course_name for branch-wise breakdown
+                        branch_data = {}
+                        for c in cutoffs:
+                            branch_name = c.course_name or c.branch or 'Unknown'
+                            if branch_name not in branch_data:
+                                branch_data[branch_name] = []
+                            if c.percentile is not None:
+                                branch_data[branch_name].append(float(c.percentile))
+                        
+                        admission_data = {
+                            'probability': probability,
+                            'category_type': self.categorize_recommendation(probability),
+                            'latest_cutoff': latest_percentile,
+                            'average_cutoff': avg_cutoff,
+                            'min_cutoff': min(cutoff_percentiles),
+                            'max_cutoff': max(cutoff_percentiles),
+                            'has_real_data': True,
+                            'cutoff_trend': cutoff_trend,
+                            'years_analyzed': list(set([c.year for c in cutoffs])),
+                            'branch_breakdown': branch_data,
+                            'cutoff_data': [c.to_dict() for c in cutoffs]
+                        }
                 
                 recommendations.append((college, admission_data))
             
@@ -200,12 +249,17 @@ class MHCETRecommender:
         if len(cutoffs) < 2:
             return "Stable"
         
+        # Filter to records with percentile values
+        valid = [c for c in cutoffs if c.percentile is not None]
+        if len(valid) < 2:
+            return "Stable"
+        
         # Sort by year
-        sorted_cutoffs = sorted(cutoffs, key=lambda x: x.year)
+        sorted_cutoffs = sorted(valid, key=lambda x: x.year)
         
         # Calculate trend
-        first_year = sorted_cutoffs[0].cutoff_percentile
-        last_year = sorted_cutoffs[-1].cutoff_percentile
+        first_year = float(sorted_cutoffs[0].percentile)
+        last_year = float(sorted_cutoffs[-1].percentile)
         
         diff = last_year - first_year
         
