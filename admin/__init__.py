@@ -16,11 +16,11 @@ from admin.background_worker import init_worker
 
 # Approval Management Blueprint
 from admin.approval_routes import approval_bp
-from admin.approval_routes import approval_bp as approval_blueprint
+
 
 def register_bulk_import_engine(app):
     """
-    Register the bulk import blueprint and run migrations.
+    Register the bulk import blueprint and approval blueprint, run migrations.
 
     Order matters:
       1. Register blueprints (routes available)
@@ -35,5 +35,5 @@ def register_bulk_import_engine(app):
         # Migration MUST run before init_worker (recover_stale_jobs needs new columns)
         run_bulk_import_migration()
         init_worker(app)
-    app.logger.info("🔧 Bulk PDF Import Engine registered")
-    app.logger.info("✅ Bulk Import Approval Management registered at /admin/bulk-imports")
+    app.logger.info("Bulk PDF Import Engine registered")
+    app.logger.info("Bulk Import Approval Management registered at /admin/bulk-imports")

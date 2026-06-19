@@ -243,6 +243,14 @@
                                 <i class="fas fa-stop"></i>
                             </button>
                         {% endif %}
+                        {% if job.status == 'COMPLETED' and job.approval_status == 'pending_approval' %}
+                            <button class="btn btn-success btn-sm" onclick="approveImport({{ job.id }})" title="Approve Import">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="rejectImport({{ job.id }})" title="Reject Import">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        {% endif %}
                         {% if job.failed_pages and job.failed_pages|length > 0 %}
                             <button class="btn btn-outline btn-sm" onclick="retryFailed({{ job.id }})" title="Retry Failed Pages">
                                 <i class="fas fa-redo"></i>
@@ -357,6 +365,35 @@ function deleteJob(id) {
     .then(function(d) {
         if (d.ok) { showToast('Job deleted', 'success'); location.reload(); }
         else { showToast(d.error || 'Delete failed', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+// ── Approval Functions ────────────────────────────────────────────────
+function approveImport(id) {
+    if (!confirm('Approve import #' + id + '? The records will become visible to users.')) return;
+    fetch('/admin/bulk-imports/' + id + '/approve', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'success'); setTimeout(function() { location.reload(); }, 1000); }
+        else { showToast(d.error || 'Failed to approve', 'error'); }
+    })
+    .catch(function() { showToast('Network error', 'error'); });
+}
+
+function rejectImport(id) {
+    var reason = prompt('Reason for rejection (optional):');
+    if (reason === null) return;
+    var data = { reason: reason || 'Rejected by admin' };
+    fetch('/admin/bulk-imports/' + id + '/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) { showToast(d.message, 'info'); setTimeout(function() { location.reload(); }, 1000); }
+        else { showToast(d.error || 'Failed to reject', 'error'); }
     })
     .catch(function() { showToast('Network error', 'error'); });
 }

@@ -70,11 +70,14 @@ def list_imports():
     """Admin page showing all bulk import jobs."""
     page = request.args.get('page', 1, type=int)
     status_filter = request.args.get('status', '')
+    approval_filter = request.args.get('approval_status', '')
 
     query = ImportJob.query
 
     if status_filter:
         query = query.filter(ImportJob.status == status_filter)
+    if approval_filter:
+        query = query.filter(ImportJob.approval_status == approval_filter)
 
     # Order by most recent first
     query = query.order_by(ImportJob.id.desc())
@@ -85,12 +88,33 @@ def list_imports():
     from admin.background_worker import get_active_jobs
     active_jobs = get_active_jobs()
 
+    # Get approval stats for the top summary cards
+    total_pending = ImportJob.query.filter(
+        ImportJob.approval_status == 'pending_approval'
+    ).count()
+    total_approved = ImportJob.query.filter(
+        ImportJob.approval_status == 'approved'
+    ).count()
+    total_rejected = ImportJob.query.filter(
+        ImportJob.approval_status == 'rejected'
+    ).count()
+    total_failed = ImportJob.query.filter(
+        ImportJob.status == 'FAILED'
+    ).count()
+
     return render_template(
         'bulk_imports.html',
         jobs=pagination.items,
         pagination=pagination,
         status_filter=status_filter,
+        approval_filter=approval_filter,
         active_jobs=active_jobs,
+        stats={
+            'pending': total_pending,
+            'approved': total_approved,
+            'rejected': total_rejected,
+            'failed': total_failed,
+        }
     )
 
 
