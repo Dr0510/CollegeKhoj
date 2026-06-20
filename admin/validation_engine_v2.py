@@ -21,6 +21,7 @@ Self-healing passes (run before duplicate detection):
 5. College resolution         — get_or_create_college(college_code, college_name)
 6. Branch resolution          — normalize_branch → get_or_create_branch(canonical_name)
 """
+import time
 import logging
 from typing import List, Dict, Optional, Tuple, Set
 
@@ -91,12 +92,22 @@ def validate_rows(
     """
     from models import Cutoff
     from admin.branch_normalizer import normalize_branch
-    from admin.self_healing import get_or_create_college, get_or_create_branch
+    from admin.self_healing import (
+        get_or_create_college, get_or_create_branch,
+        bulk_preload_colleges, bulk_preload_branches,
+    )
 
     result = ValidationResult()
     result.total = len(parsed_rows)
 
-    # ── Pre-load existing cutoff keys for duplicate detection ────────────────
+    # ── PRELOAD EVERYTHING ONCE ─────────────────────────────────────────────
+    t0 = time.perf_counter()
+
+    # Use bulk preloaders from self_healing (populates module-level caches)
+    college_id_cache = bulk_preload_colleges()
+    branch_id_cache = bulk_preload_branches()
+
+    # Preload existing cutoff keys for duplicate detection (single query)
     existing_keys: Set[Tuple] = set()
     dup_query = Cutoff.query.with_entities(
         Cutoff.admission_type_id,
@@ -112,13 +123,16 @@ def validate_rows(
     for row in dup_query.distinct().all():
         existing_keys.add(tuple(row))
 
-    seen_this_batch: Set[Tuple] = set()
+    logger.info(
+        f"[Validation][PROFILE] Preload phase: "
+        f"{time.perf_counter()-t0:.3f}s | "
+        f"colleges={len(college_id_cache)} branches={len(branch_id_cache)} "
+        f"cutoff_keys={len(existing_keys)}"
+    )
 
-    # ── In-session caches to avoid repeated DB hits ──────────────────────────
-    college_id_cache: Dict[str, Optional[int]] = {}   # college_code → id
-    branch_id_cache:  Dict[str, Optional[int]] = {}   # canonical_name → id
-    _newly_healed_colleges: Set[str] = set()          # codes of colleges just created
-    _newly_healed_branches: Set[str] = set()          # names of branches just created
+    seen_this_batch: Set[Tuple] = set()
+    _newly_healed_colleges: Set[str] = set()
+    _newly_healed_branches: Set[str] = set()
 
     for raw_row in parsed_rows:
         row = dict(raw_row)   # work on a copy
@@ -143,9 +157,6 @@ def validate_rows(
         else:
             if college_code not in college_id_cache:
                 college_name = str(row.get("college_name", "")).strip()
-                # Check BEFORE get_or_create to determine if this is truly new
-                from models import College
-                was_already_in_db = College.query.filter_by(college_code=college_code).first() is not None
                 cid = get_or_create_college(college_code, college_name)
                 if cid is None:
                     errors.append(
@@ -154,7 +165,7 @@ def validate_rows(
                     )
                 else:
                     # Count only BRAND NEW colleges (ones not previously in DB)
-                    if not was_already_in_db and college_code not in _newly_healed_colleges:
+                    if college_code not in _newly_healed_colleges:
                         _newly_healed_colleges.add(college_code)
                         result.healed_colleges += 1
                         logger.info(f"[Validation] Healing tracked: +1 college (id={cid}, code={college_code})")
@@ -174,13 +185,10 @@ def validate_rows(
         else:
             canonical = normalize_branch(raw_branch)
             if canonical not in branch_id_cache:
-                # Check BEFORE get_or_create to determine if this is truly new
-                from models import Branch
-                branch_was_in_db = Branch.query.filter_by(branch_name=canonical).first() is not None
                 bid = get_or_create_branch(canonical)
                 branch_id_cache[canonical] = bid
                 # Count only BRAND NEW branches
-                if bid is not None and not branch_was_in_db and canonical not in _newly_healed_branches:
+                if bid is not None and canonical not in _newly_healed_branches:
                     _newly_healed_branches.add(canonical)
                     result.healed_branches += 1
                     logger.info(f"[Validation] Healing tracked: +1 branch (id={bid}, name={canonical})")

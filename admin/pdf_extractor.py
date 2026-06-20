@@ -20,10 +20,46 @@ Extracts: year, round, college_code, college_name, course_code, course_name,
 """
 import os
 import re
+import time
 import logging
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
+
+# ── Inline CPU profiler for drill-down timing ────────────────────────────────
+_phase_times: dict = {}  # name → (calls, total_seconds)
+def _profile_start(name: str) -> float:
+    return time.perf_counter()
+
+def _profile_end(name: str, start: float):
+    elapsed = time.perf_counter() - start
+    calls, total = _phase_times.get(name, (0, 0.0))
+    _phase_times[name] = (calls + 1, total + elapsed)
+
+def report_drilldown():
+    lines = [f"\n{'─'*78}",
+             f"{'Drill-Down Function':<50s} {'Calls':>6s} {'Total(s)':>10s} {'Avg(ms)':>10s}",
+             f"{'─'*78}"]
+    sorted_items = sorted(_phase_times.items(), key=lambda x: x[1][1], reverse=True)
+    for name, (calls, total) in sorted_items:
+        avg_ms = (total / calls) * 1000 if calls else 0
+        lines.append(f"{name:<50s} {calls:>6d} {total:>10.3f} {avg_ms:>10.2f}")
+    lines.append(f"{'─'*78}")
+    print("\n".join(lines))
+
+# Wrapper helpers
+def _profile(name):
+    class _Ctx:
+        def __init__(self, n):
+            self.n = n
+            self._start = None
+        def __enter__(self2):
+            self2._start = time.perf_counter()
+            return self2
+        def __exit__(self2, *args):
+            _profile_end(self2.n, self2._start)
+    return _Ctx(name)
 
 # ── Filename patterns ────────────────────────────────────────────────────────
 FILENAME_PATTERNS = [
@@ -121,13 +157,23 @@ BRANCH_MAP = {
 }
 
 
+_branch_normalize_cache: dict = {}
+
 def _normalise_branch(raw: str) -> str:
-    """Map a raw branch string to a standard form."""
+    """Map a raw branch string to a standard form. Memoized for speed."""
+    cached = _branch_normalize_cache.get(raw)
+    if cached is not None:
+        return cached
     b = raw.strip().lower()
+    result = None
     for key, val in BRANCH_MAP.items():
         if key in b:
-            return val
-    return raw.strip().title() if raw.strip().isupper() else raw.strip()
+            result = val
+            break
+    if result is None:
+        result = raw.strip().title() if raw.strip().isupper() else raw.strip()
+    _branch_normalize_cache[raw] = result
+    return result
 
 
 # ── Year / round detection ───────────────────────────────────────────────────
@@ -194,13 +240,15 @@ def _is_percentile_line(line: str) -> bool:
 
 def _extract_percentiles(line: str) -> list[float]:
     """Extract all (XX.XX%) values from a line, preserving order."""
-    return [float(m) for m in PCT_RE.findall(line)]
+    with _profile('_extract_percentiles'):
+        return [float(m) for m in PCT_RE.findall(line)]
 
 
 def _extract_categories(line: str) -> list[str]:
     """Split a category header line into individual category labels."""
-    tokens = line.strip().split()
-    return [t for t in tokens if t.upper() in CATEGORY_LABELS]
+    with _profile('_extract_categories'):
+        tokens = line.strip().split()
+        return [t for t in tokens if t.upper() in CATEGORY_LABELS]
 
 
 def _is_rank_line(line: str) -> bool:
@@ -217,206 +265,186 @@ def _is_rank_line(line: str) -> bool:
 
 def _extract_ranks(line: str) -> list[int]:
     """Extract numeric rank values from a line, preserving order."""
-    tokens = line.strip().split()
-    ranks = []
-    for t in tokens:
-        cleaned = t.replace(',', '')
-        if cleaned.isdigit():
-            ranks.append(int(cleaned))
-    return ranks
+    with _profile('_extract_ranks'):
+        tokens = line.strip().split()
+        ranks = []
+        for t in tokens:
+            cleaned = t.replace(',', '')
+            if cleaned.isdigit():
+                ranks.append(int(cleaned))
+        return ranks
 
 
 # ── Per-page text-block parser ──────────────────────────────────────────────
 
 def parse_page_text(page_text: str, page_num: int, year: int, round_number: int) -> tuple[list[dict], dict]:
-    """Parse a single page of DSE PDF text into cutoff records.
+    """Parse a single page of DSE PDF text into cutoff records."""
+    with _profile('parse_page_text (total)'):
+        lines = page_text.split('\n')
+        records: list[dict] = []
+        debug = {
+            'page': page_num,
+            'college_found': False,
+            'course_found': 0,
+            'categories_found': 0,
+            'records_generated': 0,
+            'blocks_found': 0,
+        }
 
-    Args:
-        page_text: The raw text extracted from one PDF page.
-        page_num:  1-based page number (for logging).
-        year:      Detected year.
-        round_number: Detected round number.
+        current_college_code = None
+        current_college_name = None
+        current_course_code = None
+        current_course_name = None
+        current_categories = []
+        current_ranks = []
+        current_percentiles = []
+        block_state = 'IDLE'
+        page_blocks = 0
+        seen_ranks = False
+        seen_pcts = False
 
-    Returns:
-        (records, debug_info)
-        records: list of dicts with keys:
-            college_code, college_name, course_code, course_name,
-            category, rank, percentile, year, round
-        debug_info: dict with page-level diagnostic information.
-    """
-    lines = page_text.split('\n')
-    records: list[dict] = []
-    debug = {
-        'page': page_num,
-        'college_found': False,
-        'course_found': 0,
-        'categories_found': 0,
-        'records_generated': 0,
-        'blocks_found': 0,
-    }
+        i = 0
+        while i < len(lines):
+            raw = lines[i]
+            line = raw.strip()
 
-    current_college_code = None
-    current_college_name = None
-    current_course_code = None
-    current_course_name = None
-    current_categories = []
-    current_ranks = []
-    current_percentiles = []
-    block_state = 'IDLE'  # IDLE → COLLEGE → COURSE → CATEGORIES → RANKS → PCT → IDLE
-    page_blocks = 0
-    seen_ranks = False
-    seen_pcts = False
-
-    i = 0
-    while i < len(lines):
-        raw = lines[i]
-        line = raw.strip()
-
-        # ── Skip empty / footer lines ──
-        if not line:
-            # If we were processing data, flush if we have complete data
-            if block_state in ('RANKS', 'PCT') and current_categories and current_percentiles:
-                _emit_records_new(records, current_college_code, current_college_name,
-                                  current_course_code, current_course_name,
-                                  current_categories, current_ranks, current_percentiles,
-                                  year, round_number)
-                page_blocks += 1
-            block_state = 'IDLE'
-            current_categories = []
-            current_ranks = []
-            current_percentiles = []
-            seen_ranks = False
-            seen_pcts = False
-            i += 1
-            continue
-
-        # Skip footer lines
-        if line.startswith('L - Ladies') or line.startswith('STATE CET CELL') or \
-           'Provisional cutoff List' in line or 'GOVERNMENT OF MAHARASHTRA' in line or \
-           line.startswith('Address') or 'Page' in line or \
-           line.startswith('Provisional cutoff'):
-            i += 1
-            continue
-
-        # ── Line type detection ──
-
-        # College line: starts with 4-digit code
-        college_match = COLLEGE_RE.match(line)
-        if college_match and not line.startswith('Choice'):
-            # Flush previous block if any
-            if block_state in ('RANKS', 'PCT') and current_categories and current_percentiles:
-                _emit_records_new(records, current_college_code, current_college_name,
-                                  current_course_code, current_course_name,
-                                  current_categories, current_ranks, current_percentiles,
-                                  year, round_number)
-                page_blocks += 1
+            # ── Skip empty / footer lines ──
+            if not line:
+                if block_state in ('RANKS', 'PCT') and current_categories and current_percentiles:
+                    _emit_records_new(records, current_college_code, current_college_name,
+                                      current_course_code, current_course_name,
+                                      current_categories, current_ranks, current_percentiles,
+                                      year, round_number)
+                    page_blocks += 1
+                block_state = 'IDLE'
                 current_categories = []
                 current_ranks = []
                 current_percentiles = []
                 seen_ranks = False
                 seen_pcts = False
+                i += 1
+                continue
 
-            current_college_code = college_match.group(1)
-            current_college_name = college_match.group(2).strip()
-            debug['college_found'] = True
-            block_state = 'COLLEGE'
-            i += 1
-            continue
+            # Skip footer lines
+            if line.startswith('L - Ladies') or line.startswith('STATE CET CELL') or \
+               'Provisional cutoff List' in line or 'GOVERNMENT OF MAHARASHTRA' in line or \
+               line.startswith('Address') or 'Page' in line or \
+               line.startswith('Provisional cutoff'):
+                i += 1
+                continue
 
-        # Choice Code / Course Name line
-        choice_match = CHOICE_COURSE_RE.search(line)
-        if choice_match and block_state in ('COLLEGE', 'IDLE', 'COURSE'):
-            current_course_code = choice_match.group(1)
-            current_course_name = _normalise_branch(choice_match.group(2))
-            debug['course_found'] += 1
-            block_state = 'COURSE'
-            # Check if categories also on same line
-            if _is_category_line(line):
+            # ── Line type detection ──
+
+            # College line: starts with 4-digit code
+            college_match = COLLEGE_RE.match(line)
+            if college_match and not line.startswith('Choice'):
+                if block_state in ('RANKS', 'PCT') and current_categories and current_percentiles:
+                    _emit_records_new(records, current_college_code, current_college_name,
+                                      current_course_code, current_course_name,
+                                      current_categories, current_ranks, current_percentiles,
+                                      year, round_number)
+                    page_blocks += 1
+                    current_categories = []
+                    current_ranks = []
+                    current_percentiles = []
+                    seen_ranks = False
+                    seen_pcts = False
+
+                current_college_code = college_match.group(1)
+                current_college_name = college_match.group(2).strip()
+                debug['college_found'] = True
+                block_state = 'COLLEGE'
+                i += 1
+                continue
+
+            # Choice Code / Course Name line
+            choice_match = CHOICE_COURSE_RE.search(line)
+            if choice_match and block_state in ('COLLEGE', 'IDLE', 'COURSE'):
+                current_course_code = choice_match.group(1)
+                with _profile('_normalise_branch'):
+                    current_course_name = _normalise_branch(choice_match.group(2))
+                debug['course_found'] += 1
+                block_state = 'COURSE'
+                if _is_category_line(line):
+                    current_categories = _extract_categories(line)
+                    debug['categories_found'] += len(current_categories)
+                    block_state = 'CATEGORIES'
+                i += 1
+                continue
+
+            # Category header line
+            if _is_category_line(line) and block_state in ('COURSE', 'COLLEGE', 'IDLE', 'CATEGORIES'):
                 current_categories = _extract_categories(line)
                 debug['categories_found'] += len(current_categories)
                 block_state = 'CATEGORIES'
-            i += 1
-            continue
+                i += 1
+                continue
 
-        # Category header line
-        if _is_category_line(line) and block_state in ('COURSE', 'COLLEGE', 'IDLE', 'CATEGORIES'):
-            current_categories = _extract_categories(line)
-            debug['categories_found'] += len(current_categories)
-            block_state = 'CATEGORIES'
-            i += 1
-            continue
+            # Rank numbers line
+            if _is_rank_line(line) and block_state in ('CATEGORIES', 'RANKS'):
+                ranks = _extract_ranks(line)
+                current_ranks = ranks
+                seen_ranks = True
+                block_state = 'RANKS'
+                i += 1
+                continue
 
-        # Rank numbers line (skip it but store)
-        if _is_rank_line(line) and block_state in ('CATEGORIES', 'RANKS'):
-            ranks = _extract_ranks(line)
-            current_ranks = ranks
-            seen_ranks = True
-            block_state = 'RANKS'
-            i += 1
-            continue
+            # Stage-I / Stage-II / Round markers
+            if line.startswith('Stage-') or line.startswith('Round'):
+                if block_state in ('RANKS', 'CATEGORIES'):
+                    block_state = 'WAITING_PCT'
+                i += 1
+                continue
 
-        # Stage-I / Stage-II / Round markers
-        if line.startswith('Stage-') or line.startswith('Round'):
-            # If ranks were found and we're now seeing stage, transition to waiting for pcts
-            if block_state in ('RANKS', 'CATEGORIES'):
-                block_state = 'WAITING_PCT'
-            i += 1
-            continue
+            # Percentile line
+            if _is_percentile_line(line) and block_state in ('RANKS', 'CATEGORIES', 'WAITING_PCT', 'PCT'):
+                current_percentiles = _extract_percentiles(line)
+                seen_pcts = True
+                block_state = 'PCT'
+                if current_categories and current_percentiles:
+                    with _profile('_emit_records_new'):
+                        _emit_records_new(records, current_college_code, current_college_name,
+                                          current_course_code, current_course_name,
+                                          current_categories, current_ranks, current_percentiles,
+                                          year, round_number)
+                    page_blocks += 1
+                    debug['records_generated'] = len(records)
+                    current_categories = []
+                    current_ranks = []
+                    current_percentiles = []
+                    seen_ranks = False
+                    seen_pcts = False
+                    block_state = 'IDLE'
+                i += 1
+                continue
 
-        # Percentile line
-        if _is_percentile_line(line) and block_state in ('RANKS', 'CATEGORIES', 'WAITING_PCT', 'PCT'):
-            current_percentiles = _extract_percentiles(line)
-            seen_pcts = True
-            block_state = 'PCT'
-            # If we have categories and percentiles, this block is complete
-            if current_categories and current_percentiles:
-                _emit_records_new(records, current_college_code, current_college_name,
-                                  current_course_code, current_course_name,
-                                  current_categories, current_ranks, current_percentiles,
-                                  year, round_number)
-                page_blocks += 1
-                debug['records_generated'] = len(records)
+            if block_state in ('COURSE', 'CATEGORIES', 'RANKS', 'WAITING_PCT', 'PCT') and not line.startswith('('):
+                block_state = 'IDLE'
                 current_categories = []
                 current_ranks = []
                 current_percentiles = []
                 seen_ranks = False
                 seen_pcts = False
-                block_state = 'IDLE'
+
             i += 1
-            continue
 
-        # Fallback: if we see another college while in a block, flush
-        if block_state in ('COURSE', 'CATEGORIES', 'RANKS', 'WAITING_PCT', 'PCT') and not line.startswith('('):
-            block_state = 'IDLE'
-            current_categories = []
-            current_ranks = []
-            current_percentiles = []
-            seen_ranks = False
-            seen_pcts = False
+        if block_state in ('RANKS', 'PCT', 'WAITING_PCT') and current_categories and current_percentiles:
+            _emit_records_new(records, current_college_code, current_college_name,
+                              current_course_code, current_course_name,
+                              current_categories, current_ranks, current_percentiles,
+                              year, round_number)
+            page_blocks += 1
 
-        i += 1
+        debug['blocks_found'] = page_blocks
+        debug['records_generated'] = len(records)
 
-    # Flush last block at end of page
-    if block_state in ('RANKS', 'PCT', 'WAITING_PCT') and current_categories and current_percentiles:
-        _emit_records_new(records, current_college_code, current_college_name,
-                          current_course_code, current_course_name,
-                          current_categories, current_ranks, current_percentiles,
-                          year, round_number)
-        page_blocks += 1
-
-    debug['blocks_found'] = page_blocks
-    debug['records_generated'] = len(records)
-
-    logger.info(
-        f"Page {page_num}: college_found={debug['college_found']} "
-        f"course_found={debug['course_found']} "
-        f"categories_found={debug['categories_found']} "
-        f"blocks_found={page_blocks} "
-        f"records_generated={len(records)}"
-    )
-
-    return records, debug
-
+        logger.info(
+            f"Page {page_num}: college_found={debug['college_found']} "
+            f"course_found={debug['course_found']} "
+            f"categories_found={debug['categories_found']} "
+            f"blocks_found={page_blocks} "
+            f"records_generated={len(records)}"
+        )
 
 def _emit_records_new(records: list, college_code: str, college_name: str,
                       course_code: str, course_name: str,
@@ -458,11 +486,27 @@ def _emit_records_new(records: list, college_code: str, college_name: str,
 
 # ── Full-page text extraction ───────────────────────────────────────────────
 
-def extract_page_texts(filepath: str) -> list[str]:
+def _extract_single_page(page_num, page) -> tuple:
+    """Extract text from a single page. Returns (page_num, text)."""
+    t0 = time.perf_counter()
+    text = page.extract_text() or ''
+    logger.info(f"[PROFILE] pdfplumber page={page_num}: {time.perf_counter()-t0:.3f}s")
+    if text and text.strip():
+        return page_num, text.strip()
+    else:
+        logger.warning(f"Page {page_num}: no extractable text")
+        return page_num, ''
+
+
+def extract_page_texts(filepath: str, max_workers: int = 4) -> list[str]:
     """Extract text from each page of a PDF.
 
+    Args:
+        filepath: path to PDF
+        max_workers: ThreadPoolExecutor worker count (1=sequential)
+
     Returns:
-        List of text strings, one per page.
+        List of text strings, one per page, in page order.
     """
     try:
         import pdfplumber
@@ -470,16 +514,28 @@ def extract_page_texts(filepath: str) -> list[str]:
         logger.error("pdfplumber not installed")
         return []
 
-    texts = []
     with pdfplumber.open(filepath) as pdf:
-        for page_num, page in enumerate(pdf.pages, start=1):
-            text = page.extract_text()
-            if text and text.strip():
-                texts.append(text.strip())
-            else:
-                logger.warning(f"Page {page_num}: no extractable text")
-                texts.append('')
-    return texts
+        if max_workers <= 1:
+            # Sequential (original behavior)
+            texts = []
+            for page_num, page in enumerate(pdf.pages, start=1):
+                _, text = _extract_single_page(page_num, page)
+                texts.append(text)
+            return texts
+        else:
+            # Parallel extraction
+            pages = list(enumerate(pdf.pages, start=1))
+            results = [''] * len(pages)
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_idx = {
+                    executor.submit(_extract_single_page, pn, p): i
+                    for i, (pn, p) in enumerate(pages)
+                }
+                for future in as_completed(future_to_idx):
+                    idx = future_to_idx[future]
+                    page_num, text = future.result()
+                    results[idx] = text
+            return results
 
 
 def extract_raw_text(filepath: str) -> str:
@@ -642,6 +698,7 @@ def extract_pdf(filepath: str, filename: str = '') -> dict:
         f"method={method}, confidence={confidence:.1f}%, "
         f"pages={total_pages}"
     )
+    report_drilldown()
 
     result = {
         'rows': all_rows,

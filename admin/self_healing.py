@@ -5,35 +5,77 @@ When the PDF contains a college code / college name / branch name that does
 not yet exist in the master tables, this service creates the missing rows
 instead of rejecting the cutoff record.
 
-Guarantees:
-- Idempotent: calling with the same inputs twice returns the same IDs.
-- Thread-safe within a single SQLAlchemy session (caller holds the session).
-- Never raises: on DB error it logs and returns None so the caller can decide
-  whether to skip the row or abort.
+OPTIMIZED FOR BULK IMPORTS:
+- All existing records are preloaded into memory dicts before validation starts
+- Zero DB queries in the hot path for existing colleges/branches
+- Only NEW records trigger a DB INSERT
 
 Usage:
     from admin.self_healing import get_or_create_college, get_or_create_branch
-
-    college_id = get_or_create_college("1002", "Government College of Engineering, Amravati")
-    branch_id  = get_or_create_branch("Computer Engineering")
+    from admin.self_healing import bulk_preload_colleges, bulk_preload_branches
+    
+    # Call ONCE before validation loop:
+    college_map = bulk_preload_colleges()
+    branch_map = bulk_preload_branches()
+    
+    # Inside loop, use cache for O(1) lookup:
+    college_id = college_map.get(college_code)
 """
 import logging
 import re
-from typing import Optional
+from typing import Optional, Dict, Set
 
 from database import db
 
 logger = logging.getLogger(__name__)
 
+# Module-level caches — populated ONCE per import run
+_college_cache: Dict[str, Optional[int]] = {}
+_branch_exact_cache: Dict[str, Optional[int]] = {}
+_branch_code_counter: Dict[str, int] = {}  # branch_code -> next_suffix
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
 
 def _slugify(text: str, max_len: int = 20) -> str:
     """Convert text to a short uppercase code suitable for a DB code column."""
     clean = re.sub(r"[^A-Za-z0-9]+", "_", text).upper().strip("_")
     return clean[:max_len]
+
+
+# ---------------------------------------------------------------------------
+# Bulk preloaders (call ONCE before validation loop)
+# ---------------------------------------------------------------------------
+
+def bulk_preload_colleges() -> Dict[str, Optional[int]]:
+    """Load all colleges into memory once: college_code -> id."""
+    from models import College
+    if not _college_cache:
+        _college_cache.update({
+            c.college_code: c.id for c in College.query.with_entities(
+                College.college_code, College.id
+            ).all()
+        })
+        logger.info(f"[Preload] Loaded {len(_college_cache)} colleges into cache")
+    return _college_cache
+
+
+def bulk_preload_branches() -> Dict[str, Optional[int]]:
+    """Load all branches into memory once: branch_name.lower() -> id."""
+    from models import Branch
+    if not _branch_exact_cache:
+        _branch_exact_cache.update({
+            b.branch_name.lower(): b.id for b in Branch.query.with_entities(
+                Branch.branch_name, Branch.id
+            ).all()
+        })
+        logger.info(f"[Preload] Loaded {len(_branch_exact_cache)} branches into cache")
+    return _branch_exact_cache
+
+
+def reset_caches():
+    """Clear caches between separate import runs."""
+    _college_cache.clear()
+    _branch_exact_cache.clear()
+    _branch_code_counter.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -45,49 +87,26 @@ def get_or_create_college(
     college_name: str,
 ) -> Optional[int]:
     """Return the id of the college matching *college_code*.
-
-    If no match is found:
-    - Creates a new College row with the supplied code and name.
-    - Marks it active.
-    - Flushes (but does NOT commit — caller owns the transaction).
-
-    Returns None on unrecoverable DB error.
+    
+    FAULT-TOLERANT: Never raises.
+    - If code is empty, return None
+    - If DB insert fails, log and return None
     """
     from models import College
 
     if not college_code:
         logger.warning("[SelfHeal] get_or_create_college called with empty code")
         return None
-
+    
     college_code = str(college_code).strip()
     college_name = (college_name or f"College {college_code}").strip()
-
-    # 1. Exact code match
-    college = College.query.filter_by(college_code=college_code).first()
-    if college:
-        return college.id
-
-    # 2. Name match (safeguard against duplicate codes from different imports)
-    if college_name:
-        college = College.query.filter(
-            College.college_name.ilike(college_name)
-        ).first()
-        if college:
-            # Back-fill the code if it was missing
-            if not college.college_code:
-                college.college_code = college_code
-                try:
-                    db.session.flush()
-                except Exception as e:
-                    # Use nested savepoint so we don't nuke the whole session
-                    try:
-                        db.session.begin_nested()
-                    except Exception:
-                        pass
-                    logger.error(f"[SelfHeal] Could not back-fill college_code: {e}")
-            return college.id
-
-    # 3. Create new college
+    
+    # Fast path: cache hit (no DB query)
+    cached = _college_cache.get(college_code)
+    if cached is not None:
+        return cached
+    
+    # Slow path: NOT in cache -> must create new college
     logger.info(
         f"[SelfHeal] Auto-creating college: code={college_code!r} name={college_name!r}"
     )
@@ -98,7 +117,8 @@ def get_or_create_college(
             status="active",
         )
         db.session.add(new_college)
-        db.session.flush()  # Populate new_college.id without committing
+        db.session.flush()  # Populate id without committing
+        _college_cache[college_code] = new_college.id
         logger.info(f"[SelfHeal] Created College id={new_college.id} code={college_code!r}")
         return new_college.id
     except Exception as e:
@@ -116,13 +136,8 @@ def get_or_create_college(
 
 def get_or_create_branch(branch_name: str) -> Optional[int]:
     """Return the id of the branch matching *branch_name* (case-insensitive).
-
-    If no match is found:
-    - Generates a branch_code from the name.
-    - Creates a new Branch row.
-    - Flushes (but does NOT commit — caller owns the transaction).
-
-    Returns None on unrecoverable DB error.
+    
+    FAULT-TOLERANT: Never raises.
     """
     from models import Branch
     from admin.branch_normalizer import normalize_branch, canonical_branch_code
@@ -135,33 +150,18 @@ def get_or_create_branch(branch_name: str) -> Optional[int]:
     canonical = normalize_branch(branch_name)
     canonical_lower = canonical.lower()
 
-    # 1. Exact case-insensitive match on branch_name
-    branch = Branch.query.filter(
-        Branch.branch_name.ilike(canonical)
-    ).first()
-    if branch:
-        return branch.id
+    # 1. Fast path: exact match in preloaded cache (O(1), NO DB query)
+    branch_id = _branch_exact_cache.get(canonical_lower)
+    if branch_id is not None:
+        return branch_id
 
-    # 2. Partial substring match (e.g. DB has "Computer Engg.", PDF has "Computer Engineering")
-    all_branches = Branch.query.all()
-    for b in all_branches:
-        db_lower = b.branch_name.lower()
-        if db_lower in canonical_lower or canonical_lower in db_lower:
-            logger.debug(
-                f"[SelfHeal] Branch fuzzy match: '{canonical}' → '{b.branch_name}'"
-            )
-            return b.id
-
-    # 3. Auto-create
+    # 2. Slow path: NOT in cache -> must create new branch
     branch_code = canonical_branch_code(canonical)
-
-    # Ensure branch_code is unique — append suffix if collision
-    existing_code = Branch.query.filter_by(branch_code=branch_code).first()
-    if existing_code:
-        suffix = 2
-        while Branch.query.filter_by(branch_code=f"{branch_code}_{suffix}").first():
-            suffix += 1
-        branch_code = f"{branch_code}_{suffix}"
+    
+    # Handle code collisions
+    if branch_code in _branch_code_counter:
+        branch_code = f"{branch_code}_{_branch_code_counter[branch_code]}"
+    _branch_code_counter[branch_code] = _branch_code_counter.get(branch_code, 2) + 1
 
     logger.info(
         f"[SelfHeal] Auto-creating branch: code={branch_code!r} name={canonical!r} "
@@ -171,8 +171,10 @@ def get_or_create_branch(branch_name: str) -> Optional[int]:
         new_branch = Branch(branch_code=branch_code, branch_name=canonical)
         db.session.add(new_branch)
         db.session.flush()
-        logger.info(f"[SelfHeal] Created Branch id={new_branch.id} code={branch_code!r}")
-        return new_branch.id
+        branch_id = new_branch.id
+        _branch_exact_cache[canonical_lower] = branch_id
+        logger.info(f"[SelfHeal] Created Branch id={branch_id} code={branch_code!r}")
+        return branch_id
     except Exception as e:
         try:
             db.session.begin_nested()
