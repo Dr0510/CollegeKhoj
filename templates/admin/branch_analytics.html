@@ -1,0 +1,101 @@
+{% extends "admin/base.html" %}
+{% block title %}Branch Analytics — CollegeKhoj Admin{% endblock %}
+{% block heading %}Branch Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="admin-card mb-4">
+        <div class="admin-card-body">
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small">Admission Type</label>
+                    <select name="admission_type_id" class="form-select form-select-sm">
+                        <option value="">All Types</option>
+                        {% for at in admission_types %}
+                        <option value="{{ at.id }}" {% if admission_type_id == at.id %}selected{% endif %}>{{ at.name }} ({{ at.code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <span>Branch Popularity Ranking</span>
+                </div>
+                <div class="admin-card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Branch Name</th>
+                                    <th>Records</th>
+                                    <th>Avg Percentile</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in branch_popularity %}
+                                <tr>
+                                    <td><span class="badge bg-secondary rounded-pill">{{ loop.index }}</span></td>
+                                    <td>{{ b.branch_name }}</td>
+                                    <td>{{ b.count }}</td>
+                                    <td><strong>{{ '%.2f'|format(b.avg_percentile) if b.avg_percentile else '--' }}</strong></td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="fas fa-chart-pie fa-2x mb-2"></i>
+                                    <p>No analytics available yet</p>
+                                </td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <span>Summary</span>
+                </div>
+                <div class="admin-card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Total Branches</small>
+                        <h3>{{ branch_popularity|length }}</h3>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Total Records</small>
+                        <h3>{{ branch_popularity|sum(attribute='count') }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-card mt-3">
+                <div class="admin-card-header">
+                    <span>Insights</span>
+                </div>
+                <div class="admin-card-body">
+                    {% if branch_popularity %}
+                    <p class="small text-muted mb-1">
+                        <strong>Most Popular:</strong> {{ branch_popularity[0].branch_name }}
+                    </p>
+                    <p class="small text-muted mb-0">
+                        <strong>Highest Avg:</strong> 
+                        {% set sorted_avg = branch_popularity|sort(attribute='avg_percentile', reverse=True) %}
+                        {{ sorted_avg[0].branch_name }} ({{ '%.2f'|format(sorted_avg[0].avg_percentile) }})
+                    </p>
+                    {% else %}
+                    <p class="text-muted small mb-0">Import data to see insights</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

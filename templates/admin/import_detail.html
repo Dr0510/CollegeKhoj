@@ -1,0 +1,123 @@
+{% extends "admin/base.html" %}
+{% block title %}Import Job #{{ job.id }} — CollegeKhoj Admin{% endblock %}
+{% block heading %}Import Job #{{ job.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-card-value">{{ job.status }}</div>
+                <div class="stat-card-label">Status</div>
+                <span class="badge bg-{{ 'success' if job.status == 'COMPLETED' else 'danger' if job.status == 'FAILED' else 'warning' if job.status == 'PROCESSING' else 'info' }}">
+                    {{ job.status }}
+                </span>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-card-value">{{ job.total_rows or 0 }}</div>
+                <div class="stat-card-label">Total Rows</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-card-value text-success">{{ job.valid_rows or 0 }}</div>
+                <div class="stat-card-label">Valid</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-card-value text-danger">{{ job.invalid_rows or 0 }}</div>
+                <div class="stat-card-label">Invalid</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-card mb-4">
+        <div class="admin-card-header">
+            <span>Job Details</span>
+        </div>
+        <div class="admin-card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <table class="table table-sm">
+                        <tr><th>Filename</th><td>{{ job.filename }}</td></tr>
+                        <tr><th>Admission Type</th><td>{{ job.admission_type_rel.code if job.admission_type_rel else '--' }}</td></tr>
+                        <tr><th>Academic Year</th><td>{{ job.academic_year_rel.academic_year if job.academic_year_rel else '--' }}</td></tr>
+                        <tr><th>CAP Round</th><td>{{ job.cap_round_rel.name if job.cap_round_rel else '--' }}</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm">
+                        <tr><th>Created</th><td>{{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else '--' }}</td></tr>
+                        <tr><th>Started</th><td>{{ job.started_at.strftime('%Y-%m-%d %H:%M:%S') if job.started_at else '--' }}</td></tr>
+                        <tr><th>Completed</th><td>{{ job.completed_at.strftime('%Y-%m-%d %H:%M:%S') if job.completed_at else '--' }}</td></tr>
+                        <tr><th>Duplicates</th><td>{{ job.duplicate_rows or 0 }}</td></tr>
+                        <tr><th>Last Step</th><td>{{ job.current_step or '--' }} ({{ job.progress_percentage or 0 }}%)</td></tr>
+                    </table>
+                </div>
+            </div>
+            {% if job.error_message %}
+            <div class="alert alert-danger mt-3">
+                <strong>Error:</strong> {{ job.error_message }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        {% if job.status in ('PENDING', 'FAILED') %}
+        <form method="POST" action="/admin/import/{{ job.id }}/start" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-success" onclick="return confirm('Start import for job #{{ job.id }}?')">
+                <i class="fas fa-play me-1"></i> Start Import
+            </button>
+        </form>
+        {% endif %}
+        <form method="POST" action="/admin/import/{{ job.id }}/delete" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this job and its data?')">
+                <i class="fas fa-trash me-1"></i> Delete
+            </button>
+        </form>
+        <a href="/admin/import/history" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to History
+        </a>
+    </div>
+
+    {% if job.error_rows %}
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <span>Rejected Rows ({{ job.error_rows|length }})</span>
+        </div>
+        <div class="admin-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>College</th>
+                            <th>Course</th>
+                            <th>Category</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for err in job.error_rows[:50] %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ err.row.get('college_name', err.row.get('college_code', '?')) }}</td>
+                            <td>{{ err.row.get('course_name', '?') }}</td>
+                            <td>{{ err.row.get('category', '?') }}</td>
+                            <td class="text-danger small">{{ err.reason }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

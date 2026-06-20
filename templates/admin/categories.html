@@ -1,0 +1,209 @@
+{% extends "admin/base.html" %}
+{% block title %}Categories — CollegeKhoj Admin{% endblock %}
+{% block heading %}Categories{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="admin-card mb-4">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
+            <span>Manage Categories</span>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                <i class="fas fa-plus me-1"></i> Add Category
+            </button>
+        </div>
+        <div class="admin-card-body">
+            <form method="GET" class="row g-2">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" name="q" class="form-control form-control-sm" placeholder="Search categories..." value="{{ q or '' }}">
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
+                        {% if q %}<a href="/admin/master/categories" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i></a>{% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <span>{{ pagination.total if pagination else 0 }} Categories</span>
+        </div>
+        <div class="admin-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                        <tr>
+                            <td>{{ cat.id }}</td>
+                            <td><span class="badge bg-info">{{ cat.name }}</span></td>
+                            <td>{{ cat.description or '—' }}</td>
+                            <td><span class="badge bg-{{ 'success' if cat.status == 'active' else 'secondary' }}">{{ cat.status }}</span></td>
+                            <td>{{ cat.created_at.strftime('%d %b %Y') if cat.created_at else '—' }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary edit-cat" data-id="{{ cat.id }}" data-name="{{ cat.name }}" data-desc="{{ cat.description or '' }}" data-status="{{ cat.status }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-cat" data-id="{{ cat.id }}" data-name="{{ cat.name }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center py-4 text-muted">No categories found</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination and pagination.pages > 1 %}
+        <div class="admin-card-body border-top">
+            <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if pagination.has_prev %}<li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}&q={{ q or '' }}">Previous</a></li>{% endif %}
+                {% for p in pagination.iter_pages() %}{% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}&q={{ q or '' }}">{{ p }}</a></li>{% endif %}{% endfor %}
+                {% if pagination.has_next %}<li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}&q={{ q or '' }}">Next</a></li>{% endif %}
+            </ul></nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-cat-form">
+                    <div class="mb-3">
+                        <label class="form-label">Category Name *</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. OPEN" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" name="description" class="form-control" placeholder="e.g. Open (General) Category">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-cat-btn"><i class="fas fa-save me-1"></i>Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-cat-form">
+                    <input type="hidden" id="edit-cat-id">
+                    <div class="mb-3">
+                        <label class="form-label">Category Name</label>
+                        <input type="text" id="edit-cat-name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" id="edit-cat-desc" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select id="edit-cat-status" class="form-select">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="update-cat-btn"><i class="fas fa-save me-1"></i>Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    function showMsg(msg, type) {
+        const d = document.createElement('div');
+        d.className = 'alert alert-' + type + ' alert-dismissible fade show mt-3';
+        d.innerHTML = msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        document.querySelector('.container-fluid').prepend(d);
+        setTimeout(() => d.remove(), 5000);
+    }
+
+    document.getElementById('save-cat-btn').addEventListener('click', function() {
+        const f = document.getElementById('add-cat-form');
+        const data = { name: f.name.value, description: f.description.value };
+        fetch('/admin/master/categories/add', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(d => { if (d.ok) { location.reload(); } else { showMsg(d.error || 'Error', 'danger'); } })
+        .catch(() => showMsg('Network error', 'danger'));
+    });
+
+    document.querySelectorAll('.edit-cat').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('edit-cat-id').value = this.dataset.id;
+            document.getElementById('edit-cat-name').value = this.dataset.name;
+            document.getElementById('edit-cat-desc').value = this.dataset.desc;
+            document.getElementById('edit-cat-status').value = this.dataset.status;
+            new bootstrap.Modal(document.getElementById('editCategoryModal')).show();
+        });
+    });
+
+    document.getElementById('update-cat-btn').addEventListener('click', function() {
+        const id = document.getElementById('edit-cat-id').value;
+        const data = {
+            name: document.getElementById('edit-cat-name').value,
+            description: document.getElementById('edit-cat-desc').value,
+            status: document.getElementById('edit-cat-status').value
+        };
+        fetch('/admin/master/categories/' + id + '/edit', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(d => { if (d.ok) { location.reload(); } else { showMsg(d.error || 'Error', 'danger'); } })
+        .catch(() => showMsg('Network error', 'danger'));
+    });
+
+    document.querySelectorAll('.delete-cat').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('Delete category "' + this.dataset.name + '"?')) return;
+            fetch('/admin/master/categories/' + this.dataset.id + '/delete', {
+                method: 'POST', headers: { 'X-CSRFToken': csrf }
+            })
+            .then(r => r.json())
+            .then(d => { if (d.ok) { location.reload(); } else { showMsg(d.error || 'Error', 'danger'); } })
+            .catch(() => showMsg('Network error', 'danger'));
+        });
+    });
+});
+</script>
+{% endblock %}

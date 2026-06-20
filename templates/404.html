@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 — Page Not Found | CollegeKhoj</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        (function(){
+            var t = localStorage.getItem('cf-theme') || 'dark';
+            document.documentElement.setAttribute('data-bs-theme', t);
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:       #0a0c14;
+            --surface:  #111320;
+            --border:   rgba(255,255,255,0.07);
+            --text:     #e2e8f0;
+            --muted:    #64748b;
+            --accent:   #4f8ef7;
+            --accent2:  #6366f1;
+        }
+        [data-bs-theme="light"] {
+            --bg:       #f4f6fb;
+            --surface:  #ffffff;
+            --border:   rgba(0,0,0,0.08);
+            --text:     #1e293b;
+            --muted:    #64748b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .error-glow {
+            position: fixed;
+            top: -200px; left: 50%;
+            transform: translateX(-50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(79,142,247,0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .error-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(79,142,247,0.12);
+            border: 1px solid rgba(79,142,247,0.25);
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 28px;
+            letter-spacing: 0.3px;
+        }
+
+        .error-code {
+            font-size: clamp(72px, 15vw, 140px);
+            font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+
+        .error-title {
+            font-size: clamp(20px, 4vw, 28px);
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .error-desc {
+            font-size: 16px;
+            color: var(--muted);
+            max-width: 420px;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-primary-ck {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+            color: #fff;
+            text-decoration: none;
+            padding: 11px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .btn-primary-ck:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .btn-ghost-ck {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            text-decoration: none;
+            padding: 11px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .btn-ghost-ck:hover { border-color: var(--accent); transform: translateY(-1px); }
+
+        .brand {
+            position: fixed;
+            top: 24px; left: 32px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand i { color: var(--accent); }
+        .brand em { color: var(--accent); font-style: normal; }
+    </style>
+</head>
+<body>
+    <div class="error-glow"></div>
+
+    <a href="/" class="brand">
+        <i class="fas fa-graduation-cap"></i>
+        College<em>Khoj</em>
+    </a>
+
+    <div class="error-badge">
+        <i class="fas fa-circle-exclamation"></i>
+        Error 404
+    </div>
+
+    <div class="error-code">404</div>
+    <h1 class="error-title">Page Not Found</h1>
+    <p class="error-desc">
+        The page you're looking for doesn't exist or has been moved.
+        Double-check the URL or head back home.
+    </p>
+
+    <div class="error-actions">
+        <a href="/" class="btn-primary-ck">
+            <i class="fas fa-house"></i>
+            Go Home
+        </a>
+        <a href="/mhcet" class="btn-ghost-ck">
+            <i class="fas fa-search"></i>
+            Find Colleges
+        </a>
+    </div>
+</body>
+</html>

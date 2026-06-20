@@ -442,12 +442,16 @@
 
     // ── Import Polling ────────────────────────────────────────────────────
     function setupImportPolling() {
-        // Check every 15 seconds if active jobs exist
+        // Auto-refresh import monitoring every 10s ONLY when there are active jobs.
+        // Avoids hammering the server when nothing is processing.
         setInterval(function() {
             var active = window.__dashActiveJobs || [];
             if (active.length > 0) {
-                // Silently refresh import monitoring
-                fetch('/admin/api/dashboard-full')
+                var url = '/admin/api/dashboard-full';
+                if (currentExamType !== 'ALL') {
+                    url += '?exam_type=' + encodeURIComponent(currentExamType);
+                }
+                fetch(url)
                     .then(function(r) { return r.json(); })
                     .then(function(d) {
                         if (d.ok) {
@@ -457,7 +461,7 @@
                     })
                     .catch(function() {});
             }
-        }, 15000);
+        }, 10000);
     }
 
     // ── Utility Functions ─────────────────────────────────────────────────

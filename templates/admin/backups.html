@@ -1,47 +1,128 @@
 {% extends "admin/base.html" %}
-{% block title %}Backups — Admin{% endblock %}
+{% block title %}Backups — CollegeKhoj Admin{% endblock %}
 {% block heading %}Backups{% endblock %}
+
 {% block content %}
-<div style="margin-bottom: 20px;">
-    <button class="btn btn-success" onclick="createBackup()"><i class="fas fa-cloud-arrow-up"></i> Create Backup</button>
+<div class="container-fluid px-0">
+    <div class="admin-card mb-4">
+        <div class="admin-card-body">
+            <button class="btn btn-success" id="create-backup-btn"><i class="fas fa-cloud-arrow-up me-1"></i> Create Backup</button>
+            <button class="btn btn-outline-secondary" onclick="location.reload()"><i class="fas fa-sync-alt me-1"></i> Refresh</button>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <span>Backup History ({{ pagination.total }})</span>
+        </div>
+        <div class="admin-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>File</th>
+                            <th>Size</th>
+                            <th>DB Type</th>
+                            <th>Records</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in backups %}
+                        <tr>
+                            <td>#{{ b.id }}</td>
+                            <td>{{ b.backup_date.strftime('%d %b %Y %H:%M') if b.backup_date else '—' }}</td>
+                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">{{ b.backup_file.split('/')[-1] }}</td>
+                            <td>{{ '{:,}'.format(b.file_size|default(0)) }} bytes</td>
+                            <td>{{ b.db_type or '—' }}</td>
+                            <td>{{ b.record_count or '—' }}</td>
+                            <td><span class="badge bg-{{ 'success' if b.status == 'success' else 'danger' }}">{{ b.status }}</span></td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <a href="/admin/system/backups/{{ b.id }}/download" class="btn btn-sm btn-outline-primary" title="Download">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-warning restore-btn" data-id="{{ b.id }}" title="Restore">
+                                        <i class="fas fa-rotate-left"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-btn" data-id="{{ b.id }}" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" class="text-center py-4 text-muted">No backups yet</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination.pages > 1 %}
+        <div class="admin-card-body border-top">
+            <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if pagination.has_prev %}<li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}">Previous</a></li>{% endif %}
+                {% for p in pagination.iter_pages() %}{% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}">{{ p }}</a></li>{% endif %}{% endfor %}
+                {% if pagination.has_next %}<li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}">Next</a></li>{% endif %}
+            </ul></nav>
+        </div>
+        {% endif %}
+    </div>
 </div>
-<div class="table-wrap">
-    <table>
-        <tr><th>ID</th><th>Date</th><th>File</th><th>Size</th><th>DB Type</th><th>Records</th><th>Status</th><th>Actions</th></tr>
-        {% for b in backups %}
-        <tr>
-            <td>{{ b.id }}</td>
-            <td>{{ b.backup_date.strftime('%d %b %Y %H:%M') if b.backup_date else '—' }}</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">{{ b.backup_file.split('/')[-1] }}</td>
-            <td>{{ '{:,}'.format(b.file_size|default(0)) }} bytes</td>
-            <td>{{ b.db_type or '—' }}</td>
-            <td>{{ b.record_count or '—' }}</td>
-            <td><span class="badge badge-{{ 'success' if b.status == 'success' else 'danger' }}">{{ b.status }}</span></td>
-            <td><button class="btn btn-danger btn-sm" onclick="restoreBackup({{ b.id }})"><i class="fas fa-rotate-left"></i> Restore</button></td>
-        </tr>
-        {% else %}<tr><td colspan="8" style="text-align:center;color:var(--text-tertiary);">No backups yet</td></tr>{% endfor %}
-    </table>
-</div>
-{% if pagination.pages > 1 %}
-<div class="pagination">
-    {% if pagination.has_prev %}<a href="?page={{ pagination.prev_num }}">← Prev</a>{% endif %}
-    {% for p in pagination.iter_pages() %}{% if p %}<a href="?page={{ p }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>{% endif %}{% endfor %}
-    {% if pagination.has_next %}<a href="?page={{ pagination.next_num }}">Next →</a>{% endif %}
-</div>{% endif %}
+
+<div id="backup-status" class="mt-3"></div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-function createBackup() {
-    fetch('/admin/backups/create', { method: 'POST' })
-    .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.ok){ showToast('Backup created!', 'success'); location.reload(); } else { showToast(d.error, 'error'); }})
-    .catch(function(){ showToast('Network error', 'error'); });
-}
-function restoreBackup(id) {
-    if (!confirm('WARNING: This will overwrite ALL current data with the backup. Continue?')) return;
-    if (!confirm('Are you sure? This cannot be undone.')) return;
-    fetch('/admin/backups/' + id + '/restore', { method: 'POST' })
-    .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.ok){ showToast(d.message, 'success'); } else { showToast(d.error, 'error'); }})
-    .catch(function(){ showToast('Network error', 'error'); });
-}
+document.addEventListener('DOMContentLoaded', function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    function showMsg(msg, type) {
+        const el = document.getElementById('backup-status');
+        el.innerHTML = '<div class="alert alert-' + type + ' alert-dismissible fade show">' + msg + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+    }
+
+    document.getElementById('create-backup-btn').addEventListener('click', function() {
+        const btn = this; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Creating...';
+        fetch('/admin/system/backups/create', {
+            method: 'POST', headers: { 'X-CSRFToken': csrf }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) { showMsg('Backup created!', 'success'); location.reload(); }
+            else { showMsg(d.error || 'Backup failed', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-arrow-up me-1"></i> Create Backup'; }
+        })
+        .catch(() => { showMsg('Network error', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-arrow-up me-1"></i> Create Backup'; });
+    });
+
+    document.querySelectorAll('.restore-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('WARNING: This will overwrite ALL data. Continue?')) return;
+            if (!confirm('Are you sure? This cannot be undone.')) return;
+            fetch('/admin/system/backups/' + this.dataset.id + '/restore', {
+                method: 'POST', headers: { 'X-CSRFToken': csrf }
+            })
+            .then(r => r.json())
+            .then(d => { if (d.ok) { showMsg(d.message, 'success'); } else { showMsg(d.error, 'danger'); } })
+            .catch(() => showMsg('Network error', 'danger'));
+        });
+    });
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('Delete this backup?')) return;
+            fetch('/admin/system/backups/' + this.dataset.id + '/delete', {
+                method: 'POST', headers: { 'X-CSRFToken': csrf }
+            })
+            .then(r => r.json())
+            .then(d => { if (d.ok) { showMsg('Backup deleted', 'info'); location.reload(); } else { showMsg(d.error, 'danger'); } })
+            .catch(() => showMsg('Network error', 'danger'));
+        });
+    });
+});
 </script>
 {% endblock %}

@@ -1,0 +1,175 @@
+{% extends "admin/base.html" %}
+{% block title %}Upload PDF — CollegeKhoj Admin{% endblock %}
+{% block heading %}Upload PDF{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <span>Upload Cutoff PDFs</span>
+                </div>
+                <div class="admin-card-body">
+                    <form id="upload-form" enctype="multipart/form-data">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Admission Type</label>
+                                <select name="admission_type_id" class="form-select" required>
+                                    <option value="">Select...</option>
+                                    {% for at in admission_types %}
+                                    <option value="{{ at.id }}">{{ at.name }} ({{ at.code }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Academic Year</label>
+                                <select name="academic_year_id" class="form-select" required>
+                                    <option value="">Select...</option>
+                                    {% for y in academic_years %}
+                                    <option value="{{ y.id }}">{{ y.academic_year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">CAP Round</label>
+                                <select name="cap_round_id" class="form-select" required>
+                                    <option value="">Select...</option>
+                                    {% for r in cap_rounds %}
+                                    <option value="{{ r.id }}">{{ r.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Select PDF Files</label>
+                            <div class="border rounded p-4 text-center" style="border-style: dashed !important; cursor: pointer;" id="drop-zone">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <p class="mb-2">Drag & drop PDF files here, or click to browse</p>
+                                <p class="text-muted small mb-0">Supports multiple files, up to 2GB total</p>
+                                <input type="file" name="file" accept=".pdf" multiple class="d-none" id="file-input">
+                            </div>
+                        </div>
+
+                        <div id="file-list" class="mb-3"></div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" id="upload-btn">
+                                <i class="fas fa-upload me-2"></i>Upload & Queue
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="preview-btn">
+                                <i class="fas fa-eye me-2"></i>Preview First
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="upload-progress" class="mt-4" style="display:none;">
+                        <div class="progress mb-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%" id="progress-bar"></div>
+                        </div>
+                        <p class="small text-muted" id="progress-text">Processing...</p>
+                    </div>
+
+                    <div id="upload-results" class="mt-4" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <span>Quick Tips</span>
+                </div>
+                <div class="admin-card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> PDF files only</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Max 2GB per upload</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Supports multiple files</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Auto-detects year/round from filename</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Background processing</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Duplicate detection by file hash</li>
+                        <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Automatic DB backup before import</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-input');
+    var fileList = document.getElementById('file-list');
+    var uploadForm = document.getElementById('upload-form');
+
+    dropZone.addEventListener('click', function() { fileInput.click(); });
+    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('border-primary'); });
+    dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('border-primary'); });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-primary');
+        fileInput.files = e.dataTransfer.files;
+        updateFileList();
+    });
+    fileInput.addEventListener('change', updateFileList);
+
+    function updateFileList() {
+        var files = fileInput.files;
+        if (files.length === 0) { fileList.innerHTML = ''; return; }
+        var html = '<div class="list-group">';
+        for (var i = 0; i < files.length; i++) {
+            html += '<div class="list-group-item d-flex justify-content-between align-items-center">';
+            html += '<span><i class="fas fa-file-pdf text-danger me-2"></i>' + files[i].name + ' (' + (files[i].size / 1024).toFixed(1) + ' KB)</span>';
+            html += '</div>';
+        }
+        html += '</div>';
+        fileList.innerHTML = html;
+    }
+
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var fd = new FormData(uploadForm);
+        var files = fileInput.files;
+        if (files.length === 0) { alert('Please select files'); return; }
+
+        document.getElementById('upload-btn').disabled = true;
+        document.getElementById('upload-progress').style.display = 'block';
+        document.getElementById('upload-results').style.display = 'none';
+
+        fetch('/admin/import/upload', {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('upload-btn').disabled = false;
+            document.getElementById('upload-progress').style.display = 'none';
+
+            var html = '<div class="alert ' + (data.ok ? 'alert-success' : 'alert-danger') + '">';
+            html += '<h6>' + (data.ok ? 'Upload Complete' : 'Upload Failed') + '</h6>';
+            if (data.results) {
+                html += '<ul class="mb-0">';
+                data.results.forEach(function(r) {
+                    html += '<li>' + r.filename + ' — ' + r.status + ': ' + r.message + '</li>';
+                });
+                html += '</ul>';
+            }
+            html += '</div>';
+            document.getElementById('upload-results').innerHTML = html;
+            document.getElementById('upload-results').style.display = 'block';
+        })
+        .catch(function(err) {
+            document.getElementById('upload-btn').disabled = false;
+            document.getElementById('upload-progress').style.display = 'none';
+            document.getElementById('upload-results').innerHTML = '<div class="alert alert-danger">Error: ' + err.message + '</div>';
+            document.getElementById('upload-results').style.display = 'block';
+        });
+    });
+});
+</script>
+{% endblock %}

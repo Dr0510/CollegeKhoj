@@ -1,29 +1,335 @@
 {% extends "admin/base.html" %}
-{% block title %}Colleges — Admin{% endblock %}
+{% block title %}Colleges — CollegeKhoj Admin{% endblock %}
 {% block heading %}Colleges{% endblock %}
+
 {% block content %}
-<div class="stat-card" style="margin-bottom: 20px;">
-    <form method="GET" style="display: flex; gap: 12px;">
-        <input type="text" name="q" placeholder="Search college name, location, branch…" value="{{ q }}" style="max-width: 400px;">
-        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Search</button>
-        <a href="/admin/colleges" class="btn btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</a>
-    </form>
+<div class="container-fluid px-0">
+    <div class="admin-card mb-4">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
+            <span>Manage Colleges</span>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCollegeModal">
+                <i class="fas fa-plus me-1"></i> Add College
+            </button>
+        </div>
+        <div class="admin-card-body">
+            <form method="GET" class="row g-2">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" name="q" class="form-control form-control-sm" placeholder="Search name, code, district..." value="{{ q or '' }}">
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
+                        {% if q %}<a href="/admin/master/colleges" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i></a>{% endif %}
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select name="admission_type_id" class="form-select form-select-sm">
+                        <option value="">All Types</option>
+                        {% for at in admission_types %}
+                        <option value="{{ at.id }}" {% if filters.admission_type_id == at.id %}selected{% endif %}>{{ at.code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="type" class="form-select form-select-sm">
+                        <option value="">All College Types</option>
+                        {% for t in college_types %}
+                        <option value="{{ t }}" {% if filters.type == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="">All Status</option>
+                        <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if filters.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-sm btn-primary w-100"><i class="fas fa-filter"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <span>{{ pagination.total }} Colleges</span>
+        </div>
+        <div class="admin-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Code</th>
+                            <th>College Name</th>
+                            <th>District</th>
+                            <th>City</th>
+                            <th>Admission Types</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in colleges %}
+                        <tr>
+                            <td>{{ c.id }}</td>
+                            <td><code>{{ c.college_code or '--' }}</code></td>
+                            <td>{{ c.college_name[:50] }}</td>
+                            <td>{{ c.district or '--' }}</td>
+                            <td>{{ c.city or '--' }}</td>
+                            <td>
+                                {% set adm_types = c.admission_type_links %}
+                                {% if adm_types %}
+                                    {% for link in adm_types %}
+                                        <span class="badge bg-primary">{{ link.admission_type.code }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ c.college_type or '--' }}</td>
+                            <td><span class="badge bg-{{ 'success' if c.status == 'active' else 'secondary' }}">{{ c.status }}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary edit-college" data-id="{{ c.id }}"
+                                    data-code="{{ c.college_code or '' }}" data-name="{{ c.college_name }}"
+                                    data-district="{{ c.district or '' }}" data-city="{{ c.city or '' }}"
+                                    data-type="{{ c.college_type or '' }}" data-status="{{ c.status }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-college" data-id="{{ c.id }}" data-name="{{ c.college_name }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="9" class="text-center py-4 text-muted">No colleges found</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination.pages > 1 %}
+        <div class="admin-card-body border-top">
+            <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if pagination.has_prev %}<li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}&q={{ q or '' }}&admission_type_id={{ filters.admission_type_id }}&type={{ filters.type }}&status={{ filters.status }}">Previous</a></li>{% endif %}
+                {% for p in pagination.iter_pages() %}{% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}&q={{ q or '' }}&admission_type_id={{ filters.admission_type_id }}&type={{ filters.type }}&status={{ filters.status }}">{{ p }}</a></li>{% endif %}{% endfor %}
+                {% if pagination.has_next %}<li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}&q={{ q or '' }}&admission_type_id={{ filters.admission_type_id }}&type={{ filters.type }}&status={{ filters.status }}">Next</a></li>{% endif %}
+            </ul></nav>
+        </div>
+        {% endif %}
+    </div>
 </div>
-<div class="table-wrap">
-    <table>
-        <tr><th>ID</th><th>Name</th><th>Location</th><th>Branch</th><th>Fees</th><th>NIRF</th><th>Rating</th><th>Placement</th></tr>
-        {% for c in colleges %}
-        <tr>
-            <td>{{ c.id }}</td><td>{{ c.college[:40] }}</td><td>{{ c.location }}</td><td>{{ c.branch[:20] }}</td>
-            <td>₹{{ '{:,.0f}'.format(c.fees) }}</td><td>{{ c.nirf_rank }}</td><td>{{ c.rating }}</td><td>{{ c.placement_rate }}%</td>
-        </tr>
-        {% else %}<tr><td colspan="8" style="text-align:center;color:var(--text-tertiary);">No colleges found</td></tr>{% endfor %}
-    </table>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addCollegeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add College</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-college-form">
+                    <div class="mb-3">
+                        <label class="form-label">College Code</label>
+                        <input type="text" name="college_code" class="form-control" placeholder="e.g. 1001">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">College Name *</label>
+                        <input type="text" name="college_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">District</label>
+                        <input type="text" name="district" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">City</label>
+                        <input type="text" name="city" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Admission Types</label>
+                        <div class="admission-type-checkboxes">
+                            {% for at in admission_types %}
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="admission_type_ids" value="{{ at.id }}" id="add-at-{{ at.id }}">
+                                <label class="form-check-label" for="add-at-{{ at.id }}">{{ at.code }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">College Type</label>
+                        <select name="college_type" class="form-select">
+                            <option value="">Select...</option>
+                            <option value="Government">Government</option>
+                            <option value="Private">Private</option>
+                            <option value="Aided">Aided</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-college-btn"><i class="fas fa-save me-1"></i>Save</button>
+            </div>
+        </div>
+    </div>
 </div>
-{% if pagination.pages > 1 %}
-<div class="pagination">
-    {% if pagination.has_prev %}<a href="?page={{ pagination.prev_num }}&q={{ q }}">← Prev</a>{% endif %}
-    {% for p in pagination.iter_pages() %}{% if p %}<a href="?page={{ p }}&q={{ q }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>{% endif %}{% endfor %}
-    {% if pagination.has_next %}<a href="?page={{ pagination.next_num }}&q={{ q }}">Next →</a>{% endif %}
-</div>{% endif %}
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editCollegeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit College</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-college-form">
+                    <input type="hidden" name="college_id" id="edit-college-id">
+                    <div class="mb-3">
+                        <label class="form-label">College Code</label>
+                        <input type="text" name="college_code" id="edit-college-code" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">College Name *</label>
+                        <input type="text" name="college_name" id="edit-college-name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">District</label>
+                        <input type="text" name="district" id="edit-district" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">City</label>
+                        <input type="text" name="city" id="edit-city" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Admission Types</label>
+                        <div class="admission-type-checkboxes">
+                            {% for at in admission_types %}
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input edit-at-cb" type="checkbox" name="admission_type_ids" value="{{ at.id }}" id="edit-at-{{ at.id }}">
+                                <label class="form-check-label" for="edit-at-{{ at.id }}">{{ at.code }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <select name="college_type" id="edit-college-type" class="form-select">
+                            <option value="">Select...</option>
+                            <option value="Government">Government</option>
+                            <option value="Private">Private</option>
+                            <option value="Aided">Aided</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" id="edit-status" class="form-select">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="update-college-btn"><i class="fas fa-save me-1"></i>Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    function getCheckedIds(prefix) {
+        const ids = [];
+        document.querySelectorAll(prefix + ':checked').forEach(function(cb) {
+            ids.push(parseInt(cb.value));
+        });
+        return ids;
+    }
+
+    // Save college
+    document.getElementById('save-college-btn').addEventListener('click', function() {
+        const f = document.getElementById('add-college-form');
+        const data = {
+            college_code: f.college_code.value,
+            college_name: f.college_name.value,
+            district: f.district.value,
+            city: f.city.value,
+            college_type: f.college_type.value,
+            status: f.status.value,
+            admission_type_ids: getCheckedIds('#add-college-form .form-check-input:checked')
+        };
+        fetch('/admin/master/colleges/add', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(d => { if (d.ok) { location.reload(); } else { alert(d.error || 'Error'); } })
+        .catch(() => alert('Network error'));
+    });
+
+    // Edit - populate modal (admission types would need AJAX, simplified)
+    document.querySelectorAll('.edit-college').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('edit-college-id').value = this.dataset.id;
+            document.getElementById('edit-college-code').value = this.dataset.code;
+            document.getElementById('edit-college-name').value = this.dataset.name;
+            document.getElementById('edit-district').value = this.dataset.district;
+            document.getElementById('edit-city').value = this.dataset.city;
+            document.getElementById('edit-college-type').value = this.dataset.type;
+            document.getElementById('edit-status').value = this.dataset.status;
+            new bootstrap.Modal(document.getElementById('editCollegeModal')).show();
+        });
+    });
+
+    // Update college
+    document.getElementById('update-college-btn').addEventListener('click', function() {
+        const id = document.getElementById('edit-college-id').value;
+        const data = {
+            college_code: document.getElementById('edit-college-code').value,
+            college_name: document.getElementById('edit-college-name').value,
+            district: document.getElementById('edit-district').value,
+            city: document.getElementById('edit-city').value,
+            college_type: document.getElementById('edit-college-type').value,
+            status: document.getElementById('edit-status').value,
+            admission_type_ids: getCheckedIds('#edit-college-form .edit-at-cb:checked')
+        };
+        fetch('/admin/master/colleges/' + id + '/edit', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(d => { if (d.ok) { location.reload(); } else { alert(d.error || 'Error'); } })
+        .catch(() => alert('Network error'));
+    });
+
+    // Delete college
+    document.querySelectorAll('.delete-college').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('Delete college "' + this.dataset.name + '"?')) return;
+            fetch('/admin/master/colleges/' + this.dataset.id + '/delete', {
+                method: 'POST', headers: { 'X-CSRFToken': csrf }
+            })
+            .then(r => r.json())
+            .then(d => { if (d.ok) { location.reload(); } else { alert(d.error || 'Error'); } })
+            .catch(() => alert('Network error'));
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -8,9 +8,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- Theme initialization (prevents flash) -->
     <script>
         (function(){
             var t = localStorage.getItem('cf-theme') || 'dark';
@@ -19,19 +18,10 @@
         })();
     </script>
 
-    <!-- CollegeKhoj Design System -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/globals.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/animations.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/utilities.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/button.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/card.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badge.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/input.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/auth.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/auth-premium.css') }}">
 </head>
@@ -70,7 +60,7 @@
                 Sign in to access your saved colleges, compare side-by-side, and get personalised MH-CET predictions.
             </p>
 
-            <!-- Testimonial Card -->
+            <!-- Testimonial -->
             <div class="quote-card fade-in-delay-2">
                 <div class="quote-icon"><i class="fas fa-quote-left"></i></div>
                 <div class="quote-text">
@@ -93,7 +83,7 @@
                 </div>
             </div>
 
-            <div class="stats-mini fade-in-delay-2">
+            <div class="stats-mini fade-in-delay-3">
                 <div class="stat-mini-item">
                     <span class="stat-mini-num">98.2%</span>
                     <span class="stat-mini-lbl">Accuracy</span>
@@ -113,7 +103,7 @@
     <!-- ===== RIGHT AUTH PANEL ===== -->
     <div class="right-panel">
         <div class="auth-card-wrap">
-            <div class="auth-card auth-card-entry">
+            <div class="auth-card">
 
                 <div class="auth-header">
                     <h2>Welcome back</h2>
@@ -125,6 +115,20 @@
                     <i class="fas fa-exclamation-circle"></i>
                     <span></span>
                 </div>
+
+                <!-- Social Login (top) -->
+                <div class="social-login">
+                    <button type="button" class="social-btn" data-provider="google" aria-label="Sign in with Google">
+                        <i class="fab fa-google social-icon" style="color: #ea4335;"></i>
+                        <span>Google</span>
+                    </button>
+                    <button type="button" class="social-btn" data-provider="github" aria-label="Sign in with GitHub">
+                        <i class="fab fa-github social-icon"></i>
+                        <span>GitHub</span>
+                    </button>
+                </div>
+
+                <div class="auth-divider">or sign in with email</div>
 
                 <!-- Login Form -->
                 <form id="login-form" novalidate autocomplete="off">
@@ -188,26 +192,12 @@
                         </a>
                     </div>
 
-                    <!-- Submit Button -->
+                    <!-- Submit -->
                     <button type="submit" id="login-btn" class="btn-primary">
                         <span class="btn-spinner"></span>
                         <span class="btn-text">Sign in</span>
                     </button>
                 </form>
-
-                <!-- Social Login -->
-                <div class="auth-divider">or continue with</div>
-
-                <div class="social-login">
-                    <button type="button" class="social-btn" data-provider="google" aria-label="Sign in with Google">
-                        <i class="fab fa-google social-icon" style="color: #ea4335;"></i>
-                        <span>Google</span>
-                    </button>
-                    <button type="button" class="social-btn" data-provider="github" aria-label="Sign in with GitHub">
-                        <i class="fab fa-github social-icon"></i>
-                        <span>GitHub</span>
-                    </button>
-                </div>
 
                 <div class="switch-auth">
                     <span>Don't have an account?</span>
@@ -217,18 +207,16 @@
                 </div>
 
                 <a href="{{ url_for('mhcet_page') }}" class="back-link">
-                    <i class="fas fa-arrow-left fa-xs"></i> Continue without login
+                    <i class="fas fa-arrow-left fa-xs"></i> Continue without signing in
                 </a>
 
             </div>
         </div>
     </div>
 
-    <!-- Forgot Password handler now uses custom backend -->
     <script>
         const NEXT_URL = "{{ next_url or url_for('mhcet_page') }}";
-        
-        // Override forgot password handler
+
         document.querySelector('.forgot-link')?.addEventListener('click', function(e) {
             e.preventDefault();
             if (typeof window.handleForgotPassword === 'function') {
@@ -239,7 +227,6 @@
         });
     </script>
 
-    <!-- Flash messages relay -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <script id="flash-data" type="application/json">[{% for cat, msg in messages %}{"category": "{{ cat }}", "text": "{{ msg | e }}"}{% if not loop.last %},{% endif %}{% endfor %}]</script>

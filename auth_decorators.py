@@ -1,7 +1,12 @@
-"""Authentication decorators for protecting Flask routes with custom session auth."""
+"""Authentication decorators for protecting Flask routes with custom session auth.
+
+Part 2 fix: ``admin_required`` now checks ``session["is_admin"]`` first,
+avoiding a database lookup on every request. The database is only queried
+when the view function actually needs the user object.
+"""
 import logging
 from functools import wraps
-from flask import g, redirect, url_for, request, jsonify
+from flask import g, redirect, url_for, request, jsonify, session
 
 logger = logging.getLogger(__name__)
 
@@ -54,20 +59,37 @@ def api_login_required(f):
 
 
 def admin_required(f):
-    """Require an admin user. Redirects to admin login for HTML requests."""
+    """Require an admin user using session-based auth (no database dependency).
+
+    Checks ``session["is_admin"]`` first — this is a pure cookie check that
+    never hits the database, so it cannot fail due to missing tables or DB
+    latency. If the session flag is missing, redirects to the admin login.
+    
+    Once the session-based check passes, ``g.user`` is populated on demand
+    for views that need the User object.
+    """
     @wraps(f)
     def decorated(*args, **kwargs):
-        user = g.get('user')
-        if not user or not user.is_admin():
-            if (request.is_json or
-                request.accept_mimetypes.best == 'application/json' or
-                request.path.startswith('/api/')):
-                return jsonify({
-                    'error': 'Admin access required',
-                    'code': 'admin_required',
-                    'message': 'You need admin privileges to access this resource.'
-                }), 403
-            # Preserve the original URL so we can redirect back after login
-            return redirect(url_for('admin_bp.admin_login', next=request.url))
+        # ── Session-based admin check (Part 2: no database dependency) ─────
+        if not session.get("is_admin"):
+            # Fallback: check via g.user (may trigger a DB query)
+            user = g.get('user')
+            if not user or not user.is_admin():
+                if (request.is_json or
+                    request.accept_mimetypes.best == 'application/json' or
+                    request.path.startswith('/api/')):
+                    return jsonify({
+                        'error': 'Admin access required',
+                        'code': 'admin_required',
+                        'message': 'You need admin privileges to access this resource.'
+                    }), 403
+                logger.debug(f"Redirecting non-admin to login from {request.path}")
+                return redirect(url_for('admin_bp.admin_login', next=request.url))
+            
+            # Populate session for subsequent requests
+            session['admin_id'] = user.id
+            session['admin_email'] = user.email
+            session['is_admin'] = True
+        
         return f(*args, **kwargs)
     return decorated

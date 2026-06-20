@@ -1,0 +1,128 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ admission_type.name }} Cutoffs — CollegeKhoj Admin{% endblock %}
+{% block heading %}{{ admission_type.name }} Cutoffs{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="admin-card mb-4">
+        <div class="admin-card-header">
+            <span>Filters</span>
+            <div>
+                <a href="{{ url_for('admin_bp.export_admissions_csv', admission_code=admission_type.code) }}" class="btn btn-sm btn-outline-success me-2">
+                    <i class="fas fa-download"></i> Export CSV
+                </a>
+            </div>
+        </div>
+        <div class="admin-card-body">
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small">College</label>
+                    <select name="college_id" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        {% for c in colleges %}
+                        <option value="{{ c.id }}" {% if filters.college_id == c.id %}selected{% endif %}>{{ c.college_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Branch</label>
+                    <select name="branch_id" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        {% for b in branches %}
+                        <option value="{{ b.id }}" {% if filters.branch_id == b.id %}selected{% endif %}>{{ b.branch_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Year</label>
+                    <select name="year_id" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        {% for y in years %}
+                        <option value="{{ y.id }}" {% if filters.year_id == y.id %}selected{% endif %}>{{ y.academic_year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Round</label>
+                    <select name="round_id" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        {% for r in rounds %}
+                        <option value="{{ r.id }}" {% if filters.round_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Category</label>
+                    <input type="text" name="category" class="form-control form-control-sm" placeholder="OPEN, OBC..." value="{{ filters.category or '' }}">
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-sm btn-primary w-100"><i class="fas fa-search"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <span>{{ pagination.total }} Records</span>
+        </div>
+        <div class="admin-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>College Code</th>
+                            <th>College Name</th>
+                            <th>Branch</th>
+                            <th>Year</th>
+                            <th>Round</th>
+                            <th>Category</th>
+                            <th>Seat Type</th>
+                            <th>Gender</th>
+                            <th>Percentile</th>
+                            <th>Rank</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in cutoffs %}
+                        <tr>
+                            <td>{{ c.college_rel.college_code if c.college_rel else '--' }}</td>
+                            <td>{{ c.college_rel.college_name if c.college_rel else '--' }}</td>
+                            <td>{{ c.branch_rel.branch_name if c.branch_rel else '--' }}</td>
+                            <td>{{ c.academic_year_rel.academic_year if c.academic_year_rel else '--' }}</td>
+                            <td>{{ c.cap_round_rel.name if c.cap_round_rel else '--' }}</td>
+                            <td>{{ c.category }}</td>
+                            <td>{{ c.seat_type }}</td>
+                            <td>{{ c.gender }}</td>
+                            <td>{{ '%.2f'|format(c.cutoff_percentile) if c.cutoff_percentile else '--' }}</td>
+                            <td>{{ c.cutoff_rank or '--' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="10" class="text-center py-4 text-muted">No records found</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination.pages > 1 %}
+        <div class="admin-card-body border-top">
+            <nav>
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}&college_id={{ filters.college_id }}&branch_id={{ filters.branch_id }}&year_id={{ filters.year_id }}&round_id={{ filters.round_id }}&category={{ filters.category }}">Previous</a></li>
+                    {% endif %}
+                    {% for p in pagination.iter_pages() %}
+                        {% if p %}
+                        <li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}&college_id={{ filters.college_id }}&branch_id={{ filters.branch_id }}&year_id={{ filters.year_id }}&round_id={{ filters.round_id }}&category={{ filters.category }}">{{ p }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if pagination.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}&college_id={{ filters.college_id }}&branch_id={{ filters.branch_id }}&year_id={{ filters.year_id }}&round_id={{ filters.round_id }}&category={{ filters.category }}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

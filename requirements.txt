@@ -1,5 +1,6 @@
 flask
 flask-sqlalchemy
+flask-wtf
 gunicorn
 werkzeug
 psycopg2-binary
@@ -12,3 +13,9 @@ requests
 sqlalchemy
 resend
 pdfplumber
+camelot-py
+opencv-python-headless
+pytesseract
+Pillow
+openpyxl
+pdf2image

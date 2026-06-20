@@ -1,34 +1,76 @@
 {% extends "admin/base.html" %}
-{% block title %}Audit Logs — Admin{% endblock %}
+{% block title %}Audit Logs — CollegeKhoj Admin{% endblock %}
 {% block heading %}Audit Logs{% endblock %}
+
 {% block content %}
-<div class="stat-card" style="margin-bottom: 20px;">
-    <form method="GET" style="display: flex; gap: 12px; align-items: end;">
-        <div><label style="font-size:0.8rem;color:var(--text-tertiary);">Action</label>
-            <select name="action"><option value="">All</option>{% for a in actions %}<option value="{{ a }}" {{ 'selected' if current_action==a }}>{{ a }}</option>{% endfor %}</select></div>
-        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filter</button>
-        <a href="/admin/audit-logs" class="btn btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</a>
-    </form>
+<div class="container-fluid px-0">
+    <div class="admin-card mb-4">
+        <div class="admin-card-body">
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small">Action</label>
+                    <select name="action" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        {% for a in actions %}
+                        <option value="{{ a }}" {% if current_action == a %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i> Filter</button>
+                </div>
+                <div class="col-auto">
+                    <a href="/admin/system/audit-logs" class="btn btn-sm btn-outline-secondary"><i class="fas fa-undo me-1"></i> Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <span>Audit Trail ({{ pagination.total }})</span>
+        </div>
+        <div class="admin-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Time</th>
+                            <th>Admin</th>
+                            <th>Action</th>
+                            <th>Resource</th>
+                            <th>IP</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td style="white-space:nowrap;">{{ log.created_at.strftime('%d %b %H:%M') if log.created_at else '—' }}</td>
+                            <td>{{ log.user.email if log.user else '—' }}</td>
+                            <td><span class="badge bg-info">{{ log.action }}</span></td>
+                            <td>{{ log.resource_type or '—' }} {% if log.resource_id %}#{{ log.resource_id }}{% endif %}</td>
+                            <td>{{ log.ip_address or '—' }}</td>
+                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;font-size:0.8rem;">
+                                {% if log.details %}{{ log.details }}{% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center py-4 text-muted">No audit log entries</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination.pages > 1 %}
+        <div class="admin-card-body border-top">
+            <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if pagination.has_prev %}<li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}&action={{ current_action }}">Previous</a></li>{% endif %}
+                {% for p in pagination.iter_pages() %}{% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}&action={{ current_action }}">{{ p }}</a></li>{% endif %}{% endfor %}
+                {% if pagination.has_next %}<li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}&action={{ current_action }}">Next</a></li>{% endif %}
+            </ul></nav>
+        </div>
+        {% endif %}
+    </div>
 </div>
-<div class="table-wrap">
-    <table>
-        <tr><th>Time</th><th>Admin</th><th>Action</th><th>Resource</th><th>IP</th><th>Details</th></tr>
-        {% for log in logs %}
-        <tr>
-            <td style="white-space:nowrap;">{{ log.created_at.strftime('%d %b %H:%M') if log.created_at else '—' }}</td>
-            <td>{{ log.user.email if log.user else '—' }}</td>
-            <td><span class="badge badge-info">{{ log.action }}</span></td>
-            <td>{{ log.resource_type or '—' }} {% if log.resource_id %}#{{ log.resource_id }}{% endif %}</td>
-            <td>{{ log.ip_address or '—' }}</td>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;font-size:0.8rem;">{% if log.details %}{{ log.details }}{% else %}—{% endif %}</td>
-        </tr>
-        {% else %}<tr><td colspan="6" style="text-align:center;color:var(--text-tertiary);">No audit log entries</td></tr>{% endfor %}
-    </table>
-</div>
-{% if pagination.pages > 1 %}
-<div class="pagination">
-    {% if pagination.has_prev %}<a href="?page={{ pagination.prev_num }}&action={{ current_action }}">← Prev</a>{% endif %}
-    {% for p in pagination.iter_pages() %}{% if p %}<a href="?page={{ p }}&action={{ current_action }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>{% endif %}{% endfor %}
-    {% if pagination.has_next %}<a href="?page={{ pagination.next_num }}&action={{ current_action }}">Next →</a>{% endif %}
-</div>{% endif %}
 {% endblock %}

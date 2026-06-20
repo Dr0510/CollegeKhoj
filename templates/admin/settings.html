@@ -1,28 +1,66 @@
 {% extends "admin/base.html" %}
-{% block title %}Settings — Admin{% endblock %}
+{% block title %}Settings — CollegeKhoj Admin{% endblock %}
 {% block heading %}Admin Settings{% endblock %}
-{% block content %}
-<div class="stat-card" style="max-width: 500px;">
-    <h3 style="font-size:1rem; margin-bottom:16px;">Change Password</h3>
-    <form method="POST" id="settings-form">
-        <div style="margin-bottom:12px;">
-            <label style="font-size:0.82rem;color:var(--text-secondary);">Current Password</label>
-            <input type="password" name="current_password" required>
-        </div>
-        <div style="margin-bottom:12px;">
-            <label style="font-size:0.82rem;color:var(--text-secondary);">New Password (min 8 chars)</label>
-            <input type="password" name="new_password" required minlength="8">
-        </div>
-        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update Password</button>
-    </form>
-</div>
 
-<div class="stat-card" style="max-width: 500px; margin-top: 20px;">
-    <h3 style="font-size:1rem; margin-bottom:8px;">Account Info</h3>
-    <p style="font-size:0.85rem;color:var(--text-secondary);">
-        <strong>Email:</strong> {{ admin.email }}<br>
-        <strong>Role:</strong> {{ admin.role }}<br>
-        <strong>Joined:</strong> {{ admin.created_at.strftime('%d %b %Y') if admin.created_at else '—' }}
-    </p>
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <span>Change Password</span>
+                </div>
+                <div class="admin-card-body">
+                    <form method="POST" id="settings-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label">Current Password</label>
+                            <input type="password" name="current_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Password (min 8 chars)</label>
+                            <input type="password" name="new_password" class="form-control" required minlength="8">
+                        </div>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Update Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <span>Account Info</span>
+                </div>
+                <div class="admin-card-body">
+                    <table class="table table-sm">
+                        <tr><th>Email</th><td>{{ admin.email }}</td></tr>
+                        <tr><th>Role</th><td><span class="badge bg-primary">{{ admin.role }}</span></td></tr>
+                        <tr><th>Joined</th><td>{{ admin.created_at.strftime('%d %b %Y') if admin.created_at else '—' }}</td></tr>
+                        <tr><th>Last Login</th><td>{{ admin.last_login.strftime('%d %b %Y %H:%M') if admin.last_login else '—' }}</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="admin-card mt-3">
+                <div class="admin-card-header">
+                    <span>Quick Links</span>
+                </div>
+                <div class="admin-card-body">
+                    <div class="list-group list-group-flush">
+                        <a href="/admin/system/backups" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            Backups <i class="fas fa-chevron-right text-muted"></i>
+                        </a>
+                        <a href="/admin/system/db-health" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            DB Health <i class="fas fa-chevron-right text-muted"></i>
+                        </a>
+                        <a href="/admin/system/audit-logs" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            Audit Logs <i class="fas fa-chevron-right text-muted"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

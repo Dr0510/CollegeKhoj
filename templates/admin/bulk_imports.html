@@ -77,6 +77,7 @@
         <i class="fas fa-cloud-upload-alt"></i> Upload New PDF for Bulk Import
     </h3>
     <form id="upload-form" enctype="multipart/form-data" style="display: flex; gap: 12px; align-items: end; flex-wrap: wrap;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="flex: 2; min-width: 200px;">
             <label style="font-size:0.8rem;color:var(--text-tertiary);">PDF File</label>
             <input type="file" name="file" accept=".pdf" required>

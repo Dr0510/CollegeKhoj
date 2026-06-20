@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+{% block title %}DB Health — CollegeKhoj Admin{% endblock %}
+{% block heading %}Database Health{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Connection Status -->
+    <div class="admin-card mb-4">
+        <div class="admin-card-body">
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-{{ 'success' if status.database_connected else 'danger' }} p-3" style="font-size: 1.2rem;">
+                    <i class="fas {{ 'fa-check-circle' if status.database_connected else 'fa-times-circle' }}"></i>
+                </span>
+                <div>
+                    <h5 class="mb-1">Database Connection</h5>
+                    <p class="mb-0 text-muted">
+                        {% if status.database_connected %}
+                        Connected — {{ status.database_type }}
+                        {% else %}
+                        Disconnected — {{ status.get('error', 'Unknown error') }}
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-card-icon mx-auto" style="background: rgba(102,126,234,0.1); color: #667eea;">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="stat-card-value">{{ status.total_cutoffs }}</div>
+                <div class="stat-card-label">Cutoff Records</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-card-icon mx-auto" style="background: rgba(52,211,153,0.1); color: #34d399;">
+                    <i class="fas fa-building"></i>
+                </div>
+                <div class="stat-card-value">{{ status.total_colleges }}</div>
+                <div class="stat-card-label">Colleges</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-card-icon mx-auto" style="background: rgba(251,191,36,0.1); color: #fbbf24;">
+                    <i class="fas fa-code-branch"></i>
+                </div>
+                <div class="stat-card-value">{{ status.total_branches }}</div>
+                <div class="stat-card-label">Branches</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-card-icon mx-auto" style="background: rgba(236,72,153,0.1); color: #ec4899;">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-card-value">{{ status.total_users }}</div>
+                <div class="stat-card-label">Users</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <span>Uploads & Imports</span>
+                </div>
+                <div class="admin-card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total Uploads</span>
+                        <strong>{{ status.total_uploads }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Last Import</span>
+                        <strong>{{ status.last_import_date or 'Never' }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <span>System Info</span>
+                </div>
+                <div class="admin-card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Database Type</span>
+                        <strong>{{ status.database_type }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Status</span>
+                        <strong class="text-{{ 'success' if status.database_connected else 'danger' }}">
+                            {{ 'Healthy' if status.database_connected else 'Error' }}
+                        </strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if status.error %}
+    <div class="alert alert-danger mt-4">
+        <h6><i class="fas fa-exclamation-triangle me-1"></i> Error</h6>
+        <p class="mb-0 small">{{ status.error }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

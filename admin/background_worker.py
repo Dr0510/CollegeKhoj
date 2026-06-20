@@ -1,37 +1,42 @@
 """
-Background worker for the Bulk PDF Import Engine.
+Background worker for Admin v2 Bulk Import Engine.
 
 Runs imports in a single background thread (ThreadPoolExecutor max_workers=1)
 to comply with Render Free Tier constraints (1 CPU, no multiprocessing).
 
 Provides:
-- start_import() — launches a background thread for a given job
+- start_import() — creates backup then launches background thread for a given job
 - cancel_import() — signals the engine to stop
 - get_active_jobs() — returns list of currently running job IDs
-- recover_stale_jobs() — resets PROCESSING jobs on startup (Render recovery)
+- recover_stale_jobs() — resets PROCESSING jobs on startup
 """
 import gc
 import os
+import traceback
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
+from typing import Optional, List
 
 from database import db
-from models import ImportJob
+from models import UploadJob
 
 logger = logging.getLogger(__name__)
 
+STALE_JOB_TIMEOUT_MINUTES = 30
+
 # ── Global state ──────────────────────────────────────────────────────────────
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='bulk_import')
-_active_engines: dict[int, object] = {}  # job_id -> BulkImportEngine instance
+_active_engines: dict[int, object] = {}
 _active_lock = threading.Lock()
 
 
 def start_import(job_id: int) -> bool:
     """
     Launch a background import for the given job.
+
+    Creates an automatic database backup before starting the import.
 
     Returns True if the job was successfully started, False if already running.
     """
@@ -40,10 +45,19 @@ def start_import(job_id: int) -> bool:
             logger.warning(f"[Worker] Job {job_id} is already running")
             return False
 
+    # Create automatic backup before import
+    try:
+        from admin.backup_service import create_backup
+        backup_result = create_backup(notes=f'Automatic backup before import job #{job_id}')
+        if backup_result['success']:
+            logger.info(f"[Worker] Auto-backup created for job {job_id}: backup#{backup_result['backup_id']}")
+        else:
+            logger.warning(f"[Worker] Auto-backup failed for job {job_id}: {backup_result.get('error')}")
+    except Exception as e:
+        logger.warning(f"[Worker] Auto-backup error for job {job_id}: {e}")
+
     # Submit to thread pool
     future = _executor.submit(_run_import_worker, job_id)
-
-    # Register callback for cleanup
     future.add_done_callback(lambda f: _cleanup_job(job_id, f))
 
     logger.info(f"[Worker] Job {job_id} submitted to background thread")
@@ -51,11 +65,7 @@ def start_import(job_id: int) -> bool:
 
 
 def cancel_import(job_id: int) -> bool:
-    """
-    Cancel a running import job.
-
-    Returns True if the job was found and signalled to cancel.
-    """
+    """Cancel a running import job."""
     with _active_lock:
         engine = _active_engines.get(job_id)
         if engine:
@@ -66,7 +76,7 @@ def cancel_import(job_id: int) -> bool:
         return False
 
 
-def get_active_jobs() -> list[int]:
+def get_active_jobs() -> List[int]:
     """Get list of job IDs currently being processed."""
     with _active_lock:
         return list(_active_engines.keys())
@@ -82,35 +92,59 @@ def recover_stale_jobs():
     """
     On application startup, reset any jobs stuck in PROCESSING status.
 
-    This handles the case where Render restarts mid-import.
-    Stale jobs are reset to PENDING so the admin can manually resume them.
+    Handles two cases:
+    1. Jobs in PROCESSING > 30 minutes → marked FAILED (timeout).
+    2. Newer PROCESSING jobs → reset to PENDING for manual resume.
+
+    Also checks for any job with started_at > 30 min ago still in PROCESSING
+    (in case the worker crashed mid-import without the PROCESSING status).
     """
     try:
-        stale = ImportJob.query.filter(
-            ImportJob.status.in_(['PROCESSING', 'VALIDATING', 'IMPORTING'])
+        # Defensive check: skip if upload_jobs table doesn't exist yet
+        from sqlalchemy import inspect
+        try:
+            inspector = inspect(db.engine)
+            all_tables = set(inspector.get_table_names(schema='public'))
+            if 'upload_jobs' not in all_tables:
+                logger.info("[Worker] upload_jobs table does not exist yet — skipping stale job recovery")
+                return
+        except Exception as e:
+            logger.warning(f"[Worker] Cannot inspect tables for stale recovery: {e}")
+            return
+
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=STALE_JOB_TIMEOUT_MINUTES)
+        stale = UploadJob.query.filter(
+            UploadJob.status.in_(['PROCESSING'])
         ).all()
 
         for job in stale:
-            checkpoint = job.checkpoint_page or 0
-            logger.info(
-                f"[Worker] Recovering stale job {job.id} "
-                f"(file={job.file.filename if job.file else '?'}, "
-                f"checkpoint=page {checkpoint})"
-            )
-            old_status = job.status
-            job.status = 'PENDING'
-            job.error_message = (
-                f"Recovered from {old_status} on app restart. "
-                f"Last checkpoint: page {checkpoint}. "
-                f"Click Resume to continue."
-            )
+            started = job.started_at
+            if started and started.replace(tzinfo=timezone.utc) < cutoff:
+                # Job has been PROCESSING for > 30 minutes — timeout
+                logger.warning(
+                    f"[Worker] Job {job.id} timed out after {STALE_JOB_TIMEOUT_MINUTES} min "
+                    f"(started={started})"
+                )
+                job.status = 'FAILED'
+                job.error_message = (
+                    f"Job timed out after {STALE_JOB_TIMEOUT_MINUTES} minutes in PROCESSING status. "
+                    f"Click Resume to retry."
+                )
+                job.completed_at = datetime.now(timezone.utc)
+            else:
+                # Recent PROCESSING — likely from a restart
+                logger.info(
+                    f"[Worker] Recovering stale job {job.id} (file={job.filename})"
+                )
+                job.status = 'PENDING'
+                job.error_message = (
+                    f"Recovered from {job.status} on app restart. "
+                    f"Click Resume to continue."
+                )
             db.session.commit()
 
         if stale:
-            logger.info(
-                f"[Worker] Recovered {len(stale)} stale import job(s) "
-                f"from previous run"
-            )
+            logger.info(f"[Worker] Recovered {len(stale)} stale import job(s)")
     except Exception as e:
         db.session.rollback()
         logger.error(f"[Worker] Failed to recover stale jobs: {e}")
@@ -119,46 +153,24 @@ def recover_stale_jobs():
 # ── Internal Worker ──────────────────────────────────────────────────────────
 
 def _run_import_worker(job_id: int):
-    """
-    Worker function that runs in the background thread.
-
-    Creates a new application context for the thread (Flask-SQLAlchemy sessions
-    are not thread-safe by default, but using app.app_context() works).
-    """
+    """Worker function that runs in the background thread."""
     gc.collect()
     from app import app
 
     with app.app_context():
         try:
             # Fetch the job
-            job = db.session.get(ImportJob, job_id)
+            job = db.session.get(UploadJob, job_id)
             if not job:
                 logger.error(f"[Worker] Job {job_id} not found in database")
                 return
 
             if job.status == 'PROCESSING':
-                logger.warning(
-                    f"[Worker] Job {job_id} is already PROCESSING — skipping"
-                )
+                logger.warning(f"[Worker] Job {job_id} is already PROCESSING — skipping")
                 return
 
-            # Determine start page from checkpoint
-            start_page = (job.checkpoint_page or 0) + 1
-
-            # If job has a page range, respect it
-            page_start = job.page_range_start or 1
-            page_end = job.page_range_end
-
-            # For resume: use max of checkpoint and original range start
-            start_page = max(start_page, page_start)
-
-            # Extract year/round from the job's file metadata
-            file_record = job.file
-            year = file_record.year if file_record else 2025
-            round_num = file_record.round_number if file_record else 1
-
-            if not file_record or not os.path.exists(file_record.stored_path):
-                error_msg = f"File not found at {file_record.stored_path if file_record else '?'}"
+            if not job.stored_path or not os.path.exists(job.stored_path):
+                error_msg = f"File not found at {job.stored_path}"
                 logger.error(f"[Worker] Job {job_id}: {error_msg}")
                 job.status = 'FAILED'
                 job.error_message = error_msg
@@ -172,12 +184,10 @@ def _run_import_worker(job_id: int):
             engine = BulkImportEngine(
                 db_session=db.session,
                 job_id=job_id,
-                filepath=file_record.stored_path,
-                source_file_id=file_record.id,
-                year=year,
-                round_number=round_num,
-                start_page=start_page,
-                end_page=page_end,
+                filepath=job.stored_path,
+                admission_type_id=job.admission_type_id,
+                academic_year_id=job.academic_year_id,
+                cap_round_id=job.cap_round_id,
             )
 
             # Register as active
@@ -194,9 +204,9 @@ def _run_import_worker(job_id: int):
             )
 
         except Exception as e:
-            logger.error(f"[Worker] Job {job_id} worker error: {e}")
+            logger.exception(f"[Worker] Job {job_id} worker error: {e}")
             try:
-                job = db.session.get(ImportJob, job_id)
+                job = db.session.get(UploadJob, job_id)
                 if job:
                     job.status = 'FAILED'
                     job.error_message = str(e)[:1000]
@@ -205,7 +215,20 @@ def _run_import_worker(job_id: int):
             except Exception:
                 db.session.rollback()
         finally:
-            # Cleanup
+            # Reconcile any job still in PROCESSING after run() returned without
+            # reaching a terminal state, guaranteeing a terminal status + completed_at.
+            try:
+                job = db.session.get(UploadJob, job_id)
+                if job and job.status == 'PROCESSING':
+                    job.status = 'FAILED'
+                    job.error_message = (
+                        job.error_message or 'Import ended without reaching a terminal state.'
+                    )
+                    job.completed_at = datetime.now(timezone.utc)
+                    db.session.commit()
+            except Exception:
+                db.session.rollback()
+
             with _active_lock:
                 _active_engines.pop(job_id, None)
             gc.collect()
@@ -218,8 +241,6 @@ def _cleanup_job(job_id: int, future):
     gc.collect()
     logger.debug(f"[Worker] Job {job_id} cleaned up")
 
-
-# ── Initialization ───────────────────────────────────────────────────────────
 
 def init_worker(app):
     """Initialize the background worker on app startup."""

@@ -8,9 +8,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- Theme initialization (prevents flash) -->
     <script>
         (function(){
             var t = localStorage.getItem('cf-theme') || 'dark';
@@ -19,19 +18,10 @@
         })();
     </script>
 
-    <!-- CollegeKhoj Design System -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/globals.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/animations.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles/utilities.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/button.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/card.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badge.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/navbar.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/input.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/auth.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/auth-premium.css') }}">
 </head>
@@ -83,12 +73,12 @@
                     <span>Bookmark colleges and compare up to 4 side-by-side</span>
                 </div>
                 <div class="benefit-item">
-                    <div class="benefit-icon"><i class="fas fa-history"></i></div>
+                    <div class="benefit-icon"><i class="fas fa-chart-line"></i></div>
                     <strong>3 Years of CAP Data</strong>
                     <span>Cutoff trends from 2022, 2023 & 2024 across all categories</span>
                 </div>
                 <div class="benefit-item">
-                    <div class="benefit-icon"><i class="fas fa-share-alt"></i></div>
+                    <div class="benefit-icon"><i class="fas fa-share-nodes"></i></div>
                     <strong>Share & Decide</strong>
                     <span>Share your shortlist with family and counsellors</span>
                 </div>
@@ -114,11 +104,11 @@
     <!-- ===== RIGHT AUTH PANEL ===== -->
     <div class="right-panel">
         <div class="auth-card-wrap">
-            <div class="auth-card auth-card-entry">
+            <div class="auth-card">
 
                 <div class="auth-header">
                     <h2 id="signup-heading">Create your account</h2>
-                    <p id="signup-subheading">Join thousands of Maharashtra students finding their perfect college</p>
+                    <p id="signup-subheading">Join thousands of Maharashtra students</p>
                 </div>
 
                 <!-- Error Banner -->
@@ -129,6 +119,21 @@
 
                 <!-- ===== SIGNUP FORM SECTION ===== -->
                 <div id="signup-form-section" class="form-section">
+
+                    <!-- Social Login (top) -->
+                    <div class="social-login">
+                        <button type="button" class="social-btn" data-provider="google" aria-label="Sign up with Google">
+                            <i class="fab fa-google social-icon" style="color: #ea4335;"></i>
+                            <span>Google</span>
+                        </button>
+                        <button type="button" class="social-btn" data-provider="github" aria-label="Sign up with GitHub">
+                            <i class="fab fa-github social-icon"></i>
+                            <span>GitHub</span>
+                        </button>
+                    </div>
+
+                    <div class="auth-divider">or sign up with email</div>
+
                     <form id="signup-form" novalidate autocomplete="off">
                         <input type="hidden" id="next-url" value="{{ next_url or url_for('mhcet_page') }}">
 
@@ -184,7 +189,7 @@
                                     type="password"
                                     id="signup-password"
                                     class="input-field"
-                                    placeholder="Create a strong password"
+                                    placeholder="Min. 8 characters"
                                     autocomplete="new-password"
                                     aria-describedby="signup-password-error password-strength-meter"
                                     required
@@ -199,19 +204,19 @@
                                 <span></span>
                             </div>
 
-                            <!-- Password Strength Meter -->
+                            <!-- Strength Meter -->
                             <div id="password-strength-meter" class="strength-meter" aria-label="Password strength">
-                                <div class="strength-meter-labels">
-                                    <span>Weak</span>
-                                    <span>Fair</span>
-                                    <span>Good</span>
-                                    <span>Strong</span>
-                                </div>
                                 <div class="strength-bar">
                                     <span class="segment"></span>
                                     <span class="segment"></span>
                                     <span class="segment"></span>
                                     <span class="segment"></span>
+                                </div>
+                                <div class="strength-meter-labels">
+                                    <span>Weak</span>
+                                    <span>Fair</span>
+                                    <span>Good</span>
+                                    <span>Strong</span>
                                 </div>
                             </div>
                         </div>
@@ -220,7 +225,7 @@
                         <div class="input-group">
                             <label for="signup-confirm-password">Confirm password</label>
                             <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
+                                <i class="fas fa-shield-halved input-icon"></i>
                                 <input
                                     type="password"
                                     id="signup-confirm-password"
@@ -240,31 +245,17 @@
                             </div>
                         </div>
 
-                        <!-- Submit Button -->
+                        <!-- Submit -->
                         <button type="submit" id="signup-btn" class="btn-primary">
                             <span class="btn-spinner"></span>
                             <span class="btn-text">Create account</span>
                         </button>
                     </form>
 
-                    <!-- Social Login -->
-                    <div class="auth-divider">or continue with</div>
-
-                    <div class="social-login">
-                        <button type="button" class="social-btn" data-provider="google" aria-label="Sign up with Google">
-                            <i class="fab fa-google social-icon" style="color: #ea4335;"></i>
-                            <span>Google</span>
-                        </button>
-                        <button type="button" class="social-btn" data-provider="github" aria-label="Sign up with GitHub">
-                            <i class="fab fa-github social-icon"></i>
-                            <span>GitHub</span>
-                        </button>
-                    </div>
-
                     <!-- Terms -->
                     <div class="terms-text">
                         By creating an account, you agree to our
-                        <a href="#" onclick="showToast('Terms of Service coming soon!', 'info'); return false;">Terms of Service</a>
+                        <a href="#" onclick="showToast('Terms of Service coming soon!', 'info'); return false;">Terms</a>
                         and
                         <a href="#" onclick="showToast('Privacy Policy coming soon!', 'info'); return false;">Privacy Policy</a>.
                     </div>
@@ -277,13 +268,13 @@
                     </div>
 
                     <a href="{{ url_for('mhcet_page') }}" class="back-link">
-                        <i class="fas fa-arrow-left fa-xs"></i> Continue without login
+                        <i class="fas fa-arrow-left fa-xs"></i> Continue without signing up
                     </a>
                 </div>
 
                 <!-- ===== VERIFICATION CODE SECTION ===== -->
                 <div id="verify-section" class="verify-section">
-                    <p class="verify-email">Enter the verification code sent to<br><strong id="verify-email-display"></strong></p>
+                    <p class="verify-email">Enter the 6-digit code sent to<br><strong id="verify-email-display"></strong></p>
 
                     <div class="code-inputs" id="code-inputs">
                         <input type="text" class="code-input" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code" id="code-0">
@@ -299,10 +290,10 @@
                         <span class="btn-text">Verify email</span>
                     </button>
 
-                    <a class="resend-link" id="resend-link">Resend verification code</a>
+                    <a class="resend-link" id="resend-link">Didn't receive it? Resend code</a>
 
                     <div class="switch-auth" style="margin-top: var(--space-6);">
-                        <a href="#" id="back-to-signup-link" style="color: var(--text-tertiary);">
+                        <a href="#" id="back-to-signup-link" style="color: var(--text-tertiary); text-decoration: none;">
                             <i class="fas fa-arrow-left fa-xs"></i> Back to signup
                         </a>
                     </div>
@@ -312,7 +303,6 @@
         </div>
     </div>
 
-    <!-- Flash messages relay -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <script id="flash-data" type="application/json">[{% for cat, msg in messages %}{"category": "{{ cat }}", "text": "{{ msg | e }}"}{% if not loop.last %},{% endif %}{% endfor %}]</script>

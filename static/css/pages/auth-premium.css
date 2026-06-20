@@ -1,9 +1,9 @@
 /* ============================================================
-   🔐 CollegeKhoj Auth Pages — Premium Edition
-   Layers on top of auth.css
+   🔐 CollegeKhoj Auth — Premium Enhancements
+   Subtle animations & polish layer
    ============================================================ */
 
-/* ── Animated Mesh Gradient Background ── */
+/* ── Animated Background Blobs ── */
 .auth-mesh-bg {
   position: absolute;
   inset: 0;
@@ -14,80 +14,117 @@
 .auth-mesh-bg .mesh-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.4;
-  animation: blobFloat 20s ease-in-out infinite;
+  filter: blur(100px);
+  opacity: 0.3;
+  animation: blobDrift 25s ease-in-out infinite;
 }
 
 .auth-mesh-bg .mesh-blob:nth-child(1) {
-  width: 500px;
-  height: 500px;
-  top: -20%;
-  left: -10%;
-  background: radial-gradient(circle, rgba(79,142,247,0.15) 0%, transparent 70%);
-  animation-delay: 0s;
+  width: 450px; height: 450px;
+  top: -15%;
+  left: -5%;
+  background: radial-gradient(circle, rgba(79,142,247,0.18) 0%, transparent 70%);
 }
 
 .auth-mesh-bg .mesh-blob:nth-child(2) {
-  width: 400px;
-  height: 400px;
-  bottom: -15%;
-  right: -10%;
-  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
-  animation-delay: -7s;
+  width: 350px; height: 350px;
+  bottom: -10%;
+  right: -5%;
+  background: radial-gradient(circle, rgba(99,102,241,0.14) 0%, transparent 70%);
+  animation-delay: -8s;
 }
 
 .auth-mesh-bg .mesh-blob:nth-child(3) {
-  width: 300px;
-  height: 300px;
-  top: 40%;
-  right: 20%;
-  background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%);
-  animation-delay: -14s;
+  width: 250px; height: 250px;
+  top: 50%;
+  left: 50%;
+  background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%);
+  animation-delay: -16s;
 }
 
-@keyframes blobFloat {
+@keyframes blobDrift {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(30px, -40px) scale(1.05); }
-  50% { transform: translate(-20px, 20px) scale(0.95); }
-  75% { transform: translate(40px, 30px) scale(1.02); }
+  33% { transform: translate(20px, -30px) scale(1.03); }
+  66% { transform: translate(-15px, 15px) scale(0.97); }
 }
 
-/* ── Enhanced Left Panel ── */
-.left-panel {
-  position: relative;
+/* ── Floating Orbs ── */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.15;
 }
 
-/* ── Premium Brand Icon Glow ── */
-.brand-icon {
-  position: relative;
+.orb-1 {
+  width: 8px; height: 8px;
+  background: var(--color-primary);
+  top: 20%;
+  right: 15%;
+  animation: float 6s ease-in-out infinite;
 }
 
-.brand-icon::after {
+.orb-2 {
+  width: 5px; height: 5px;
+  background: var(--color-secondary);
+  bottom: 30%;
+  left: 25%;
+  animation: float 8s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+/* ── Card Top Accent ── */
+.auth-card::before {
   content: '';
   position: absolute;
-  inset: -4px;
+  top: 0;
+  left: var(--space-8);
+  right: var(--space-8);
+  height: 2px;
+  background: var(--color-gradient-primary);
+  border-radius: 0 0 2px 2px;
+  opacity: 0.6;
+}
+
+/* ── Input Focus Glow ── */
+.input-field:focus {
+  background: var(--bg-primary);
+}
+
+/* ── Button Shine Effect ── */
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.5s var(--ease-out);
+}
+
+.btn-primary:hover::after {
+  transform: translateX(100%);
+}
+
+/* ── Social Button Shine ── */
+.social-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   border-radius: inherit;
-  background: var(--color-primary-gradient);
-  opacity: 0.2;
-  filter: blur(8px);
-  z-index: -1;
-  animation: pulseGlow 3s ease-in-out infinite;
+  background: linear-gradient(105deg, transparent 40%, rgba(79,142,247,0.04) 50%, transparent 60%);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-out);
 }
+.social-btn:hover::after { opacity: 1; }
+.social-btn { position: relative; overflow: hidden; }
 
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.2; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(1.08); }
-}
-
-/* ── Tagline Reveal Animation ── */
-.tagline {
-  animation: fadeInUp 0.6s var(--ease-out) both;
-}
-
+/* ── Tagline Underline Accent ── */
 .tagline em {
   position: relative;
-  display: inline-block;
 }
 
 .tagline em::after {
@@ -96,458 +133,90 @@
   bottom: 2px;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 3px;
   background: var(--color-primary-gradient);
-  opacity: 0.25;
+  opacity: 0.2;
   border-radius: var(--radius-full);
 }
 
-/* ── Enhanced Quote Card ── */
+/* ── Quote Card Hover Glow ── */
+.quote-card::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: var(--color-primary-gradient);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity var(--duration-normal) var(--ease-out);
+  filter: blur(8px);
+}
+
+.quote-card:hover::after {
+  opacity: 0.06;
+}
+
 .quote-card {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.quote-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100px;
-  height: 100px;
-  background: radial-gradient(circle, rgba(79,142,247,0.06) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-/* ── Enhanced Auth Card ── */
-.auth-card {
-  position: relative;
-  overflow: hidden;
-  transition: all var(--duration-normal) var(--ease-out);
-}
-
-.auth-card::before {
+/* ── Benefit Item Hover Accent ── */
+.benefit-item::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--color-gradient-primary);
-  opacity: 0;
-  transition: opacity var(--duration-normal) var(--ease-out);
-}
-
-.auth-card:focus-within::before {
-  opacity: 1;
-}
-
-/* ── Micro-animated Input Fields ── */
-.input-wrapper {
-  position: relative;
-  overflow: hidden;
-}
-
-.input-wrapper::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 0;
-  height: 2px;
-  background: var(--color-gradient-primary);
-  transition: all var(--duration-normal) var(--ease-out);
-  transform: translateX(-50%);
-  border-radius: var(--radius-full);
-}
-
-.input-wrapper:focus-within::after {
-  width: 100%;
-}
-
-.input-field {
-  transition: all var(--duration-normal) var(--ease-out);
-}
-
-.input-field:focus {
-  transform: translateY(-1px);
-}
-
-.input-icon {
-  transition: color var(--duration-normal) var(--ease-out), transform var(--duration-normal) var(--ease-out);
-}
-
-.input-wrapper:focus-within .input-icon {
-  color: var(--color-primary);
-  transform: translateY(-50%) scale(1.05);
-}
-
-/* ── Enhanced Submit Button ── */
-.btn-primary {
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-primary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
-  transform: translateX(-100%);
-  transition: transform 0.6s var(--ease-out);
-}
-
-.btn-primary:hover::before {
-  transform: translateX(100%);
-}
-
-.btn-primary:hover {
-  box-shadow: var(--shadow-glow), 0 4px 20px rgba(79,142,247,0.3);
-  transform: translateY(-2px);
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-/* ── Social Buttons Premium ── */
-.social-btn {
-  position: relative;
-  overflow: hidden;
-  transition: all var(--duration-normal) var(--ease-out);
-}
-
-.social-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-medium);
-}
-
-.social-btn:active {
-  transform: translateY(0);
-}
-
-/* ── Password Strength Meter Premium ── */
-.strength-meter {
-  animation: fadeInUp 0.3s var(--ease-out);
-}
-
-.strength-bar .segment {
-  transition: all var(--duration-normal) var(--ease-out);
-  position: relative;
-  overflow: hidden;
-}
-
-.strength-bar .segment::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transform: translateX(-100%);
-}
-
-.strength-bar .segment.fill-1::after,
-.strength-bar .segment.fill-2::after,
-.strength-bar .segment.fill-3::after,
-.strength-bar .segment.fill-4::after {
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-/* ── Verification Code Premium ── */
-.code-input {
-  transition: all var(--duration-normal) var(--ease-out);
-  position: relative;
-}
-
-.code-input:focus {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 16px rgba(79,142,247,0.2);
-}
-
-.code-input.filled {
-  transform: translateY(-1px);
-}
-
-.code-inputs {
-  animation: fadeInUp 0.4s var(--ease-out);
-}
-
-/* ── Error Banner Premium ── */
-.error-banner {
-  animation: slideIn 0.3s var(--ease-out);
-  position: relative;
-  overflow: hidden;
-}
-
-.error-banner::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
   width: 3px;
-  background: var(--color-error);
+  height: 0;
+  background: var(--color-primary-gradient);
   border-radius: 0 2px 2px 0;
+  transition: height var(--duration-normal) var(--ease-out);
 }
 
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Benefits Grid Premium ── */
 .benefit-item {
-  transition: all var(--duration-normal) var(--ease-out);
   position: relative;
   overflow: hidden;
 }
 
-.benefit-item:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-medium);
-  border-color: var(--border-strong);
+.benefit-item:hover::before {
+  height: 100%;
 }
 
-.benefit-item .benefit-icon {
-  transition: all var(--duration-normal) var(--ease-out);
-}
-
-.benefit-item:hover .benefit-icon {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(79,142,247,0.2);
-}
-
-/* ── Trust Row Premium ── */
-.trust-item {
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.trust-item:hover {
+/* ── Code Input Lift ── */
+.verify-section .code-input:focus {
   transform: translateY(-2px);
 }
 
-.trust-item .trust-icon {
-  transition: all var(--duration-normal) var(--ease-out);
+.verify-section .code-input.filled {
+  transform: translateY(-1px);
 }
 
-.trust-item:hover .trust-icon {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(79,142,247,0.2);
+/* ── Smooth entry for auth card ── */
+.auth-card-wrap {
+  animation: cardEntry 0.5s var(--ease-out) both;
 }
 
-/* ── Stats Mini Premium ── */
-.stat-mini-item {
-  transition: all var(--duration-fast) var(--ease-out);
+@keyframes cardEntry {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.stat-mini-item:hover {
-  transform: translateY(-2px);
-}
-
-/* ── Remember Me Checkbox Premium ── */
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
-
-.checkbox-group input[type="checkbox"] {
-  display: none;
-}
-
-.checkbox-group .check-box {
-  width: 20px;
-  height: 20px;
-  border: 1.5px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--duration-fast) var(--ease-out);
-  flex-shrink: 0;
-}
-
-.checkbox-group .check-box i {
-  font-size: 0.55rem;
-  color: transparent;
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.checkbox-group input:checked + .check-box {
-  background: var(--color-primary-gradient);
-  border-color: var(--color-primary);
-}
-
-.checkbox-group input:checked + .check-box i {
-  color: #fff;
-}
-
-.checkbox-group:hover .check-box {
-  border-color: var(--color-primary);
-}
-
-/* ── Forgot Link Premium ── */
-.forgot-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.forgot-link::after {
-  content: '→';
-  font-size: 0.7rem;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.forgot-link:hover::after {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-/* ── Switch Auth Premium ── */
-.switch-auth {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-}
-
-.switch-auth a {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.switch-auth a::after {
-  content: '→';
-  font-size: 0.7rem;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: all var(--duration-fast) var(--ease-out);
-}
-
-.switch-auth a:hover::after {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-/* ── Back Link Premium ── */
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  text-decoration: none;
-  transition: all var(--duration-fast) var(--ease-out);
-  margin-top: var(--space-4);
-}
-
-.back-link:hover {
-  color: var(--color-primary);
-  gap: var(--space-2);
-}
-
-/* ── Terms Text Premium ── */
-.terms-text {
-  line-height: 1.6;
-}
-
-.terms-text a {
-  position: relative;
-  font-weight: var(--font-semibold);
-}
-
-.terms-text a::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--color-primary);
-  opacity: 0.4;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-.terms-text a:hover::after {
-  opacity: 1;
-}
-
-/* ── Resend Link Premium ── */
-.resend-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.resend-link::before {
-  content: '↻';
-  font-size: 0.8rem;
-  display: inline-block;
-  transition: transform var(--duration-normal) var(--ease-out);
-}
-
-.resend-link:hover::before {
-  transform: rotate(180deg);
-}
-
-/* ── Testimonial Dots Premium ── */
-.dot {
-  transition: all var(--duration-normal) var(--ease-out);
-}
-
-.dot:hover {
-  opacity: 0.6;
-  transform: scale(1.2);
-}
-
-/* ── Auth Divider Premium ── */
-.auth-divider {
-  position: relative;
-}
-
-/* ── Loading Button State ── */
-.btn-primary.loading .btn-text {
-  visibility: hidden;
-}
-
-.btn-primary.loading .btn-spinner {
-  display: block;
-}
-
-/* ── Mobile Enhancements ── */
-@media (max-width: 868px) {
-  .auth-card {
-    border: none;
-    box-shadow: none;
-    background: transparent;
-    padding: var(--space-6) var(--space-4);
+/* ── Mobile Polish ── */
+@media (max-width: 900px) {
+  .auth-card-wrap {
+    animation-delay: 0s;
   }
   
   .auth-card::before {
-    display: none;
-  }
-  
-  .right-panel {
-    background: var(--bg-primary);
+    left: var(--space-4);
+    right: var(--space-4);
   }
 }
 
 /* ── Print ── */
 @media print {
-  .auth-mesh-bg { display: none; }
+  .auth-mesh-bg,
+  .orb { display: none; }
   .left-panel { display: none; }
 }

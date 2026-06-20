@@ -4,105 +4,498 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Admin — CollegeKhoj{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/styles/tokens.css">
-    <link rel="stylesheet" href="/static/css/styles/globals.css">
-    <link rel="stylesheet" href="/static/css/styles/animations.css">
-    <link rel="stylesheet" href="/static/css/styles/utilities.css">
-    <link rel="stylesheet" href="/static/css/components/button.css">
-    <link rel="stylesheet" href="/static/css/components/card.css">
-    <link rel="stylesheet" href="/static/css/components/badge.css">
-    <link rel="stylesheet" href="/static/css/components/navbar.css">
-    <link rel="stylesheet" href="/static/css/components/toast.css">
-    <link rel="stylesheet" href="/static/css/components/input.css">
-    <link rel="stylesheet" href="/static/css/components/table.css">
-    <link rel="stylesheet" href="/static/css/pages/layout.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/pages/admin.css">
-    <script>
-        (function(){
-            var t = localStorage.getItem('cf-theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', t);
-            document.documentElement.setAttribute('data-bs-theme', t);
-        })();
-    </script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --sidebar-collapsed-width: 0px;
+            --topbar-height: 64px;
+            --admin-bg: #f4f6f9;
+            --sidebar-bg: #1a1d29;
+            --sidebar-hover: #2a2d3a;
+            --sidebar-active: #3a3d4a;
+            --sidebar-text: #a0a3b1;
+            --sidebar-text-active: #ffffff;
+            --card-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            --card-border: #e8eaed;
+        }
+        [data-bs-theme="dark"] {
+            --admin-bg: #0f1117;
+            --card-border: #2a2d3a;
+            --card-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        body {
+            background: var(--admin-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .admin-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        .admin-sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .admin-sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+        .sidebar-brand {
+            padding: 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-brand-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        .sidebar-brand-text {
+            color: #fff;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .sidebar-brand-text em {
+            color: #667eea;
+            font-style: normal;
+        }
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 0;
+        }
+        .sidebar-nav::-webkit-scrollbar { width: 4px; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .sidebar-group {
+            margin-bottom: 4px;
+        }
+        .sidebar-group-label {
+            display: block;
+            padding: 8px 20px 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: rgba(255,255,255,0.3);
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-link:hover {
+            background: var(--sidebar-hover);
+            color: var(--sidebar-text-active);
+        }
+        .sidebar-link.active {
+            background: var(--sidebar-active);
+            color: var(--sidebar-text-active);
+            border-left-color: #667eea;
+        }
+        .sidebar-link .sidebar-icon {
+            width: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .sidebar-badge {
+            margin-left: auto;
+            background: #ef4444;
+            color: white;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .sidebar-footer-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            font-size: 13px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .sidebar-footer-link:hover { background: var(--sidebar-hover); color: #fff; }
+        .sidebar-footer-link.danger:hover { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+        .admin-main {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            transition: margin-left 0.3s ease;
+            min-width: 0;
+        }
+        .admin-main.sidebar-collapsed {
+            margin-left: 0;
+        }
+        .admin-topbar {
+            height: var(--topbar-height);
+            background: var(--bs-body-bg);
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            color: var(--bs-body-color);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .topbar-page-title {
+            font-weight: 600;
+            font-size: 18px;
+        }
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .topbar-btn {
+            background: none;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--bs-body-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .topbar-btn:hover { background: var(--card-border); }
+        .topbar-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: rgba(102,126,234,0.1);
+            border-radius: 20px;
+            font-size: 13px;
+            color: #667eea;
+        }
+        .topbar-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .topbar-user { display: flex; align-items: center; gap: 10px; }
+        .topbar-user-name { font-size: 14px; font-weight: 600; }
+        .topbar-user-role { font-size: 12px; color: #6c757d; display: block; }
+
+        .admin-page-content {
+            padding: 24px;
+        }
+
+        .stat-card {
+            background: var(--bs-body-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow);
+        }
+        .stat-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+        .stat-card-value {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .stat-card-label {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        .admin-card {
+            background: var(--bs-body-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .admin-card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--card-border);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .admin-card-body {
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                transform: translateX(-100%);
+            }
+            .admin-sidebar.show {
+                transform: translateX(0);
+            }
+            .admin-main {
+                margin-left: 0 !important;
+            }
+        }
+    </style>
     {% block head %}{% endblock %}
 </head>
 <body>
-    <aside class="sidebar">
-        <a href="/admin/dashboard" class="sidebar-brand">
-            <div class="sidebar-brand-icon"><i class="fas fa-graduation-cap"></i></div>
-            <span>College<span>Khoj</span></span>
-        </a>
-        <div class="sidebar-section">Main</div>
-        <nav class="sidebar-nav">
-            <a href="/admin/dashboard" class="sidebar-link {{ 'active' if request.path == '/admin/dashboard' else '' }}"><i class="fas fa-chart-simple"></i> <span>Dashboard</span></a>
-            <a href="/admin/bulk-import" class="sidebar-link {{ 'active' if request.path.startswith('/admin/bulk-import') and not request.path.startswith('/admin/bulk-imports') else '' }}"><i class="fas fa-rocket"></i> <span>Bulk PDF Import</span></a>
-            <a href="/admin/bulk-imports" class="sidebar-link {{ 'active' if request.path.startswith('/admin/bulk-imports') else '' }}"><i class="fas fa-check-double"></i> <span>Bulk Approvals</span></a>
-            <a href="/admin/upload-cutoff" class="sidebar-link {{ 'active' if request.path.startswith('/admin/upload-cutoff') else '' }}"><i class="fas fa-upload"></i> <span>Upload Cutoff</span></a>
-            <a href="/admin/uploads" class="sidebar-link {{ 'active' if request.path == '/admin/uploads' else '' }}"><i class="fas fa-history"></i> <span>Upload History</span></a>
-            <a href="/admin/cutoffs" class="sidebar-link {{ 'active' if request.path == '/admin/cutoffs' else '' }}"><i class="fas fa-table"></i> <span>Cutoff Records</span></a>
-            <a href="/admin/colleges" class="sidebar-link {{ 'active' if request.path == '/admin/colleges' else '' }}"><i class="fas fa-building"></i> <span>Colleges</span></a>
-            <a href="/admin/users" class="sidebar-link {{ 'active' if request.path == '/admin/users' else '' }}"><i class="fas fa-users"></i> <span>Users</span></a>
-            <div class="sidebar-section">Analytics</div>
-            <a href="/admin/trends" class="sidebar-link {{ 'active' if request.path == '/admin/trends' else '' }}"><i class="fas fa-chart-line"></i> <span>Trends</span></a>
-            <a href="/admin/backups" class="sidebar-link {{ 'active' if request.path == '/admin/backups' else '' }}"><i class="fas fa-database"></i> <span>Backups</span></a>
-            <a href="/admin/audit-logs" class="sidebar-link {{ 'active' if request.path == '/admin/audit-logs' else '' }}"><i class="fas fa-clipboard-list"></i> <span>Audit Logs</span></a>
-            <a href="/admin/database-status" class="sidebar-link {{ 'active' if request.path == '/admin/database-status' else '' }}"><i class="fas fa-heart-pulse"></i> <span>DB Health</span></a>
-            <div class="sidebar-section">System</div>
-            <a href="/admin/settings" class="sidebar-link {{ 'active' if request.path == '/admin/settings' else '' }}"><i class="fas fa-gear"></i> <span>Settings</span></a>
-        </nav>
-        <div class="sidebar-footer">
-            <a href="/" target="_blank" class="sidebar-link" style="margin:0;color:var(--text-tertiary);"><i class="fas fa-globe"></i> <span>View Site</span></a>
-            <a href="/admin/logout" class="sidebar-link" style="margin:0;color:var(--danger);"><i class="fas fa-right-from-bracket"></i> <span>Logout</span></a>
-        </div>
-    </aside>
-
-    <main class="main-content">
-        <div class="topbar">
-            <h1>{% block heading %}Admin{% endblock %}</h1>
-            <div class="topbar-right">
-                <span style="font-size:var(--text-sm);color:var(--text-secondary);font-weight:var(--font-medium);">
-                    <i class="fas fa-user-shield" style="margin-right:6px;"></i>{{ g.user.display_name() if g.user else 'Admin' }}
-                </span>
-                <button class="btn-icon" onclick="var t=localStorage.getItem('cf-theme')||'dark';var n=t==='dark'?'light':'dark';localStorage.setItem('cf-theme',n);document.documentElement.setAttribute('data-theme',n);document.documentElement.setAttribute('data-bs-theme',n);" title="Toggle theme">
-                    <i class="fas fa-moon"></i>
-                </button>
+    <div class="admin-wrapper">
+        <!-- ── SIDEBAR ── -->
+        <aside class="admin-sidebar" id="admin-sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon"><i class="fas fa-graduation-cap"></i></div>
+                <span class="sidebar-brand-text">College<em>Khoj</em></span>
             </div>
+            <nav class="sidebar-nav">
+                <div class="sidebar-group">
+                    <span class="sidebar-group-label">Overview</span>
+                    <a href="/admin/dashboard" class="sidebar-link {% if request.path == '/admin/dashboard' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-gauge-high"></i></span>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+                <div class="sidebar-group">
+                    <span class="sidebar-group-label">Admissions</span>
+                    <a href="/admin/admissions/ENGG" class="sidebar-link {% if request.path == '/admin/admissions/ENGG' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-microchip"></i></span>
+                        <span>Engineering Cutoffs</span>
+                    </a>
+                    <a href="/admin/admissions/DSE" class="sidebar-link {% if request.path == '/admin/admissions/DSE' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-arrow-right-arrow-left"></i></span>
+                        <span>DSE Cutoffs</span>
+                    </a>
+                    <a href="/admin/admissions/POLY" class="sidebar-link {% if request.path == '/admin/admissions/POLY' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-toolbox"></i></span>
+                        <span>Polytechnic Cutoffs</span>
+                    </a>
+                </div>
+                <div class="sidebar-group">
+                    <span class="sidebar-group-label">Bulk Import</span>
+                    <a href="/admin/import/upload" class="sidebar-link {% if request.path == '/admin/import/upload' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-upload"></i></span>
+                        <span>Upload PDF</span>
+                    </a>
+                    <a href="/admin/import/pending" class="sidebar-link {% if request.path == '/admin/import/pending' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-clock"></i></span>
+                        <span>Pending Imports</span>
+                    </a>
+                    <a href="/admin/import/history" class="sidebar-link {% if request.path == '/admin/import/history' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-history"></i></span>
+                        <span>Import History</span>
+                    </a>
+                </div>
+                <div class="sidebar-group">
+                    <span class="sidebar-group-label">Master Data</span>
+                    <a href="/admin/master/colleges" class="sidebar-link {% if request.path == '/admin/master/colleges' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-building"></i></span>
+                        <span>Colleges</span>
+                    </a>
+                    <a href="/admin/master/branches" class="sidebar-link {% if request.path == '/admin/master/branches' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-code-branch"></i></span>
+                        <span>Branches</span>
+                    </a>
+                    <a href="/admin/master/categories" class="sidebar-link {% if request.path == '/admin/master/categories' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-tags"></i></span>
+                        <span>Categories</span>
+                    </a>
+                </div>
+                <div class="sidebar-group">
+                    <span class="sidebar-group-label">Analytics</span>
+                    <a href="/admin/analytics/trends" class="sidebar-link {% if request.path == '/admin/analytics/trends' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-chart-line"></i></span>
+                        <span>Trends</span>
+                    </a>
+                    <a href="/admin/analytics/popular-colleges" class="sidebar-link {% if request.path == '/admin/analytics/popular-colleges' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-trophy"></i></span>
+                        <span>Popular Colleges</span>
+                    </a>
+                    <a href="/admin/analytics/branch-analytics" class="sidebar-link {% if request.path == '/admin/analytics/branch-analytics' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-chart-pie"></i></span>
+                        <span>Branch Analytics</span>
+                    </a>
+                </div>
+                <div class="sidebar-group">
+                    <span class="sidebar-group-label">System</span>
+                    <a href="/admin/system/backups" class="sidebar-link {% if request.path == '/admin/system/backups' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-server"></i></span>
+                        <span>Backups</span>
+                    </a>
+                    <a href="/admin/system/audit-logs" class="sidebar-link {% if request.path == '/admin/system/audit-logs' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-clipboard-list"></i></span>
+                        <span>Audit Logs</span>
+                    </a>
+                    <a href="/admin/system/db-health" class="sidebar-link {% if request.path == '/admin/system/db-health' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-heart-pulse"></i></span>
+                        <span>DB Health</span>
+                    </a>
+                    <a href="/admin/system/settings" class="sidebar-link {% if request.path == '/admin/system/settings' %}active{% endif %}">
+                        <span class="sidebar-icon"><i class="fas fa-gear"></i></span>
+                        <span>Settings</span>
+                    </a>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/" target="_blank" class="sidebar-footer-link">
+                    <i class="fas fa-globe"></i> <span>View Site</span>
+                </a>
+                <a href="/admin/logout" class="sidebar-footer-link danger">
+                    <i class="fas fa-right-from-bracket"></i> <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- ── MAIN ── -->
+        <div class="admin-main" id="admin-main">
+            <header class="admin-topbar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="topbar-page-title">{% block heading %}Admin{% endblock %}</span>
+                </div>
+                <div class="topbar-right">
+                    <button class="topbar-btn" id="theme-toggle-btn" title="Toggle theme">
+                        <i class="fas fa-moon" id="theme-icon"></i>
+                    </button>
+                    <div class="topbar-user">
+                        <div class="topbar-avatar">{{ g.user.initials() if g.user else 'A' }}</div>
+                        <div>
+                            <span class="topbar-user-name">{{ g.user.display_name() if g.user else 'Admin' }}</span>
+                            <span class="topbar-user-role">Administrator</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="admin-page-content">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for cat, msg in messages %}
+                            <div class="alert alert-{{ 'danger' if cat == 'error' else cat }} alert-dismissible fade show">
+                                {{ msg }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </main>
         </div>
+    </div>
 
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for cat, msg in messages %}
-                    <div class="flash flash-{{ cat }}">{{ msg }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% block content %}{% endblock %}
-    </main>
-
-    <!-- Toast container for JS -->
-    <div id="toast-container" class="toast-container"></div>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
-        function showToast(msg, type) {
-            type = type || 'info';
-            var c = document.getElementById('toast-container');
-            if (!c) return;
-            var t = document.createElement('div');
-            t.className = 'toast toast-' + type;
-            t.textContent = msg;
-            c.appendChild(t);
-            setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ if(t.parentElement) t.remove(); }, 300); }, 4000);
-        }
-        // Check for flash messages and convert to toasts
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.flash').forEach(function(f) {
-                var type = f.classList.contains('flash-error') ? 'error' : 'success';
-                showToast(f.textContent.trim(), type);
-            });
-        });
+        // ── Theme ──
+        (function(){
+            var t = localStorage.getItem('cf-theme') || 'dark';
+            document.documentElement.setAttribute('data-bs-theme', t);
+            var icon = document.getElementById('theme-icon');
+            if (icon) icon.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            var btn = document.getElementById('theme-toggle-btn');
+            if (btn) {
+                btn.addEventListener('click', function(){
+                    var c = localStorage.getItem('cf-theme') || 'dark';
+                    var n = c === 'dark' ? 'light' : 'dark';
+                    localStorage.setItem('cf-theme', n);
+                    document.documentElement.setAttribute('data-bs-theme', n);
+                    var i = document.getElementById('theme-icon');
+                    if (i) i.className = n === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+                });
+            }
+        })();
+
+        // ── Sidebar toggle ──
+        (function(){
+            var toggle = document.getElementById('sidebar-toggle');
+            var sidebar = document.getElementById('admin-sidebar');
+            var main = document.getElementById('admin-main');
+            if (toggle && sidebar) {
+                toggle.addEventListener('click', function(){
+                    sidebar.classList.toggle('collapsed');
+                    if (main) main.classList.toggle('sidebar-collapsed');
+                });
+            }
+        })();
+
+        // ── CSRF interceptor ──
+        (function(){
+            var token = (document.querySelector('meta[name="csrf-token"]') || {}).getAttribute('content');
+            if (!token) return;
+            var orig = window.fetch;
+            window.fetch = function(url, opts) {
+                opts = opts || {};
+                opts.method = (opts.method || 'GET').toUpperCase();
+                if (opts.method !== 'GET' && opts.method !== 'HEAD') {
+                    opts.headers = opts.headers || {};
+                    if (opts.headers instanceof Headers) {
+                        if (!opts.headers.has('X-CSRFToken')) opts.headers.set('X-CSRFToken', token);
+                    } else {
+                        opts.headers['X-CSRFToken'] = token;
+                    }
+                }
+                return orig.call(this, url, opts);
+            };
+        })();
     </script>
     {% block scripts %}{% endblock %}
 </body>

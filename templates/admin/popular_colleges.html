@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+{% block title %}Popular Colleges — CollegeKhoj Admin{% endblock %}
+{% block heading %}Popular Colleges{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="admin-card mb-4">
+        <div class="admin-card-body">
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small">Academic Year</label>
+                    <select name="year_id" class="form-select form-select-sm">
+                        <option value="">All Years</option>
+                        {% for y in years %}
+                        <option value="{{ y.id }}" {% if year_id == y.id %}selected{% endif %}>{{ y.academic_year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
+            <span>College Rankings</span>
+            <small class="text-muted">{{ colleges|length }} colleges</small>
+        </div>
+        <div class="admin-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Rank</th>
+                            <th>College Code</th>
+                            <th>College Name</th>
+                            <th>Avg Percentile</th>
+                            <th>Record Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in colleges %}
+                        <tr>
+                            <td><span class="badge bg-{% if loop.index <= 3 %}warning{% else %}secondary{% endif %} rounded-pill">{{ loop.index }}</span></td>
+                            <td><code>{{ c.college_code }}</code></td>
+                            <td>{{ c.college_name }}</td>
+                            <td><strong>{{ '%.2f'|format(c.avg_percentile) if c.avg_percentile else '--' }}</strong></td>
+                            <td>{{ c.record_count }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center py-5 text-muted">
+                            <i class="fas fa-trophy fa-2x mb-2"></i>
+                            <p>No analytics available yet</p>
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

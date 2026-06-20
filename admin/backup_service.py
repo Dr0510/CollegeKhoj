@@ -1,9 +1,10 @@
-"""Database backup and restore service.
+"""Database backup and restore service for CollegeKhoj.
 
 Production: Uses pg_dump/psql for Neon PostgreSQL backups.
 Development: SQLite is supported for local testing only.
 
 Backup metadata is stored in the backup_history table.
+Automatic backup is triggered before every PDF import.
 """
 import os
 import subprocess
@@ -43,72 +44,76 @@ def create_backup(notes: str = '') -> dict:
     SQLite: Uses .dump command (local development only).
 
     Returns:
-        dict with keys: success, filepath, file_size, record_count, error
+        dict with keys: success, filepath, file_size, record_count, error, backup_id
     """
+    from models import BackupHistory, Cutoff, AdmissionType
+
     db_type = detect_db_type()
     timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    ext = 'dump'
-    backup_filename = f"backup_{timestamp}.{ext}"
+    ext = 'dump' if db_type == 'postgresql' else 'sqlite'
+    backup_filename = f"collegekhoj_backup_{timestamp}.{ext}"
     backup_path = os.path.join(_ensure_backup_dir(), backup_filename)
 
     try:
         if db_type == 'postgresql':
             url = get_db_url()
-            # Use pg_dump for production Neon PostgreSQL backups
+            # Parse the URL for pg_dump
             result = subprocess.run(
-                ['pg_dump', '--no-owner', '--no-acl', '--clean', '--if-exists', url],
-                capture_output=True, text=True, timeout=120
+                ['pg_dump', '--no-owner', '--no-acl', '-Fc', url],
+                capture_output=True, timeout=300
             )
             if result.returncode != 0:
-                error_msg = result.stderr.strip() or 'pg_dump failed with unknown error'
-                raise RuntimeError(f"pg_dump failed: {error_msg}")
-            with open(backup_path, 'w') as f:
+                error_msg = result.stderr.decode()[:500]
+                logger.error(f"pg_dump failed: {error_msg}")
+                return {'success': False, 'error': error_msg}
+
+            with open(backup_path, 'wb') as f:
                 f.write(result.stdout)
-            record_count = _count_records()
         else:
-            # SQLite — local development only
+            # SQLite: copy the file directly
+            import shutil
             db_path = get_db_url().replace('sqlite:///', '')
-            if not os.path.isabs(db_path):
-                base = os.path.dirname(os.path.dirname(__file__))
-                db_path = os.path.join(base, db_path)
-            result = subprocess.run(
-                ['sqlite3', db_path, '.dump'],
-                capture_output=True, text=True, timeout=120
-            )
-            if result.returncode != 0:
-                raise RuntimeError(f"sqlite3 dump failed: {result.stderr}")
-            with open(backup_path, 'w') as f:
-                f.write(result.stdout)
-            record_count = _count_records()
+            if not os.path.exists(db_path):
+                return {'success': False, 'error': f'Database file not found: {db_path}'}
+            shutil.copy2(db_path, backup_path)
 
         file_size = os.path.getsize(backup_path)
+        record_count = Cutoff.query.count()
 
-        # Save metadata to DB
-        from models import BackupHistory
-        from flask import g
-        user = g.get('user') if hasattr(g, 'user') else None
-        entry = BackupHistory(
-            backup_file=backup_path,
+        # Create backup history record
+        # g may not be available in background threads, so use safe get
+        try:
+            from flask import g
+            admin_user = g.get('user') if hasattr(g, 'user') else None
+            created_by = admin_user.id if admin_user else None
+        except Exception:
+            created_by = None
+
+        backup_record = BackupHistory(
+            backup_date=datetime.utcnow(),
+            backup_file=backup_filename,
             file_size=file_size,
             db_type=db_type,
             record_count=record_count,
             status='success',
-            created_by=user.id if user else None,
+            created_by=created_by,
             notes=notes,
         )
-        db.session.add(entry)
+        db.session.add(backup_record)
         db.session.commit()
 
-        logger.info(f"Backup created: {backup_path} ({file_size} bytes, {record_count} records, type={db_type})")
+        logger.info(f"Backup created: {backup_filename} ({file_size} bytes, {record_count} records)")
         return {
             'success': True,
             'filepath': backup_path,
-            'filename': backup_filename,
             'file_size': file_size,
             'record_count': record_count,
-            'backup_id': entry.id,
+            'backup_id': backup_record.id,
         }
 
+    except subprocess.TimeoutExpired:
+        logger.error("Backup timed out after 300s")
+        return {'success': False, 'error': 'Backup timed out'}
     except Exception as e:
         logger.error(f"Backup failed: {e}")
         return {'success': False, 'error': str(e)}
@@ -117,72 +122,97 @@ def create_backup(notes: str = '') -> dict:
 def restore_backup(backup_id: int) -> dict:
     """Restore database from a backup.
 
-    PostgreSQL (Neon): Uses psql to replay pg_dump output.
-    SQLite: Uses sqlite3 for local development restore.
-
     Args:
-        backup_id: ID of the BackupHistory record
+        backup_id: ID of the backup record to restore from.
 
     Returns:
-        dict with success/error info
+        dict with keys: success, error
     """
     from models import BackupHistory
+    db_type = detect_db_type()
 
     try:
-        entry = db.session.get(BackupHistory, backup_id)
-        if not entry:
+        backup = db.session.get(BackupHistory, backup_id)
+        if not backup:
             return {'success': False, 'error': 'Backup record not found'}
-        if entry.status != 'success':
-            return {'success': False, 'error': f"Backup status is '{entry.status}', cannot restore"}
 
-        backup_path = entry.backup_file
+        backup_path = os.path.join(BACKUP_DIR, backup.backup_file)
         if not os.path.exists(backup_path):
-            return {'success': False, 'error': f"Backup file not found: {backup_path}"}
-
-        db_type = detect_db_type()
+            return {'success': False, 'error': f'Backup file not found: {backup_path}'}
 
         if db_type == 'postgresql':
             url = get_db_url()
-            with open(backup_path, 'r') as f:
-                backup_content = f.read()
             result = subprocess.run(
-                ['psql', '--echo-errors', url],
-                input=backup_content,
-                capture_output=True, text=True, timeout=300
+                ['pg_restore', '--clean', '--no-owner', '--no-acl', '-d', url, backup_path],
+                capture_output=True, timeout=600
             )
             if result.returncode != 0:
-                raise RuntimeError(f"psql restore failed: {result.stderr[:1000]}")
+                error_msg = result.stderr.decode()[:500]
+                logger.error(f"pg_restore failed: {error_msg}")
+                return {'success': False, 'error': error_msg}
         else:
-            # SQLite — local development only
+            # SQLite: copy the file back
+            import shutil
             db_path = get_db_url().replace('sqlite:///', '')
-            if not os.path.isabs(db_path):
-                base = os.path.dirname(os.path.dirname(__file__))
-                db_path = os.path.join(base, db_path)
-            with open(backup_path, 'r') as f:
-                backup_content = f.read()
-            result = subprocess.run(
-                ['sqlite3', db_path],
-                input=backup_content,
-                capture_output=True, text=True, timeout=300
-            )
-            if result.returncode != 0:
-                raise RuntimeError(f"sqlite3 restore failed: {result.stderr[:1000]}")
+            shutil.copy2(backup_path, db_path)
 
-        logger.info(f"Database restored from backup #{backup_id}: {backup_path}")
-        return {'success': True, 'message': 'Database restored successfully'}
+        logger.info(f"Database restored from backup #{backup_id}")
+        return {'success': True}
 
+    except subprocess.TimeoutExpired:
+        logger.error("Restore timed out after 600s")
+        return {'success': False, 'error': 'Restore timed out'}
     except Exception as e:
         logger.error(f"Restore failed: {e}")
         return {'success': False, 'error': str(e)}
 
 
-def _count_records() -> int:
-    """Count total records across all major tables."""
-    from models import CAPCutoff, College, User, UploadedFile, ImportJob, CollegeTrend
+def delete_backup_file(backup_id: int) -> dict:
+    """Delete a backup file and its metadata record.
+
+    Args:
+        backup_id: ID of the backup to delete.
+
+    Returns:
+        dict with keys: success, error
+    """
+    from models import BackupHistory
+
     try:
-        total = 0
-        for model in [CAPCutoff, College, User, UploadedFile, ImportJob, CollegeTrend]:
-            total += model.query.count()
-        return total
-    except Exception:
-        return 0
+        backup = db.session.get(BackupHistory, backup_id)
+        if not backup:
+            return {'success': False, 'error': 'Backup record not found'}
+
+        backup_path = os.path.join(BACKUP_DIR, backup.backup_file)
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+
+        db.session.delete(backup)
+        db.session.commit()
+
+        logger.info(f"Backup #{backup_id} deleted")
+        return {'success': True}
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Delete backup failed: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+def get_backup_file_path(backup_id: int) -> str:
+    """Get the full file path for a backup.
+
+    Args:
+        backup_id: ID of the backup record.
+
+    Returns:
+        Full file path string, or None if not found.
+    """
+    from models import BackupHistory
+
+    backup = db.session.get(BackupHistory, backup_id)
+    if not backup:
+        return None
+
+    path = os.path.join(BACKUP_DIR, backup.backup_file)
+    return path if os.path.exists(path) else None

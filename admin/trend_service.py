@@ -1,66 +1,96 @@
-"""Trend calculation service for cutoff history.
+"""Trend calculation service for Admin v2.
 
-Computes 3-year trends, branch popularity, and college ranking trends
-from the CollegeCutoff table (unified single source of truth).
-Stores computed trend results in the college_trends table.
+Computes:
+- 3-year cutoff trends per college+branch+category
+- Dream/Moderate/Safe college classification
+- Branch popularity ranking
+- Precomputed analytics stored for fast dashboard loading
 """
 import logging
 from collections import defaultdict
+from typing import List, Dict, Optional
 from database import db
 
 logger = logging.getLogger(__name__)
 
 
-def compute_college_trends(college_code: str = None, limit: int = 10):
+def compute_college_trends(
+    admission_type_id: Optional[int] = None,
+    college_id: Optional[int] = None,
+    branch_id: Optional[int] = None,
+    limit: int = 100
+) -> List[Dict]:
     """Compute year-over-year cutoff trends for colleges.
 
-    Uses the unified college_cutoffs table.
+    Uses the unified cutoffs table with FK relationships.
 
     Args:
-        college_code: Optional specific college code to filter
+        admission_type_id: Optional admission type filter
+        college_id: Optional college filter
+        branch_id: Optional branch filter
         limit: Max results
 
     Returns:
-        list of dicts: { college_code, college_name, branch, category, trends }
+        list of dicts with trend data
     """
-    from models import CollegeCutoff
+    from models import Cutoff, College, Branch, AcademicYear
 
     query = db.session.query(
-        CollegeCutoff.college_code,
-        CollegeCutoff.college_name,
-        CollegeCutoff.course_name,
-        CollegeCutoff.category,
-        CollegeCutoff.year,
-        db.func.avg(CollegeCutoff.percentile).label('avg_cutoff')
+        Cutoff.college_id,
+        College.college_name,
+        College.college_code,
+        Cutoff.branch_id,
+        Branch.branch_name,
+        Cutoff.category,
+        Cutoff.academic_year_id,
+        AcademicYear.academic_year,
+        db.func.avg(Cutoff.cutoff_percentile).label('avg_cutoff')
+    ).join(
+        College, Cutoff.college_id == College.id
+    ).join(
+        Branch, Cutoff.branch_id == Branch.id
+    ).join(
+        AcademicYear, Cutoff.academic_year_id == AcademicYear.id
     ).filter(
-        CollegeCutoff.college_code.isnot(None),
-        CollegeCutoff.exam_type == 'MHT-CET',
+        Cutoff.cutoff_percentile.isnot(None)
     )
 
-    if college_code:
-        query = query.filter(CollegeCutoff.college_code == college_code)
+    if admission_type_id:
+        query = query.filter(Cutoff.admission_type_id == admission_type_id)
+    if college_id:
+        query = query.filter(Cutoff.college_id == college_id)
+    if branch_id:
+        query = query.filter(Cutoff.branch_id == branch_id)
 
     query = query.group_by(
-        CollegeCutoff.college_code, CollegeCutoff.college_name,
-        CollegeCutoff.course_name, CollegeCutoff.category, CollegeCutoff.year
+        Cutoff.college_id, College.college_name, College.college_code,
+        Cutoff.branch_id, Branch.branch_name,
+        Cutoff.category, Cutoff.academic_year_id, AcademicYear.academic_year
     ).order_by(
-        CollegeCutoff.college_code, CollegeCutoff.course_name, CollegeCutoff.category, CollegeCutoff.year
+        Cutoff.college_id, Cutoff.branch_id, Cutoff.category, AcademicYear.academic_year
     )
 
     rows = query.all()
 
-    # Group by college_code + course_name + category
-    grouped = defaultdict(lambda: defaultdict(dict))
-    college_names = {}
+    # Group by college + branch + category
+    grouped = {}
+    college_info = {}
+    branch_info = {}
 
     for row in rows:
-        key = (row.college_code, row.course_name, row.category)
+        key = (row.college_id, row.branch_id, row.category)
+        if key not in grouped:
+            grouped[key] = {}
         if row.avg_cutoff is not None:
-            grouped[key][row.year] = round(float(row.avg_cutoff), 2)
-        college_names[row.college_code] = row.college_name or college_names.get(row.college_code, '')
+            grouped[key][row.academic_year] = round(float(row.avg_cutoff), 2)
+        college_info[row.college_id] = {
+            'name': row.college_name,
+            'code': row.college_code,
+        }
+        branch_info[(row.college_id, row.branch_id)] = row.branch_name
 
     results = []
-    for (code, course, cat), year_data in grouped.items():
+    for (cid, bid, cat), year_data in grouped.items():
         sorted_years = sorted(year_data.keys())
         if len(sorted_years) < 1:
             continue
@@ -83,181 +113,222 @@ def compute_college_trends(college_code: str = None, limit: int = 10):
             direction = 'stable'
 
         results.append({
-            'college_code': code,
-            'college_name': college_names.get(code, ''),
-            'branch': course,
+            'college_id': cid,
+            'college_code': college_info.get(cid, {}).get('code', ''),
+            'college_name': college_info.get(cid, {}).get('name', ''),
+            'branch_id': bid,
+            'branch_name': branch_info.get((cid, bid), None),
             'category': cat,
             'trends': trend_data,
-            'years': [str(y) for y in sorted_years],
+            'years': sorted_years,
             'difference': diff,
             'direction': direction,
         })
 
-    # Sort by number of years available (more data = higher priority)
     results.sort(key=lambda x: len(x['years']), reverse=True)
     return results[:limit]
 
 
-def compute_branch_popularity(year: int = None, top_n: int = 10):
-    """Rank branches by their average cutoff (higher = more popular).
+def get_safe_moderate_dream(
+    student_percentile: float,
+    category: str = 'OPEN',
+    gender: str = 'Gender-Neutral',
+    admission_type_id: Optional[int] = None,
+    top_n: int = 20
+) -> Dict:
+    """Classify colleges into Safe/Moderate/Dream based on student percentile.
 
-    Uses the unified college_cutoffs table.
+    Args:
+        student_percentile: Student's percentile (0-100)
+        category: Student's category (OPEN, OBC, SC, ST, etc.)
+        gender: Student's gender
+        admission_type_id: Optional admission type filter
+        top_n: Max colleges per category
+
+    Returns:
+        dict with 'safe', 'moderate', 'dream' lists and 'latest_year'
     """
-    from models import CollegeCutoff
+    from models import Cutoff, College, Branch, AcademicYear
 
+    # Get the latest academic year
+    latest_year = AcademicYear.query.order_by(AcademicYear.id.desc()).first()
+    if not latest_year:
+        return {'safe': [], 'moderate': [], 'dream': [], 'latest_year': None}
+
+    latest_year_id = latest_year.id
+
+    # Get all distinct college+branch combinations from latest year
     query = db.session.query(
-        CollegeCutoff.course_name,
-        db.func.avg(CollegeCutoff.percentile).label('avg_cutoff'),
-        db.func.count(CollegeCutoff.id).label('count')
+        Cutoff.college_id, College.college_name, College.college_code,
+        Cutoff.branch_id, Branch.branch_name,
+        Cutoff.cutoff_percentile
+    ).join(
+        College, Cutoff.college_id == College.id
+    ).join(
+        Branch, Cutoff.branch_id == Branch.id
     ).filter(
-        CollegeCutoff.course_name.isnot(None),
-        CollegeCutoff.course_name != '',
-        CollegeCutoff.exam_type == 'MHT-CET',
+        Cutoff.academic_year_id == latest_year_id,
+        Cutoff.cutoff_percentile.isnot(None),
+        Cutoff.category == category.upper(),
     )
 
-    if year:
-        query = query.filter(CollegeCutoff.year == year)
+    if admission_type_id:
+        query = query.filter(Cutoff.admission_type_id == admission_type_id)
 
-    query = query.group_by(CollegeCutoff.course_name).order_by(
-        db.desc('avg_cutoff')
-    ).limit(top_n)
+    query = query.order_by(Cutoff.cutoff_percentile.desc())
+    rows = query.all()
 
-    return [
-        {
-            'branch': row.course_name,
-            'avg_cutoff': round(float(row.avg_cutoff), 2) if row.avg_cutoff else 0,
-            'college_count': row.count,
-        }
-        for row in query.all()
-    ]
+    safe = []
+    moderate = []
+    dream = []
 
-
-def get_safe_moderate_dream(student_percentile: float, category: str,
-                            gender: str = 'Gender-Neutral', top_n: int = 20):
-    """Classify colleges into Safe / Moderate / Dream based on 3-year trends.
-
-    Uses the unified college_cutoffs table.
-    """
-    from models import CollegeCutoff, College
-
-    # Get the latest year available
-    latest_year_row = db.session.query(
-        db.func.max(CollegeCutoff.year)
-    ).filter(
-        CollegeCutoff.category == category,
-        CollegeCutoff.gender == gender,
-        CollegeCutoff.exam_type == 'MHT-CET',
-    ).scalar()
-
-    if not latest_year_row:
-        return {'safe': [], 'moderate': [], 'dream': []}
-
-    latest_year = int(latest_year_row)
-
-    # Get all cutoffs for the latest year
-    cutoffs = db.session.query(CollegeCutoff).filter(
-        CollegeCutoff.year == latest_year,
-        CollegeCutoff.category == category,
-        CollegeCutoff.gender == gender,
-        CollegeCutoff.exam_type == 'MHT-CET',
-    ).all()
-
-    safe, moderate, dream = [], [], []
-
-    for cutoff in cutoffs:
-        # Try to find matching college by code or name
-        college = College.query.filter(
-            College.college.ilike(f'%{cutoff.college_name}%')
-        ).first()
-
-        if not college:
-            continue
-
-        percentile_val = float(cutoff.percentile) if cutoff.percentile else 0
-
+    for row in rows:
+        pctl = float(row.cutoff_percentile)
         entry = {
-            'college_code': cutoff.college_code,
-            'college_name': college.college,
-            'location': college.location,
-            'branch': cutoff.course_name or cutoff.branch or college.branch,
-            'cutoff': percentile_val,
-            'nirf_rank': college.nirf_rank,
+            'college_id': row.college_id,
+            'college_code': row.college_code,
+            'college_name': row.college_name,
+            'branch_id': row.branch_id,
+            'branch_name': row.branch_name,
+            'cutoff_percentile': pctl,
         }
 
-        diff = student_percentile - percentile_val
-
-        if diff >= 2.0:
-            safe.append(entry)
-        elif diff >= -2.0:
+        # Classification:
+        # Dream: cutoff is 10+ points above student percentile
+        # Moderate: cutoff is within 10 points of student percentile
+        # Safe: cutoff is below student percentile
+        if pctl > student_percentile + 10:
+            dream.append(entry)
+        elif pctl > student_percentile:
             moderate.append(entry)
         else:
-            dream.append(entry)
-
-    # Sort each category by NIRF rank
-    for lst in [safe, moderate, dream]:
-        lst.sort(key=lambda x: x['nirf_rank'])
+            safe.append(entry)
 
     return {
         'safe': safe[:top_n],
         'moderate': moderate[:top_n],
         'dream': dream[:top_n],
-        'latest_year': latest_year,
+        'latest_year': latest_year.academic_year,
     }
 
 
-def store_trend_results():
-    """Compute all trends and store/update them in the college_trends table.
+def compute_branch_popularity(
+    admission_type_id: Optional[int] = None,
+    top_n: int = 15
+) -> List[Dict]:
+    """Compute branch popularity ranking based on cutoff volume and percentiles.
 
-    This is called after every import commit to keep trend data current.
-    Reads data from college_cutoffs table and writes to college_trends table.
+    Args:
+        admission_type_id: Optional admission type filter
+        top_n: Number of top branches to return
+
+    Returns:
+        list of dicts: { branch_id, branch_name, count, avg_percentile }
     """
-    from models import CollegeTrend
-    from datetime import datetime
+    from models import Cutoff, Branch, AcademicYear
+
+    query = db.session.query(
+        Cutoff.branch_id,
+        Branch.branch_name,
+        db.func.count(Cutoff.id).label('count'),
+        db.func.avg(Cutoff.cutoff_percentile).label('avg_percentile')
+    ).join(
+        Branch, Cutoff.branch_id == Branch.id
+    ).filter(
+        Cutoff.cutoff_percentile.isnot(None)
+    )
+
+    if admission_type_id:
+        query = query.filter(Cutoff.admission_type_id == admission_type_id)
+
+    query = query.group_by(
+        Cutoff.branch_id, Branch.branch_name
+    ).order_by(
+        db.func.count(Cutoff.id).desc()
+    )
+
+    results = []
+    for row in query.limit(top_n).all():
+        results.append({
+            'branch_id': row.branch_id,
+            'branch_name': row.branch_name,
+            'count': row.count,
+            'avg_percentile': round(float(row.avg_percentile), 2) if row.avg_percentile else 0,
+        })
+
+    return results
+
+
+def get_dashboard_stats() -> Dict:
+    """Get aggregate stats for admin dashboard.
+
+    Returns:
+        dict with counts and summary data.
+        All values default to 0 on error — never crashes.
+    """
+    from models import Cutoff, College, Branch, UploadJob, AdmissionType
+
+    total_colleges = 0
+    total_branches = 0
+    total_cutoffs = 0
+    records_by_type = {}
+    pending_imports = 0
+    failed_imports = 0
+    today_uploads = 0
+    branch_pop = []
 
     try:
-        # Compute trends (large limit to capture all data)
-        trends = compute_college_trends(limit=5000)
-
-        # Clear existing stored trends before refreshing
-        CollegeTrend.query.delete()
-
-        # Bulk insert new trend results
-        trend_objects = []
-        for t in trends:
-            trend_objects.append(CollegeTrend(
-                college_code=t['college_code'],
-                college_name=t.get('college_name', ''),
-                branch=t.get('branch', ''),
-                category=t.get('category', ''),
-                trend_data={str(k): v for k, v in t.get('trends', {}).items()},
-                direction=t.get('direction', 'stable'),
-                difference=t.get('difference', 0),
-                computed_at=datetime.utcnow(),
-            ))
-
-        if trend_objects:
-            db.session.bulk_save_objects(trend_objects)
-            db.session.commit()
-            logger.info(f"Stored {len(trend_objects)} trend results in college_trends table")
-        else:
-            db.session.commit()
-            logger.info("No trend results to store")
-
-        # Also compute branch popularity
-        pop = compute_branch_popularity()
-        logger.info(f"Trends calculated: {len(trends)} college trends, {len(pop)} branch trends")
-
-        return {'trends_count': len(trends), 'branches_count': len(pop)}
-
+        total_colleges = College.query.count()
     except Exception as e:
-        db.session.rollback()
-        logger.error(f"Trend storage error: {e}")
-        return {'error': str(e)}
+        logger.warning(f"Dashboard stats: College.query.count() failed: {e}")
 
+    try:
+        total_branches = Branch.query.count()
+    except Exception as e:
+        logger.warning(f"Dashboard stats: Branch.query.count() failed: {e}")
 
-def recalculate_all_trends():
-    """Legacy wrapper — recalculate and log all trends (called after import commit).
+    try:
+        total_cutoffs = Cutoff.query.count()
+    except Exception as e:
+        logger.warning(f"Dashboard stats: Cutoff.query.count() failed: {e}")
 
-    Now delegates to store_trend_results() for persistent storage.
-    """
-    return store_trend_results()
+    try:
+        for at in AdmissionType.query.all():
+            count = Cutoff.query.filter(Cutoff.admission_type_id == at.id).count()
+            if count > 0:
+                records_by_type[at.code] = count
+    except Exception as e:
+        logger.warning(f"Dashboard stats: records_by_type query failed: {e}")
+
+    try:
+        pending_imports = UploadJob.query.filter(UploadJob.status == 'PENDING').count()
+    except Exception as e:
+        logger.warning(f"Dashboard stats: pending_imports query failed: {e}")
+
+    try:
+        failed_imports = UploadJob.query.filter(UploadJob.status == 'FAILED').count()
+    except Exception as e:
+        logger.warning(f"Dashboard stats: failed_imports query failed: {e}")
+
+    try:
+        today_uploads = UploadJob.query.filter(
+            db.func.date(UploadJob.created_at) == db.func.current_date()
+        ).count()
+    except Exception as e:
+        logger.warning(f"Dashboard stats: today_uploads query failed: {e}")
+
+    try:
+        branch_pop = compute_branch_popularity(top_n=10)
+    except Exception as e:
+        logger.warning(f"Dashboard stats: branch_popularity failed: {e}")
+
+    return {
+        'total_colleges': total_colleges,
+        'total_branches': total_branches,
+        'total_cutoffs': total_cutoffs,
+        'records_by_type': records_by_type,
+        'pending_imports': pending_imports,
+        'failed_imports': failed_imports,
+        'today_uploads': today_uploads,
+        'popular_branches': branch_pop,
+    }

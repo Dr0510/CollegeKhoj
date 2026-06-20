@@ -12,7 +12,7 @@ def log_action(action, resource_type=None, resource_id=None, details=None):
 
     Args:
         action: String like 'login', 'upload', 'import_commit', 'delete', etc.
-        resource_type: 'cutoff', 'college', 'user', 'backup', 'uploaded_file'
+        resource_type: 'cutoff', 'college', 'user', 'backup', 'upload_job'
         resource_id: Primary key of the affected resource
         details: Dict of extra context to store as JSON
     """
