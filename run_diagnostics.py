@@ -2,16 +2,16 @@
 Diagnostic runner: profile CPU time for every function in the PDF import pipeline.
 
 Usage:
-    python run_diagnostics.py [path/to/pdf]
+    python run_diagnostics.py [path/to/pdf] [workers]
 
 If no path given, uses the first PDF found in uploads/cutoffs/.
+If no workers given, defaults to 1 (sequential).
 """
 import os
 import sys
 import logging
 import time
 
-# ── Bootstrap ────────────────────────────────────────────────────────────────
 sys.path.insert(0, os.path.dirname(__file__))
 
 from app import app as flask_app
@@ -44,21 +44,11 @@ def resolve_lookup_ids(session) -> tuple:
     return at.id, ay.id, cr.id
 
 
-def main():
-    # 1. Select PDF
-    pdf_path = sys.argv[1] if len(sys.argv) > 1 else pick_test_pdf()
-    if not os.path.isfile(pdf_path):
-        logger.error(f"File not found: {pdf_path}")
-        sys.exit(1)
-    logger.info(f"PDF: {pdf_path}")
-
-    # 2. Resolve FK IDs (needed by engine but not for diagnostic output)
+def run_import(pdf_path: str, max_workers: int = 1) -> dict:
     with flask_app.app_context():
         with db.session.begin():
             at_id, ay_id, cr_id = resolve_lookup_ids(db.session)
-        logger.info(f"Lookup IDs: admission_type={at_id}, year={ay_id}, round={cr_id}")
 
-        # 3. Create a throwaway job row (the engine writes status updates to it)
         job = UploadJob(
             filename=os.path.basename(pdf_path),
             status="PROCESSING",
@@ -68,10 +58,9 @@ def main():
         )
         db.session.add(job)
         db.session.commit()
-        logger.info(f"Diagnostic job id={job.id}")
+        logger.info(f"Diagnostic job id={job.id} workers={max_workers}")
 
         try:
-            # 4. Run the engine — profiling is built into BulkImportEngine + pdf_extractor
             t_start = time.perf_counter()
             engine = BulkImportEngine(
                 db_session=db.session,
@@ -81,38 +70,59 @@ def main():
                 academic_year_id=ay_id,
                 cap_round_id=cr_id,
             )
+            # Set max_workers if engine supports it
+            if hasattr(engine, 'max_workers'):
+                engine.max_workers = max_workers
             summary = engine.run()
             t_total = time.perf_counter() - t_start
 
-            # 5. Print final summary
-            print("\n" + "=" * 78)
-            print("DIAGNOSTIC SUMMARY")
-            print("=" * 78)
-            print(f"  File          : {os.path.basename(pdf_path)}")
-            print(f"  Job ID        : {job.id}")
-            print(f"  Status        : {summary.get('status')}")
-            print(f"  Total time    : {t_total:.2f}s")
-            print(f"  Rows parsed   : {summary.get('rows_processed', 0)}")
-            print(f"  Rows imported : {summary.get('rows_imported', 0)}")
-            print(f"  Rows invalid  : {summary.get('rows_invalid', 0)}")
-            print(f"  Rows dupe     : {summary.get('rows_duplicate', 0)}")
-            print(f"  Pages         : {summary.get('total_pages', 0)}")
-            print(f"  SQL SELECTs   : {summary.get('sql_queries', {}).get('SELECT', '?')}")
-            print(f"  SQL INSERTs   : {summary.get('sql_queries', {}).get('INSERT', '?')}")
-            print(f"  SQL UPDATEs   : {summary.get('sql_queries', {}).get('UPDATE', '?')}")
-            print(f"  SQL DB time   : {summary.get('sql_total_time_ms', 0):.0f}ms")
-            print("=" * 78)
-            print("\nScroll up in this output to see:")
-            print("  [CPU_PROFILE]  → phase-level timing from BulkImportEngine")
-            print("  [PROFILE]      → pdfplumber per-page timing")
-            print("  Drill-Down     → per-function timing from pdf_extractor.py")
-            print("  [Validation][PROFILE] → preload + college/branch timings")
-            print()
-
+            return {
+                'job_id': job.id,
+                'workers': max_workers,
+                'total_time': t_total,
+                'summary': summary,
+            }
         finally:
-            # Cleanup throwaway job
             UploadJob.query.filter(UploadJob.id == job.id).delete()
             db.session.commit()
+
+
+def main():
+    pdf_path = sys.argv[1] if len(sys.argv) > 1 else pick_test_pdf()
+    if not os.path.isfile(pdf_path):
+        logger.error(f"File not found: {pdf_path}")
+        sys.exit(1)
+
+    worker_counts = [1, 2, 4, 8]
+    results = []
+
+    for workers in worker_counts:
+        logger.info(f"=== Benchmarking with {workers} worker(s) ===")
+        result = run_import(pdf_path, max_workers=workers)
+        results.append(result)
+        logger.info(
+            f"Workers={workers}: total={result['total_time']:.2f}s "
+            f"extract_pdf={result['summary'].get('extract_pdf_time', 'N/A')} "
+            f"imported={result['summary'].get('rows_imported', 0)}"
+        )
+
+    print("\n" + "=" * 80)
+    print("PARALLEL EXTRACTION BENCHMARK")
+    print("=" * 80)
+    print(f"{'Workers':<10} {'Total(s)':<12} {'extract_pdf(s)':<15} {'validate(s)':<12} {'insert(s)':<12} {'imported':<10} {'duplicate':<10}")
+    print("-" * 80)
+    for r in results:
+        s = r['summary']
+        print(
+            f"{r['workers']:<10} "
+            f"{r['total_time']:<12.2f} "
+            f"{s.get('extract_pdf_time', 0):<15.2f} "
+            f"{s.get('validate_rows_time', 0):<12.2f} "
+            f"{s.get('batch_insert_time', 0):<12.2f} "
+            f"{s.get('rows_imported', 0):<10} "
+            f"{s.get('rows_duplicate', 0):<10}"
+        )
+    print("=" * 80)
 
 
 if __name__ == "__main__":

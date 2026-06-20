@@ -13,8 +13,15 @@ import hashlib
 import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
+
+# ── Configuration ────────────────────────────────────────────────────────────
+try:
+    PDF_MAX_WORKERS = int(os.environ.get('PDF_MAX_WORKERS', '1'))
+except (ValueError, TypeError):
+    PDF_MAX_WORKERS = 1
 
 # ── Filename patterns for auto-detection ──────────────────────────────────
 ADMISSION_PATTERNS = [
@@ -122,24 +129,210 @@ def compute_file_hash(filepath: str) -> str:
 
 # ── Stage 1: pdfplumber text extraction ───────────────────────────────────
 
-def extract_with_pdfplumber(filepath: str) -> Tuple[List[str], str]:
-    """Extract text from PDF pages using pdfplumber.
-
+def _safe_extract_page(page_num: int, page, fallback_pdf_path: str = None) -> dict:
+    """Extract text from a single page with error handling + fallback.
+    
+    Args:
+        page_num: 1-based page number (for logging)
+        page: pdfplumber Page object
+        fallback_pdf_path: path to PDF for pdfminer fallback
+    
     Returns:
-        (page_texts, raw_text) where page_texts is list of text per page.
+        dict with keys: page, text, success, fallback (bool), error (str)
     """
     try:
-        import pdfplumber
+        text = page.extract_text() or ''
+        return {
+            'page': page_num,
+            'text': text.strip(),
+            'success': True,
+            'fallback': False,
+            'error': None
+        }
+    except Exception as e:
+        error_type = type(e).__name__
+        logger.error(f"Page {page_num} FAILED: {error_type}: {e}")
+        
+        # Fallback: try pdfminer
+        if fallback_pdf_path:
+            try:
+                from pdfminer.high_level import extract_text as pdfminer_extract
+                # pdfminer uses 0-based page numbers
+                text = pdfminer_extract(fallback_pdf_path, page_numbers=[page_num - 1])
+                if text and text.strip():
+                    logger.info(f"Page {page_num} recovered via pdfminer fallback")
+                    return {
+                        'page': page_num,
+                        'text': text.strip(),
+                        'success': True,
+                        'fallback': True,
+                        'error': None
+                    }
+            except Exception as e2:
+                logger.error(f"Page {page_num} fallback (pdfminer) also failed: {type(e2).__name__}: {e2}")
+        
+        return {
+            'page': page_num,
+            'text': '',
+            'success': False,
+            'fallback': False,
+            'error': f"{error_type}: {str(e)}"
+        }
+
+
+def _parallel_worker(args: tuple) -> dict:
+    """Worker function for parallel extraction.
+    
+    Each worker opens its OWN PDF handle (pdfplumber is NOT thread-safe).
+    
+    Args:
+        args: (page_num, pdf_path, total_pages)
+    
+    Returns:
+        dict with keys: page, text, success, fallback, error
+    """
+    page_num, pdf_path = args
+    try:
+        with plumber.open(pdf_path) as pdf:
+            if page_num <= len(pdf.pages):
+                page = pdf.pages[page_num - 1]  # 0-indexed
+                return _safe_extract_page(page_num, page, fallback_pdf_path=pdf_path)
+            else:
+                return {
+                    'page': page_num,
+                    'text': '',
+                    'success': False,
+                    'fallback': False,
+                    'error': f"Page {page_num} out of range (PDF has {len(pdf.pages)} pages)"
+                }
+    except Exception as e:
+        logger.error(f"Worker for page {page_num} crashed: {type(e).__name__}: {e}")
+        return {
+            'page': page_num,
+            'text': '',
+            'success': False,
+            'fallback': False,
+            'error': f"Worker crash: {type(e).__name__}: {str(e)}"
+        }
+
+
+def extract_with_pdfplumber(filepath: str, max_workers: int = 1) -> Tuple[List[str], str, dict]:
+    """Extract text from PDF pages using pdfplumber with error handling.
+    
+    Args:
+        filepath: PDF path
+        max_workers: parallel workers (1=sequential, >1=thread pool)
+                     Each worker opens its own PDF handle for thread safety.
+    
+    Returns:
+        (page_texts, raw_text, stats)
+        where stats = {
+            'pages_total': int,
+            'pages_processed': int,
+            'pages_failed': int,
+            'pages_fallback': int,
+            'failed_pages': list of {'page': int, 'reason': str}
+        }
+    """
+    try:
+        global plumber
+        import pdfplumber as plumber
     except ImportError:
         logger.error("pdfplumber not installed")
-        return [], ''
+        return [], '', {
+            'pages_total': 0,
+            'pages_processed': 0,
+            'pages_failed': 0,
+            'pages_fallback': 0,
+            'failed_pages': []
+        }
 
-    page_texts = []
-    with pdfplumber.open(filepath) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ''
-            page_texts.append(text.strip())
-    return page_texts, '\n'.join(page_texts)
+    try:
+        with plumber.open(filepath) as pdf:
+            total_pages = len(pdf.pages)
+    except Exception as e:
+        logger.error(f"Cannot open PDF: {e}")
+        return [], '', {
+            'pages_total': 0,
+            'pages_processed': 0,
+            'pages_failed': 0,
+            'pages_fallback': 0,
+            'failed_pages': [{'page': 0, 'reason': f"Cannot open PDF: {e}"}]
+        }
+
+    # Sequential extraction
+    if max_workers <= 1:
+        page_texts = []
+        failed_pages = []
+        pages_fallback = 0
+        
+        with plumber.open(filepath) as pdf:
+            for page_num, page in enumerate(pdf.pages, start=1):
+                result = _safe_extract_page(page_num, page, fallback_pdf_path=filepath)
+                if result['success']:
+                    page_texts.append(result['text'])
+                    if result.get('fallback'):
+                        pages_fallback += 1
+                else:
+                    page_texts.append('')
+                    failed_pages.append({'page': page_num, 'reason': result['error']})
+        
+        stats = {
+            'pages_total': total_pages,
+            'pages_processed': len(page_texts) - len(failed_pages),
+            'pages_failed': len(failed_pages),
+            'pages_fallback': pages_fallback,
+            'failed_pages': failed_pages
+        }
+        
+        logger.info(
+            f"Extraction complete: {stats['pages_processed']}/{stats['pages_total']} pages, "
+            f"{stats['pages_failed']} failed, {stats['pages_fallback']} fallback"
+        )
+        
+        return page_texts, '\n'.join(page_texts), stats
+    
+    # Parallel extraction - each worker opens its own PDF handle
+    else:
+        logger.info(f"Starting parallel extraction with {max_workers} workers, {total_pages} pages")
+        
+        args = [(i, filepath) for i in range(1, total_pages + 1)]
+        results = []
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(_parallel_worker, arg) for arg in args]
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    # This should never happen - worker catches all exceptions
+                    logger.error(f"Unexpected worker exception: {e}")
+        
+        # Sort by page number to maintain order
+        results.sort(key=lambda r: r['page'])
+        
+        page_texts = [r['text'] for r in results]
+        failed_pages = [{'page': r['page'], 'reason': r['error']} for r in results if not r['success']]
+        pages_fallback = sum(1 for r in results if r.get('fallback'))
+        
+        stats = {
+            'pages_total': total_pages,
+            'pages_processed': sum(1 for r in results if r['success']),
+            'pages_failed': len(failed_pages),
+            'pages_fallback': pages_fallback,
+            'failed_pages': failed_pages
+        }
+        
+        logger.info(
+            f"Parallel extraction complete: {stats['pages_processed']}/{stats['pages_total']} pages, "
+            f"{stats['pages_failed']} failed, {stats['pages_fallback']} fallback"
+        )
+        
+        if stats['pages_failed'] > 0:
+            logger.warning(f"Failed pages: {[p['page'] for p in failed_pages]}")
+        
+        return page_texts, '\n'.join(page_texts), stats
 
 
 # ── DSE text-block parser (from original pdf_extractor.py) ────────────────
@@ -193,6 +386,9 @@ def parse_dse_page(page_text: str, page_num: int) -> List[Dict]:
         college_code, college_name, course_code, course_name,
         category, rank, percentile, seat_type
     """
+    if not page_text or len(page_text) < 100:
+        return []
+    
     lines = page_text.split('\n')
     records: List[Dict] = []
 
@@ -459,13 +655,16 @@ def extract_with_ocr(filepath: str) -> Tuple[List[str], str]:
 
 # ── Main extraction pipeline ──────────────────────────────────────────────
 
-def extract_pdf(filepath: str, filename: str = '') -> Dict:
+def extract_pdf(filepath: str, filename: str = '', max_workers: int = None) -> Dict:
     """Main entry point: extract cutoff data from a PDF using 3-stage pipeline.
 
     Args:
         filepath: Absolute path to the PDF file.
         filename: Original filename (for year/round/admission_type detection).
-
+        max_workers: Number of parallel workers (default: PDF_MAX_WORKERS env var or 1).
+                     WARNING: Parallel extraction disabled by default due to pdfplumber
+                     thread-safety issues. Set PDF_MAX_WORKERS > 1 to enable.
+    
     Returns:
         dict with keys:
             rows: list of parsed row dicts
@@ -476,7 +675,11 @@ def extract_pdf(filepath: str, filename: str = '') -> Dict:
             confidence: confidence score (0-100)
             total_pages: total pages in PDF
             error: error message if extraction failed
+            extraction_stats: dict with page-level statistics
     """
+    if max_workers is None:
+        max_workers = PDF_MAX_WORKERS
+    
     result = {
         'rows': [],
         'admission_type': None,
@@ -486,6 +689,7 @@ def extract_pdf(filepath: str, filename: str = '') -> Dict:
         'confidence': 0.0,
         'total_pages': 0,
         'error': None,
+        'extraction_stats': {},
     }
 
     if not os.path.exists(filepath):
@@ -504,15 +708,25 @@ def extract_pdf(filepath: str, filename: str = '') -> Dict:
     result['file_size'] = file_size
 
     # ── STAGE 1: pdfplumber ──
-    page_texts, raw_text = extract_with_pdfplumber(filepath)
-    result['total_pages'] = len(page_texts)
+    try:
+        page_texts, raw_text, stats = extract_with_pdfplumber(filepath, max_workers=max_workers)
+        result['total_pages'] = len(page_texts)
+        result['extraction_stats'] = stats
+    except Exception as e:
+        logger.error(f"pdfplumber extraction failed completely: {e}")
+        result['error'] = f"pdfplumber failed: {e}"
+        page_texts = []
+        raw_text = ''
 
     # Try DSE text-block parser on pdfplumber output
     all_rows = []
     for page_num, text in enumerate(page_texts, start=1):
         if text and len(text) > 100:
-            page_rows = parse_dse_page(text, page_num)
-            all_rows.extend(page_rows)
+            try:
+                page_rows = parse_dse_page(text, page_num)
+                all_rows.extend(page_rows)
+            except Exception as e:
+                logger.error(f"Page {page_num} parsing failed: {e}")
 
     method = 'pdfplumber_dse'
     if all_rows:
@@ -520,29 +734,38 @@ def extract_pdf(filepath: str, filename: str = '') -> Dict:
 
     # ── STAGE 2: Camelot (if Stage 1 produced few or no rows) ──
     if len(all_rows) < 10:
-        camelot_rows = extract_with_camelot(filepath)
-        if camelot_rows:
-            all_rows = camelot_rows
-            method = 'camelot'
-            logger.info(f"Stage 2 (Camelot): {len(all_rows)} rows extracted")
+        try:
+            camelot_rows = extract_with_camelot(filepath)
+            if camelot_rows:
+                all_rows = camelot_rows
+                method = 'camelot'
+                logger.info(f"Stage 2 (Camelot): {len(all_rows)} rows extracted")
+        except Exception as e:
+            logger.warning(f"Camelot extraction failed: {e}")
 
     # ── STAGE 3: OCR (if Stages 1 & 2 produced no rows) ──
     if len(all_rows) == 0:
-        ocr_texts, ocr_raw = extract_with_ocr(filepath)
-        if ocr_texts:
-            for page_num, text in enumerate(ocr_texts, start=1):
-                if text and len(text) > 50:
-                    page_rows = parse_dse_page(text, page_num)
-                    all_rows.extend(page_rows)
-            method = 'ocr'
-            # Also try to detect metadata from OCR text
-            if not result['admission_type']:
-                result['admission_type'] = detect_admission_type(filename, ocr_raw)
-            if not result['academic_year']:
-                result['academic_year'] = detect_year(filename, ocr_raw)
-            if not result['cap_round']:
-                result['cap_round'] = detect_cap_round(filename, ocr_raw)
-            logger.info(f"Stage 3 (OCR): {len(all_rows)} rows extracted")
+        try:
+            ocr_texts, ocr_raw = extract_with_ocr(filepath)
+            if ocr_texts:
+                for page_num, text in enumerate(ocr_texts, start=1):
+                    if text and len(text) > 50:
+                        try:
+                            page_rows = parse_dse_page(text, page_num)
+                            all_rows.extend(page_rows)
+                        except Exception as e:
+                            logger.error(f"OCR page {page_num} parsing failed: {e}")
+                method = 'ocr'
+                # Also try to detect metadata from OCR text
+                if not result['admission_type']:
+                    result['admission_type'] = detect_admission_type(filename, ocr_raw)
+                if not result['academic_year']:
+                    result['academic_year'] = detect_year(filename, ocr_raw)
+                if not result['cap_round']:
+                    result['cap_round'] = detect_cap_round(filename, ocr_raw)
+                logger.info(f"Stage 3 (OCR): {len(all_rows)} rows extracted")
+        except Exception as e:
+            logger.warning(f"OCR extraction failed: {e}")
 
     # Try to detect metadata from PDF text if not found in filename
     if not result['admission_type']:
@@ -557,7 +780,7 @@ def extract_pdf(filepath: str, filename: str = '') -> Dict:
         # Default to current year
         now = datetime.utcnow()
         y = now.year
-        result['academic_year'] = f"{y}-{str(y + 1)[-2:]}"
+        result['academic_year'] = f"{y}-{str(int(y) + 1)[-2:]}"
     if not result['cap_round']:
         result['cap_round'] = 'Round I'
     if not result['admission_type']:

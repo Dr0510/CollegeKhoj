@@ -5,121 +5,138 @@
 {% block content %}
 <div class="container-fluid px-0">
     <!-- Stats Cards -->
-    <div class="row g-3 mb-4" id="stats-cards">
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-            <div class="stat-card">
-                <div class="stat-card-icon" style="background: rgba(102,126,234,0.1); color: #667eea;">
-                    <i class="fas fa-building"></i>
-                </div>
-                <div class="stat-card-value" id="stat-colleges">--</div>
+    <div class="stat-cards-grid mb-5" id="stats-cards">
+        <div class="stat-card stat-blue">
+            <div class="stat-card-icon">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="stat-card-body">
                 <div class="stat-card-label">Total Colleges</div>
+                <div class="stat-card-value" id="stat-colleges">{{ stats.total_colleges or 0 }}</div>
             </div>
         </div>
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-            <div class="stat-card">
-                <div class="stat-card-icon" style="background: rgba(52,211,153,0.1); color: #34d399;">
-                    <i class="fas fa-table"></i>
-                </div>
-                <div class="stat-card-value" id="stat-cutoffs">--</div>
+        <div class="stat-card stat-green">
+            <div class="stat-card-icon">
+                <i class="fas fa-table"></i>
+            </div>
+            <div class="stat-card-body">
                 <div class="stat-card-label">Total Cutoff Records</div>
+                <div class="stat-card-value" id="stat-cutoffs">{{ stats.total_cutoffs or 0 }}</div>
             </div>
         </div>
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-            <div class="stat-card">
-                <div class="stat-card-icon" style="background: rgba(251,191,36,0.1); color: #fbbf24;">
-                    <i class="fas fa-hourglass-half"></i>
-                </div>
-                <div class="stat-card-value" id="stat-pending">--</div>
+        <div class="stat-card stat-yellow">
+            <div class="stat-card-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-card-body">
                 <div class="stat-card-label">Pending Imports</div>
+                <div class="stat-card-value" id="stat-pending">{{ stats.pending_imports or 0 }}</div>
             </div>
         </div>
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-            <div class="stat-card">
-                <div class="stat-card-icon" style="background: rgba(239,68,68,0.1); color: #ef4444;">
-                    <i class="fas fa-times-circle"></i>
-                </div>
-                <div class="stat-card-value" id="stat-failed">--</div>
+        <div class="stat-card stat-red">
+            <div class="stat-card-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stat-card-body">
                 <div class="stat-card-label">Failed Imports</div>
+                <div class="stat-card-value" id="stat-failed">{{ stats.failed_imports or 0 }}</div>
             </div>
         </div>
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-            <div class="stat-card">
-                <div class="stat-card-icon" style="background: rgba(99,102,241,0.1); color: #6366f1;">
-                    <i class="fas fa-code-branch"></i>
-                </div>
-                <div class="stat-card-value" id="stat-branches">--</div>
+        <div class="stat-card stat-indigo">
+            <div class="stat-card-icon">
+                <i class="fas fa-code-branch"></i>
+            </div>
+            <div class="stat-card-body">
                 <div class="stat-card-label">Total Branches</div>
+                <div class="stat-card-value" id="stat-branches">{{ stats.total_branches or 0 }}</div>
             </div>
         </div>
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-            <div class="stat-card">
-                <div class="stat-card-icon" style="background: rgba(236,72,153,0.1); color: #ec4899;">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                </div>
-                <div class="stat-card-value" id="stat-today">--</div>
+        <div class="stat-card stat-pink">
+            <div class="stat-card-icon">
+                <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="stat-card-body">
                 <div class="stat-card-label">Today's Uploads</div>
+                <div class="stat-card-value" id="stat-today">{{ stats.today_uploads or 0 }}</div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="charts-grid mb-4">
         <!-- Records by Year Chart -->
-        <div class="col-lg-8">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <span>Records by Year</span>
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <i class="fas fa-chart-column me-2"></i>
+                    Records by Year
                 </div>
-                <div class="admin-card-body">
-                    <canvas id="recordsByYearChart" height="250"></canvas>
-                </div>
+                <span class="badge badge-neutral" id="records-by-year-count">0 records</span>
+            </div>
+            <div class="chart-body" style="height: 280px;">
+                <canvas id="recordsByYearChart"></canvas>
             </div>
         </div>
         <!-- Records by Type -->
-        <div class="col-lg-4">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <span>By Admission Type</span>
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    By Admission Type
                 </div>
-                <div class="admin-card-body">
-                    <div id="records-by-type"></div>
-                    <canvas id="typeChart" height="250"></canvas>
-                </div>
+            </div>
+            <div class="chart-body" style="height: 280px;">
+                <div id="records-by-type-legend" class="chart-legend mb-3"></div>
+                <canvas id="typeChart"></canvas>
             </div>
         </div>
     </div>
 
-    <div class="row g-3">
+    <div class="admin-grid-2">
         <!-- Popular Branches -->
-        <div class="col-lg-6">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <span>Popular Branches</span>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-trophy"></i>
+                    Popular Branches
                 </div>
-                <div class="admin-card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Branch</th>
-                                    <th>Records</th>
-                                    <th>Avg Percentile</th>
-                                </tr>
-                            </thead>
-                            <tbody id="popular-branches-tbody"></tbody>
-                        </table>
-                    </div>
+                <span class="badge badge-neutral" id="popular-branches-count">0 branches</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>Branch</th>
+                                <th style="text-align: right;">Records</th>
+                                <th style="text-align: right;">Avg Percentile</th>
+                            </tr>
+                        </thead>
+                        <tbody id="popular-branches-tbody">
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
         <!-- Recent Activity -->
-        <div class="col-lg-6">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <span>Recent Activity</span>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    Recent Activity
                 </div>
-                <div class="admin-card-body">
-                    <div id="activity-timeline"></div>
+                <span class="badge badge-neutral">Last 10</span>
+            </div>
+            <div class="card-body">
+                <div class="timeline" id="activity-timeline">
+                    <div class="empty-state">
+                        <i class="fas fa-inbox empty-state-icon"></i>
+                        <div class="empty-state-title">No recent activity</div>
+                        <div class="empty-state-description">Activity will appear here as actions are performed</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -136,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!data.ok) return;
             var stats = data.stats;
 
+            // Animate stat values
             document.getElementById('stat-colleges').textContent = stats.total_colleges || 0;
             document.getElementById('stat-cutoffs').textContent = stats.total_cutoffs || 0;
             document.getElementById('stat-pending').textContent = stats.pending_imports || 0;
@@ -143,17 +161,23 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('stat-branches').textContent = stats.total_branches || 0;
             document.getElementById('stat-today').textContent = stats.today_uploads || 0;
 
-            // Records by type
-            var typeHtml = '';
+            // Records by type - custom legend
+            var legendHtml = '';
+            var typeKeys = [];
+            var typeValues = [];
             if (stats.records_by_type) {
-                for (var key in stats.records_by_type) {
-                    typeHtml += '<div class="d-flex justify-content-between mb-2"><span>' + key + '</span><strong>' + stats.records_by_type[key] + '</strong></div>';
-                }
+                typeKeys = Object.keys(stats.records_by_type);
+                typeValues = typeKeys.map(function(k) { return stats.records_by_type[k]; });
+                var colors = ['#4f8ef7', '#22c55e', '#f59e0b', '#ef4444', '#6366f1', '#8b5cf6', '#06b6d4'];
+                typeKeys.forEach(function(key, i) {
+                    legendHtml += '<div class="chart-legend-item"><span class="chart-legend-dot" style="background:' + colors[i % colors.length] + '"></span>' + key + '</div>';
+                });
             }
-            document.getElementById('records-by-type').innerHTML = typeHtml;
+            document.getElementById('records-by-type-legend').innerHTML = legendHtml;
 
             // Records by year chart
             if (data.records_by_year && data.records_by_year.length > 0) {
+                document.getElementById('records-by-year-count').textContent = data.records_by_year.reduce((sum, r) => sum + r.count, 0) + ' records';
                 new Chart(document.getElementById('recordsByYearChart'), {
                     type: 'bar',
                     data: {
@@ -161,25 +185,46 @@ document.addEventListener('DOMContentLoaded', function() {
                         datasets: [{
                             label: 'Records',
                             data: data.records_by_year.map(function(r) { return r.count; }),
-                            backgroundColor: 'rgba(102,126,234,0.6)',
-                            borderColor: 'rgba(102,126,234,1)',
-                            borderWidth: 1
+                            backgroundColor: 'rgba(79, 142, 247, 0.7)',
+                            borderColor: 'rgba(79, 142, 247, 1)',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            hoverBackgroundColor: 'rgba(79, 142, 247, 0.9)'
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true } }
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(22, 27, 39, 0.95)',
+                                titleColor: '#f1f5f9',
+                                bodyColor: '#cbd5e1',
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                padding: 12,
+                                cornerRadius: 8
+                            }
+                        },
+                        scales: { 
+                            y: { 
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { color: '#64748b', font: { size: 11 } }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#64748b', font: { size: 11 } }
+                            }
+                        }
                     }
                 });
             }
 
-            // Type chart (pie)
-            if (stats.records_by_type) {
-                var typeKeys = Object.keys(stats.records_by_type);
-                var typeValues = typeKeys.map(function(k) { return stats.records_by_type[k]; });
-                var colors = ['#667eea', '#34d399', '#fbbf24', '#ef4444', '#6366f1'];
+            // Type chart (doughnut)
+            if (typeKeys.length > 0) {
+                var colors = ['#4f8ef7', '#22c55e', '#f59e0b', '#ef4444', '#6366f1', '#8b5cf6', '#06b6d4'];
                 new Chart(document.getElementById('typeChart'), {
                     type: 'doughnut',
                     data: {
@@ -187,36 +232,69 @@ document.addEventListener('DOMContentLoaded', function() {
                         datasets: [{
                             data: typeValues,
                             backgroundColor: colors.slice(0, typeKeys.length),
+                            borderColor: 'rgba(22, 27, 39, 1)',
+                            borderWidth: 2,
+                            hoverOffset: 4
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { position: 'bottom' } }
+                        cutout: '65%',
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(22, 27, 39, 0.95)',
+                                titleColor: '#f1f5f9',
+                                bodyColor: '#cbd5e1',
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                padding: 12,
+                                cornerRadius: 8
+                            }
+                        }
                     }
                 });
             }
 
             // Popular branches
             var branchTbody = document.getElementById('popular-branches-tbody');
-            if (stats.popular_branches) {
+            var branchesCount = document.getElementById('popular-branches-count');
+            if (stats.popular_branches && stats.popular_branches.length > 0) {
+                branchesCount.textContent = stats.popular_branches.length + ' branches';
                 stats.popular_branches.forEach(function(b, i) {
                     var tr = document.createElement('tr');
-                    tr.innerHTML = '<td>' + (i+1) + '</td><td>' + (b.branch_name || '') + '</td><td>' + (b.count || 0) + '</td><td>' + (b.avg_percentile || '--') + '</td>';
+                    var avgPct = b.avg_percentile || '--';
+                    var pctDisplay = avgPct === '--' ? '<span class="text-muted">--</span>' : '<strong>' + avgPct + '</strong>';
+                    tr.innerHTML = '<td><span class="badge badge-neutral">' + (i+1) + '</span></td><td><strong>' + (b.branch_name || '') + '</strong></td><td style="text-align: right;"><span class="badge badge-info">' + (b.count || 0) + '</span></td><td style="text-align: right;">' + pctDisplay + '</td>';
                     branchTbody.appendChild(tr);
                 });
+            } else {
+                branchTbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">No data available</td></tr>';
+                branchesCount.textContent = '0 branches';
             }
 
             // Activity timeline
             var timeline = document.getElementById('activity-timeline');
-            if (data.activity) {
+            if (data.activity && data.activity.length > 0) {
+                timeline.innerHTML = '';
                 data.activity.slice(0, 10).forEach(function(a) {
                     var div = document.createElement('div');
-                    div.className = 'd-flex align-items-start gap-3 mb-3 pb-3 border-bottom';
+                    div.className = 'timeline-item';
+                    var icon = 'fa-circle-info';
+                    if (a.action && a.action.toLowerCase().indexOf('upload') !== -1) icon = 'fa-cloud-upload-alt';
+                    else if (a.action && a.action.toLowerCase().indexOf('delete') !== -1) icon = 'fa-trash';
+                    else if (a.action && a.action.toLowerCase().indexOf('edit') !== -1) icon = 'fa-pen';
+                    else if (a.action && a.action.toLowerCase().indexOf('create') !== -1) icon = 'fa-plus';
+                    
                     var ts = a.timestamp ? new Date(a.timestamp).toLocaleString() : '';
-                    div.innerHTML = '<div><span class="badge bg-primary">' + (a.action || '') + '</span></div><div><small class="text-muted d-block">' + (a.user || '') + '</small><small class="text-muted">' + ts + '</small></div>';
+                    var actionText = a.action || 'Action';
+                    var userName = a.user || 'System';
+                    div.innerHTML = '<div class="timeline-icon"><i class="fas ' + icon + '"></i></div><div class="timeline-body"><div class="timeline-header"><strong>' + actionText + '</strong> by ' + userName + '</div><div class="timeline-time">' + ts + '</div></div>';
                     timeline.appendChild(div);
                 });
+            } else {
+                timeline.innerHTML = '<div class="empty-state"><i class="fas fa-inbox empty-state-icon"></i><div class="empty-state-title">No recent activity</div><div class="empty-state-description">Activity will appear here as actions are performed</div></div>';
             }
         })
         .catch(function(err) { console.error('Dashboard error:', err); });

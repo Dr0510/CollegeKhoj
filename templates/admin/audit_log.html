@@ -4,36 +4,38 @@
 
 {% block content %}
 <div class="container-fluid px-0">
-    <div class="admin-card mb-4">
-        <div class="admin-card-body">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-auto">
-                    <label class="form-label small">Action</label>
-                    <select name="action" class="form-select form-select-sm">
-                        <option value="">All</option>
-                        {% for a in actions %}
-                        <option value="{{ a }}" {% if current_action == a %}selected{% endif %}>{{ a }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i> Filter</button>
-                </div>
-                <div class="col-auto">
-                    <a href="/admin/system/audit-logs" class="btn btn-sm btn-outline-secondary"><i class="fas fa-undo me-1"></i> Reset</a>
-                </div>
-            </form>
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <form method="GET" class="row gx-3 gy-2 flex-grow-1">
+            <div class="col-md-3">
+                <select name="action" class="form-select form-select-sm">
+                    <option value="">All Actions</option>
+                    {% for a in actions %}
+                    <option value="{{ a }}" {% if current_action == a %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100"><i class="fas fa-filter"></i> Filter</button>
+            </div>
+        </form>
+        <div class="filter-bar-actions">
+            <a href="/admin/system/audit-logs" class="btn btn-sm btn-outline"><i class="fas fa-undo"></i> Reset</a>
         </div>
     </div>
 
-    <div class="admin-card">
-        <div class="admin-card-header">
-            <span>Audit Trail ({{ pagination.total }})</span>
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-clipboard-list"></i>
+                Audit Trail
+                <span class="card-subtitle">{{ pagination.total }} entries</span>
+            </div>
         </div>
-        <div class="admin-card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
                         <tr>
                             <th>Time</th>
                             <th>Admin</th>
@@ -48,27 +50,57 @@
                         <tr>
                             <td style="white-space:nowrap;">{{ log.created_at.strftime('%d %b %H:%M') if log.created_at else '—' }}</td>
                             <td>{{ log.user.email if log.user else '—' }}</td>
-                            <td><span class="badge bg-info">{{ log.action }}</span></td>
+                            <td><span class="badge badge-info">{{ log.action }}</span></td>
                             <td>{{ log.resource_type or '—' }} {% if log.resource_id %}#{{ log.resource_id }}{% endif %}</td>
-                            <td>{{ log.ip_address or '—' }}</td>
-                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;font-size:0.8rem;">
-                                {% if log.details %}{{ log.details }}{% else %}—{% endif %}
+                            <td><code style="font-size: 0.75rem;">{{ log.ip_address or '—' }}</code></td>
+                            <td>
+                                <span class="text-truncate d-block" style="max-width: 200px;" title="{{ log.details or '' }}">
+                                    {{ log.details or '—' }}
+                                </span>
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="6" class="text-center py-4 text-muted">No audit log entries</td></tr>
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="fas fa-clipboard-check empty-state-icon"></i>
+                                    <div class="empty-state-title">No audit log entries</div>
+                                    <div class="empty-state-description">Actions will be logged here</div>
+                                </div>
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
         {% if pagination.pages > 1 %}
-        <div class="admin-card-body border-top">
-            <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
-                {% if pagination.has_prev %}<li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}&action={{ current_action }}">Previous</a></li>{% endif %}
-                {% for p in pagination.iter_pages() %}{% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}&action={{ current_action }}">{{ p }}</a></li>{% endif %}{% endfor %}
-                {% if pagination.has_next %}<li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}&action={{ current_action }}">Next</a></li>{% endif %}
-            </ul></nav>
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.prev_num }}&action={{ current_action }}">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% for p in pagination.iter_pages() %}
+                        {% if p %}
+                        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="?page={{ p }}&action={{ current_action }}">{{ p }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.next_num }}&action={{ current_action }}">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
         </div>
         {% endif %}
     </div>

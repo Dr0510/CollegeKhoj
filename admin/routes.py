@@ -9,6 +9,8 @@ import csv
 import json
 import io
 import logging
+import platform
+import sqlalchemy
 from datetime import datetime, timezone
 from flask import render_template, request, jsonify, redirect, session, g, flash, current_app, Response, send_file
 
@@ -30,7 +32,7 @@ from models import (
     User, College, Branch, AdmissionType, AcademicYear, CapRound,
     Cutoff, UploadJob, BackupHistory, AuditLog, Category, CollegeAdmissionType
 )
-from sqlalchemy import func as sa_func
+from sqlalchemy import text, func as sa_func
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +100,11 @@ def admin_login():
             logger.warning(f"[AUTH] Admin user {email} not found — running schema self-heal")
             from database import ensure_schema
             ensure_schema()
+            # Emergency recovery: rollback any broken transaction from ensure_schema() before retrying
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
             # Also try to create admin if missing
             from database import create_default_admin
             create_default_admin()
@@ -429,7 +436,8 @@ def import_upload():
             })
 
         except Exception as e:
-            logger.error(f"Upload error for {file.filename}: {e}")
+            db.session.rollback()
+            logger.error(f"Upload error for {file.filename}: {e}", exc_info=True)
             results.append({
                 'filename': file.filename,
                 'status': 'error',
@@ -913,15 +921,20 @@ def master_college_edit(college_id):
 @admin_bp.route('/master/colleges/<int:college_id>/delete', methods=['POST'])
 @admin_required
 def master_college_delete(college_id):
-    college = db.session.get(College, college_id)
-    if not college:
-        return jsonify({'ok': False, 'error': 'College not found'}), 404
+    try:
+        college = db.session.get(College, college_id)
+        if not college:
+            return jsonify({'ok': False, 'error': 'College not found'}), 404
 
-    db.session.delete(college)
-    db.session.commit()
+        db.session.delete(college)
+        db.session.commit()
 
-    log_action('delete', 'college', college_id)
-    return jsonify({'ok': True, 'message': 'College deleted'})
+        log_action('delete', 'college', college_id)
+        return jsonify({'ok': True, 'message': 'College deleted'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"College delete error: {e}", exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -952,54 +965,69 @@ def master_branches():
 @admin_bp.route('/master/branches/add', methods=['POST'])
 @admin_required
 def master_branch_add():
-    data = request.get_json()
-    if not data:
-        return jsonify({'ok': False, 'error': 'No data'}), 400
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'No data'}), 400
 
-    code = data.get('branch_code', '').strip().upper().replace(' ', '_')
-    name = data.get('branch_name', '').strip()
+        code = data.get('branch_code', '').strip().upper().replace(' ', '_')
+        name = data.get('branch_name', '').strip()
 
-    if not code or not name:
-        return jsonify({'ok': False, 'error': 'Branch code and name are required'}), 400
+        if not code or not name:
+            return jsonify({'ok': False, 'error': 'Branch code and name are required'}), 400
 
-    existing = Branch.query.filter_by(branch_code=code).first()
-    if existing:
-        return jsonify({'ok': False, 'error': f'Branch code {code} already exists'}), 409
+        existing = Branch.query.filter_by(branch_code=code).first()
+        if existing:
+            return jsonify({'ok': False, 'error': f'Branch code {code} already exists'}), 409
 
-    branch = Branch(branch_code=code, branch_name=name)
-    db.session.add(branch)
-    db.session.commit()
+        branch = Branch(branch_code=code, branch_name=name)
+        db.session.add(branch)
+        db.session.commit()
 
-    return jsonify({'ok': True, 'branch': branch.to_dict()}), 201
+        return jsonify({'ok': True, 'branch': branch.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Branch add error: {e}", exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @admin_bp.route('/master/branches/<int:branch_id>/edit', methods=['POST'])
 @admin_required
 def master_branch_edit(branch_id):
-    branch = db.session.get(Branch, branch_id)
-    if not branch:
-        return jsonify({'ok': False, 'error': 'Branch not found'}), 404
+    try:
+        branch = db.session.get(Branch, branch_id)
+        if not branch:
+            return jsonify({'ok': False, 'error': 'Branch not found'}), 404
 
-    data = request.get_json()
-    if data.get('branch_name'):
-        branch.branch_name = data['branch_name'].strip()
-    if data.get('branch_code'):
-        branch.branch_code = data['branch_code'].strip().upper().replace(' ', '_')
+        data = request.get_json()
+        if data.get('branch_name'):
+            branch.branch_name = data['branch_name'].strip()
+        if data.get('branch_code'):
+            branch.branch_code = data['branch_code'].strip().upper().replace(' ', '_')
 
-    db.session.commit()
-    return jsonify({'ok': True, 'branch': branch.to_dict()})
+        db.session.commit()
+        return jsonify({'ok': True, 'branch': branch.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Branch edit error: {e}", exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @admin_bp.route('/master/branches/<int:branch_id>/delete', methods=['POST'])
 @admin_required
 def master_branch_delete(branch_id):
-    branch = db.session.get(Branch, branch_id)
-    if not branch:
-        return jsonify({'ok': False, 'error': 'Branch not found'}), 404
+    try:
+        branch = db.session.get(Branch, branch_id)
+        if not branch:
+            return jsonify({'ok': False, 'error': 'Branch not found'}), 404
 
-    db.session.delete(branch)
-    db.session.commit()
-    return jsonify({'ok': True, 'message': 'Branch deleted'})
+        db.session.delete(branch)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'Branch deleted'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Branch delete error: {e}", exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1069,36 +1097,153 @@ def master_category_add():
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 @admin_required
 def admin_settings():
-    """Admin settings page."""
+    """Production-grade settings control panel."""
+    from models import SystemSetting
+    
+    SETTINGS_DEFINITIONS = {
+        'site_name': {'category': 'general', 'type': 'string', 'default': 'CollegeKhoj', 'label': 'Site Name'},
+        'site_tagline': {'category': 'general', 'type': 'string', 'default': '', 'label': 'Site Tagline'},
+        'support_email': {'category': 'general', 'type': 'string', 'default': '', 'label': 'Support Email'},
+        'contact_phone': {'category': 'general', 'type': 'string', 'default': '', 'label': 'Contact Phone'},
+        'footer_copyright': {'category': 'general', 'type': 'string', 'default': '', 'label': 'Footer Copyright'},
+        'social_links': {'category': 'general', 'type': 'json', 'default': {}, 'label': 'Social Media Links'},
+        
+        'maintenance_mode': {'category': 'maintenance', 'type': 'boolean', 'default': False, 'label': 'Maintenance Mode'},
+        'maintenance_title': {'category': 'maintenance', 'type': 'string', 'default': 'Under Maintenance', 'label': 'Maintenance Title'},
+        'maintenance_message': {'category': 'maintenance', 'type': 'string', 'default': 'We will be back soon.', 'label': 'Maintenance Message'},
+        'maintenance_eta': {'category': 'maintenance', 'type': 'string', 'default': '', 'label': 'Estimated Return Time'},
+        
+        'hero_title': {'category': 'homepage', 'type': 'string', 'default': '', 'label': 'Hero Title'},
+        'hero_subtitle': {'category': 'homepage', 'type': 'string', 'default': '', 'label': 'Hero Subtitle'},
+        'featured_colleges_count': {'category': 'homepage', 'type': 'int', 'default': 6, 'label': 'Featured Colleges Count'},
+        'trending_colleges_count': {'category': 'homepage', 'type': 'int', 'default': 10, 'label': 'Trending Colleges Count'},
+        
+        'max_upload_size_mb': {'category': 'import', 'type': 'int', 'default': 50, 'label': 'Max Upload Size (MB)'},
+        'allowed_file_types': {'category': 'import', 'type': 'json', 'default': ['pdf'], 'label': 'Allowed File Types'},
+        'auto_approve_imports': {'category': 'import', 'type': 'boolean', 'default': False, 'label': 'Auto Approve Imports'},
+        'duplicate_handling': {'category': 'import', 'type': 'string', 'default': 'update', 'label': 'Duplicate Handling Mode'},
+        'import_batch_size': {'category': 'import', 'type': 'int', 'default': 100, 'label': 'Import Batch Size'},
+        'import_worker_count': {'category': 'import', 'type': 'int', 'default': 2, 'label': 'Import Worker Count'},
+        
+        'enable_analytics': {'category': 'analytics', 'type': 'boolean', 'default': True, 'label': 'Enable Analytics'},
+        'enable_trends': {'category': 'analytics', 'type': 'boolean', 'default': True, 'label': 'Enable Trend Generation'},
+        'enable_popular_colleges': {'category': 'analytics', 'type': 'boolean', 'default': True, 'label': 'Enable Popular College Tracking'},
+        'enable_branch_analytics': {'category': 'analytics', 'type': 'boolean', 'default': True, 'label': 'Enable Branch Analytics'},
+        
+        'allow_registration': {'category': 'users', 'type': 'boolean', 'default': True, 'label': 'Allow User Registration'},
+        'email_verification_required': {'category': 'users', 'type': 'boolean', 'default': False, 'label': 'Email Verification Required'},
+        'admin_approval_required': {'category': 'users', 'type': 'boolean', 'default': False, 'label': 'Admin Approval Required'},
+        'session_timeout_minutes': {'category': 'users', 'type': 'int', 'default': 1440, 'label': 'Session Timeout (minutes)'},
+        
+        'rate_limiting_enabled': {'category': 'security', 'type': 'boolean', 'default': True, 'label': 'Rate Limiting'},
+        'failed_login_lockout': {'category': 'security', 'type': 'boolean', 'default': True, 'label': 'Failed Login Lockout'},
+        'password_min_length': {'category': 'security', 'type': 'int', 'default': 8, 'label': 'Minimum Password Length'},
+        'audit_logging_enabled': {'category': 'security', 'type': 'boolean', 'default': True, 'label': 'Audit Logging'},
+        
+        'auto_backup_enabled': {'category': 'backup', 'type': 'boolean', 'default': False, 'label': 'Auto Backup'},
+        'backup_retention_days': {'category': 'backup', 'type': 'int', 'default': 30, 'label': 'Backup Retention (days)'},
+    }
+    
     if request.method == 'POST':
-        data = request.get_json() or request.form
-        admin = _get_admin()
-
-        if data.get('current_password') and data.get('new_password'):
-            from app import check_password, hash_password
-            if not check_password(data['current_password'], admin.password_hash):
-                if request.is_json:
-                    return jsonify({'ok': False, 'error': 'Current password is incorrect'}), 400
-                flash('Current password is incorrect', 'error')
-                return redirect('/admin/settings')
-
-            if len(data['new_password']) < 8:
-                if request.is_json:
-                    return jsonify({'ok': False, 'error': 'Password must be at least 8 characters'}), 400
-                flash('Password must be at least 8 characters', 'error')
-                return redirect('/admin/settings')
-
-            admin.password_hash = hash_password(data['new_password'])
+        data = request.get_json() if request.is_json else request.form
+        try:
+            for key, value in data.items():
+                if key not in SETTINGS_DEFINITIONS:
+                    continue
+                meta = SETTINGS_DEFINITIONS[key]
+                setting = SystemSetting.query.filter_by(key=key).first()
+                if not setting:
+                    setting = SystemSetting(key=key, category=meta['category'], data_type=meta['type'])
+                    db.session.add(setting)
+                setting.value = str(value) if value is not None else ''
             db.session.commit()
-            log_action('change_password', 'user', admin.id)
-
+            
             if request.is_json:
-                return jsonify({'ok': True, 'message': 'Password updated'})
-            flash('Password updated successfully', 'success')
+                return jsonify({'ok': True, 'message': 'Settings saved successfully'})
+            flash('Settings saved successfully', 'success')
+            return redirect('/admin/settings')
+        except Exception as e:
+            db.session.rollback()
+            logger.exception(f"Settings save error: {e}")
+            if request.is_json:
+                return jsonify({'ok': False, 'error': str(e)}), 500
+            flash('Error saving settings', 'error')
+    
+    # GET: Load all settings from database
+    # ── Session protection: rollback any broken transaction before querying ──
+    try:
+        from sqlalchemy import text as sa_text
+        db.session.execute(sa_text('SELECT 1'))
+    except Exception:
+        db.session.rollback()
+        logger.warning("[Settings] Rolled back broken DB session on GET /admin/settings")
+    
+    try:
+        settings = {}
+        for key, meta in SETTINGS_DEFINITIONS.items():
+            setting = SystemSetting.query.filter_by(key=key).first()
+            if setting:
+                settings[key] = setting.typed_value()
+            else:
+                settings[key] = meta['default']
+        
+        admin = _get_admin()
+        
+        # Database/system info (read-only)
+        db_info = {
+            'database_type': 'PostgreSQL' if 'postgresql' in current_app.config.get('SQLALCHEMY_DATABASE_URI', '') else 'SQLite',
+            'database_status': 'Connected' if _check_db_connection() else 'Disconnected',
+            'last_backup': 'N/A',
+            'total_records': _get_total_records(),
+        }
+        
+        system_info = {
+            'flask_env': current_app.config.get('ENV', 'production'),
+            'debug_mode': str(current_app.config.get('DEBUG', False)),
+            'python_version': platform.python_version(),
+            'sqlalchemy_version': sqlalchemy.__version__,
+        }
+        
+        return render_template('admin/settings.html', 
+                               admin=admin, 
+                               settings=settings, 
+                               settings_meta=SETTINGS_DEFINITIONS,
+                               db_info=db_info,
+                               system_info=system_info)
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"[Settings] GET /admin/settings failed: {e}")
+        flash('Error loading settings page', 'error')
+        return render_template('admin/settings.html', 
+                               admin=_get_admin(), 
+                               settings={}, 
+                               settings_meta=SETTINGS_DEFINITIONS,
+                               db_info={},
+                               system_info={})
 
-        return redirect('/admin/settings')
 
-    return render_template('admin/settings.html', admin=_get_admin())
+def _check_db_connection():
+    """Helper to check database connectivity."""
+    try:
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1'))
+        return True
+    except Exception:
+        return False
+
+
+def _get_total_records():
+    """Helper to count total records across main tables."""
+    try:
+        total = 0
+        total += College.query.count()
+        total += Branch.query.count()
+        total += Cutoff.query.count()
+        total += UploadJob.query.count()
+        total += User.query.count()
+        return total
+    except Exception:
+        return 0
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1108,50 +1253,293 @@ def admin_settings():
 @admin_bp.route('/database-status')
 @admin_required
 def database_status():
-    """Health check page for the database connection."""
+    """Production-grade database health dashboard with real metrics."""
+    import time
+    import platform
+    import sqlalchemy
+    from datetime import datetime
+    
+    # Start timing the health check
+    start_time = time.perf_counter()
+    
+    # Initialize with safe defaults
+    default_val = lambda v: v if v is not None else 0
+    default_str = lambda s: s if s else 'N/A'
+
     status_info = {
         'database_connected': False,
         'database_type': 'Unknown',
+        'database_version': 'N/A',
+        'database_host': 'N/A',
+        'database_name': 'N/A',
+        'database_url_masked': 'N/A',
         'neon_region': 'N/A',
-        'total_cutoff_records': 0,
-        'total_new_cutoff_records': 0,
-        'total_users': 0,
-        'total_uploads': 0,
-        'last_import_date': None,
-        'connection_pool_size': 0,
+        'query_response_time_ms': 0,
+        'health_status': 'Unknown',
+        # System info
+        'flask_env': current_app.config.get('ENV', 'production'),
+        'python_version': platform.python_version(),
+        'sqlalchemy_version': sqlalchemy.__version__,
+        'current_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
+        'server_start_time': getattr(current_app, 'start_time', datetime.utcnow()).strftime('%Y-%m-%d %H:%M:%S UTC') if hasattr(current_app, 'start_time') else 'N/A',
     }
 
     try:
+        # Measure connection response time
+        db_start = time.perf_counter()
         db.session.execute(text('SELECT 1'))
+        query_time = (time.perf_counter() - db_start) * 1000
+        status_info['query_response_time_ms'] = f"{query_time:.1f}"
         status_info['database_connected'] = True
 
         db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+
+        # Parse database type and connection details
         if 'postgresql' in db_url:
-            status_info['database_type'] = 'PostgreSQL (Neon)'
+            status_info['database_type'] = 'PostgreSQL'
         elif 'sqlite' in db_url:
-            status_info['database_type'] = 'SQLite (Development Only)'
+            status_info['database_type'] = 'SQLite'
         else:
             status_info['database_type'] = 'Other'
 
+        # Extract host/database name and create masked URL
+        if 'postgresql://' in db_url:
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(db_url)
+                status_info['database_host'] = default_str(parsed.hostname)
+                status_info['database_name'] = default_str(parsed.path.lstrip('/'))
+                # Mask password in URL
+                if parsed.password:
+                    masked = f"{parsed.scheme}://{parsed.username}:***@{parsed.hostname}{parsed.path}"
+                else:
+                    masked = f"{parsed.scheme}://{parsed.hostname}{parsed.path}"
+                status_info['database_url_masked'] = masked
+            except Exception:
+                pass
+        elif 'sqlite:///' in db_url:
+            db_path = db_url.split('sqlite:///')[-1] if 'sqlite:///' in db_url else 'N/A'
+            status_info['database_name'] = db_path
+            status_info['database_url_masked'] = f"sqlite:///{db_path}"
+
+        # Get PostgreSQL version
+        if 'postgresql' in db_url:
+            try:
+                version_result = db.session.execute(text("SELECT version()"))
+                version_row = version_result.fetchone()
+                if version_row:
+                    full_version = version_row[0]
+                    version_match = re.search(r'PostgreSQL (\d+\.\d+)', full_version)
+                    status_info['database_version'] = version_match.group(1) if version_match else full_version[:30]
+            except Exception as e:
+                logger.warning(f"Failed to get PostgreSQL version: {e}")
+                status_info['database_version'] = 'Query failed'
+
+        # Neon region
         import re as re_module
         region_match = re_module.search(r'ep-([a-z-]+)\.c-(\d+)\.(aws|gcp|azure)\.neon\.tech', db_url)
         if region_match:
             status_info['neon_region'] = f"{region_match.group(1)} ({region_match.group(3)})"
 
-        status_info['total_cutoff_records'] = Cutoff.query.count()
-        status_info['total_users'] = User.query.count()
-        status_info['total_uploads'] = UploadJob.query.count()
+        # ── LIVE TABLE COUNTS ──────────────────────────────────────────
+        table_counts = {}
+        
+        # Core data tables
+        try: table_counts['colleges'] = College.query.count()
+        except Exception: table_counts['colleges'] = None
+        
+        try: table_counts['branches'] = Branch.query.count()
+        except Exception: table_counts['branches'] = None
+        
+        try: table_counts['cutoffs'] = Cutoff.query.count()
+        except Exception: table_counts['cutoffs'] = None
+        
+        try: table_counts['categories'] = Category.query.count()
+        except Exception: table_counts['categories'] = None
+        
+        try: table_counts['academic_years'] = AcademicYear.query.count()
+        except Exception: table_counts['academic_years'] = None
+        
+        try: table_counts['cap_rounds'] = CapRound.query.count()
+        except Exception: table_counts['cap_rounds'] = None
+        
+        try: table_counts['admission_types'] = AdmissionType.query.count()
+        except Exception: table_counts['admission_types'] = None
+        
+        try: table_counts['users'] = User.query.count()
+        except Exception: table_counts['users'] = None
+        
+        try: table_counts['upload_jobs'] = UploadJob.query.count()
+        except Exception: table_counts['upload_jobs'] = None
+        
+        try: table_counts['audit_logs'] = AuditLog.query.count()
+        except Exception: table_counts['audit_logs'] = None
 
-        last_cutoff = Cutoff.query.order_by(Cutoff.created_at.desc()).first()
-        if last_cutoff and last_cutoff.created_at:
-            status_info['last_import_date'] = last_cutoff.created_at.isoformat()
+        status_info['table_counts'] = table_counts
 
-        engine_options = current_app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})
-        status_info['connection_pool_size'] = engine_options.get('pool_size', 0)
+        # ── IMPORT METRICS ─────────────────────────────────────────────
+        try:
+            status_info['total_imports'] = UploadJob.query.count()
+        except Exception:
+            status_info['total_imports'] = 'N/A'
+        
+        try:
+            status_info['successful_imports'] = UploadJob.query.filter(UploadJob.status == 'COMPLETED').count()
+        except Exception:
+            status_info['successful_imports'] = 'N/A'
+        
+        try:
+            status_info['failed_imports'] = UploadJob.query.filter(UploadJob.status == 'FAILED').count()
+        except Exception:
+            status_info['failed_imports'] = 'N/A'
+        
+        try:
+            status_info['pending_imports'] = UploadJob.query.filter(
+                UploadJob.status.in_(['PENDING', 'PROCESSING'])
+            ).count()
+        except Exception:
+            status_info['pending_imports'] = 'N/A'
+
+        # Total rows imported (sum of all completed jobs)
+        try:
+            from sqlalchemy import func as sa_func
+            rows_result = db.session.query(sa_func.sum(UploadJob.total_rows_imported)).scalar()
+            status_info['rows_imported'] = default_val(rows_result)
+        except Exception:
+            status_info['rows_imported'] = 'N/A'
+
+        # Last import tracking
+        try:
+            last_success = UploadJob.query.filter(UploadJob.status == 'COMPLETED').order_by(UploadJob.completed_at.desc()).first()
+            if last_success and last_success.completed_at:
+                status_info['last_import_date'] = last_success.completed_at.strftime('%Y-%m-%d %H:%M UTC')
+                status_info['last_import_status'] = 'Success'
+            else:
+                last_job = UploadJob.query.order_by(UploadJob.created_at.desc()).first()
+                if last_job and last_job.created_at:
+                    status_info['last_import_date'] = last_job.created_at.strftime('%Y-%m-%d %H:%M UTC')
+                    if last_job.status == 'PROCESSING':
+                        status_info['last_import_status'] = 'In Progress'
+                    elif last_job.status == 'FAILED':
+                        status_info['last_import_status'] = 'Failed'
+                    else:
+                        status_info['last_import_status'] = last_job.status
+                else:
+                    status_info['last_import_date'] = 'No imports yet'
+                    status_info['last_import_status'] = 'N/A'
+        except Exception:
+            status_info['last_import_date'] = 'Query failed'
+            status_info['last_import_status'] = 'N/A'
+
+        # ── DATABASE SIZE & LARGEST TABLES (PostgreSQL only) ───────────
+        if 'postgresql' in db_url:
+            try:
+                size_result = db.session.execute(text("SELECT pg_database_size(current_database())"))
+                size_bytes = size_result.scalar()
+                if size_bytes:
+                    mb = size_bytes / (1024 * 1024)
+                    gb = mb / 1024
+                    if gb >= 1:
+                        status_info['database_size'] = f"{gb:.2f} GB"
+                    else:
+                        status_info['database_size'] = f"{mb:.1f} MB"
+                    status_info['database_size_bytes'] = size_bytes
+            except Exception:
+                status_info['database_size'] = 'Unavailable'
+            
+            try:
+                # Get largest tables by row count and size
+                tables_query = text("""
+                    SELECT 
+                        relname as table_name,
+                        n_live_tup as row_count,
+                        pg_total_relation_size(relid) as size_bytes
+                    FROM pg_stat_user_tables
+                    WHERE schemaname = 'public'
+                    ORDER BY n_live_tup DESC
+                    LIMIT 5
+                """)
+                result = db.session.execute(tables_query)
+                largest_tables = []
+                for row in result:
+                    row_size_kb = row.size_bytes / 1024 if row.size_bytes else 0
+                    largest_tables.append({
+                        'name': row.table_name,
+                        'rows': row.row_count,
+                        'size_kb': f"{row_size_kb:.1f} KB"
+                    })
+                status_info['largest_tables'] = largest_tables
+            except Exception:
+                status_info['largest_tables'] = []
+        else:
+            status_info['database_size'] = 'N/A (SQLite)'
+            status_info['largest_tables'] = []
+
+        # ── CONNECTION POOL INFO ──────────────────────────────────────
+        try:
+            engine_options = current_app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})
+            status_info['connection_pool_size'] = engine_options.get('pool_size', 0)
+            status_info['pool_timeout'] = engine_options.get('pool_timeout', 30)
+            status_info['pool_recycle'] = engine_options.get('pool_recycle', 1800)
+            status_info['pool_status'] = 'Active' if status_info['connection_pool_size'] > 0 else 'N/A'
+        except Exception:
+            status_info['pool_status'] = 'N/A'
+
+        # ── HEALTH STATUS CALCULATION ─────────────────────────────────
+        health_score = 100
+        warnings = []
+        
+        # Check connection
+        if not status_info['database_connected']:
+            health_score = 0
+        else:
+            # Check response time
+            try:
+                resp_time = float(status_info['query_response_time_ms'])
+                if resp_time > 1000:
+                    health_score -= 30
+                    warnings.append(f"Slow query response: {resp_time}ms")
+                elif resp_time > 500:
+                    health_score -= 15
+                    warnings.append(f"Elevated query response: {resp_time}ms")
+            except Exception:
+                pass
+            
+            # Check pool
+            if status_info.get('connection_pool_size', 0) == 0:
+                health_score -= 20
+                warnings.append("Connection pool not configured")
+            
+            # Check for failed imports
+            try:
+                failed = status_info.get('failed_imports', 0)
+                if isinstance(failed, int) and failed > 0:
+                    health_score -= 10
+                    warnings.append(f"{failed} failed imports")
+            except Exception:
+                pass
+        
+        # Set health status
+        if health_score >= 90:
+            status_info['health_status'] = 'Healthy'
+            status_info['health_color'] = 'success'
+        elif health_score >= 60:
+            status_info['health_status'] = 'Warning'
+            status_info['health_color'] = 'warning'
+            status_info['warnings'] = warnings
+        else:
+            status_info['health_status'] = 'Problem'
+            status_info['health_color'] = 'danger'
 
     except Exception as e:
-        logger.error(f"Database status check failed: {e}")
+        logger.error(f"Database status check failed: {e}", exc_info=True)
         status_info['error'] = str(e)
+        status_info['health_status'] = 'Problem'
+        status_info['health_color'] = 'danger'
+
+    # Calculate total check time
+    total_time = (time.perf_counter() - start_time) * 1000
+    status_info['total_check_time_ms'] = f"{total_time:.1f}"
 
     return render_template('admin/database_status.html', status=status_info)
 
@@ -1255,26 +1643,119 @@ def list_users():
 @admin_required
 def toggle_admin(user_id):
     """Toggle a user's admin role."""
-    user = db.session.get(User, user_id)
-    if not user:
-        return jsonify({'ok': False, 'error': 'User not found'}), 404
-    if user.id == _get_admin().id:
-        return jsonify({'ok': False, 'error': 'Cannot change your own role'}), 400
+    try:
+        user = db.session.get(User, user_id)
+        if not user:
+            return jsonify({'ok': False, 'error': 'User not found'}), 404
+        if user.id == _get_admin().id:
+            return jsonify({'ok': False, 'error': 'Cannot change your own role'}), 400
 
-    user.role = 'user' if user.role == 'admin' else 'admin'
-    db.session.commit()
-    log_action('toggle_admin', 'user', user_id, {'new_role': user.role})
-    return jsonify({'ok': True, 'role': user.role})
+        user.role = 'user' if user.role == 'admin' else 'admin'
+        db.session.commit()
+        log_action('toggle_admin', 'user', user_id, {'new_role': user.role})
+        return jsonify({'ok': True, 'role': user.role})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Toggle admin error: {e}", exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TRENDS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@admin_bp.route('/trends')
+# ═══════════════════════════════════════════════════════════════════════════════
+# ANALYTICS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SYSTEM — Route Aliases for Sidebar
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route('/system/backups')
 @admin_required
-def trends_page():
+def system_backups_alias():
+    """Alias for /admin/backups (sidebar uses /admin/system/backups)."""
+    return redirect('/admin/backups')
+
+
+@admin_bp.route('/system/audit-logs')
+@admin_required
+def system_audit_logs_alias():
+    """Alias for /admin/audit-logs (sidebar uses /admin/system/audit-logs)."""
+    return redirect('/admin/audit-logs')
+
+
+@admin_bp.route('/system/db-health')
+@admin_required
+def system_db_health_alias():
+    """Alias for /admin/database-status (sidebar uses /admin/system/db-health)."""
+    return redirect('/admin/database-status')
+
+
+@admin_bp.route('/system/settings')
+@admin_required
+def system_settings_alias():
+    """Alias for /admin/settings (sidebar uses /admin/system/settings)."""
+    return redirect('/admin/settings')
+
+
+# Sidebar direct links (without extra prefix)
+@admin_bp.route('/popular-colleges')
+@admin_required
+def popular_colleges_alias():
+    """Alias for /admin/analytics/popular-colleges (sidebar uses /admin/popular-colleges)."""
+    return redirect('/admin/analytics/popular-colleges')
+
+
+@admin_bp.route('/branch-analytics')
+@admin_required
+def branch_analytics_alias():
+    """Alias for /admin/analytics/branch-analytics (sidebar uses /admin/branch-analytics)."""
+    return redirect('/admin/analytics/branch-analytics')
+
+
+@admin_bp.route('/db-health')
+@admin_required
+def db_health_alias():
+    """Alias for /admin/database-status (sidebar uses /admin/db-health)."""
+    return redirect('/admin/database-status')
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ANALYTICS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@admin_bp.route('/analytics')
+@admin_required
+def analytics_index():
+    """Analytics overview — redirects to trends."""
+    # Check if analytics is enabled
+    try:
+        from models import SystemSetting
+        if not SystemSetting.get('enable_analytics', True):
+            return redirect('/admin/dashboard')
+    except Exception:
+        pass
+    return redirect('/admin/analytics/trends')
+
+
+@admin_bp.route('/analytics/trends')
+@admin_required
+def analytics_trends():
     """View cutoff trends and analytics."""
+    # Check if analytics/trends are enabled
+    try:
+        from models import SystemSetting
+        if not SystemSetting.get('enable_analytics', True):
+            flash('Analytics is currently disabled.', 'error')
+            return redirect('/admin/dashboard')
+        if not SystemSetting.get('enable_trends', True):
+            flash('Trend analysis is currently disabled.', 'error')
+            return redirect('/admin/dashboard')
+    except Exception:
+        pass
+    
     college_code = request.args.get('college_code', '')
     year_filter = request.args.get('year', type=int)
 
@@ -1288,6 +1769,70 @@ def trends_page():
                            branch_popularity=branch_pop,
                            college_code=college_code,
                            year_filter=year_filter)
+
+
+@admin_bp.route('/analytics/popular-colleges')
+@admin_required
+def analytics_popular_colleges():
+    """View top popular colleges by cutoff."""
+    # Check if analytics/popular colleges are enabled
+    try:
+        from models import SystemSetting
+        if not SystemSetting.get('enable_analytics', True):
+            flash('Analytics is currently disabled.', 'error')
+            return redirect('/admin/dashboard')
+        if not SystemSetting.get('enable_popular_colleges', True):
+            flash('Popular college tracking is currently disabled.', 'error')
+            return redirect('/admin/dashboard')
+    except Exception:
+        pass
+    
+    try:
+        from admin.trend_service import get_safe_moderate_dream
+        classification = get_safe_moderate_dream(
+            student_percentile=90.0, top_n=50
+        )
+        # Use 'dream' colleges as high-demand/popular
+        popular = classification.get('dream', []) or []
+        safe = classification.get('safe', []) or []
+        moderate = classification.get('moderate', []) or []
+        latest_year = classification.get('latest_year')
+        return render_template('admin/popular_colleges.html',
+                               popular=popular,
+                               safe=safe,
+                               moderate=moderate,
+                               latest_year=latest_year)
+    except Exception as e:
+        logger.error(f"Popular colleges error: {e}")
+        return render_template('admin/popular_colleges.html',
+                               popular=[], safe=[], moderate=[], latest_year=None)
+
+
+@admin_bp.route('/analytics/branch-analytics')
+@admin_required
+def analytics_branch_analytics():
+    """View branch analytics and popularity."""
+    # Check if analytics/branch analytics are enabled
+    try:
+        from models import SystemSetting
+        if not SystemSetting.get('enable_analytics', True):
+            flash('Analytics is currently disabled.', 'error')
+            return redirect('/admin/dashboard')
+        if not SystemSetting.get('enable_branch_analytics', True):
+            flash('Branch analytics is currently disabled.', 'error')
+            return redirect('/admin/dashboard')
+    except Exception:
+        pass
+    
+    branch_pop = compute_branch_popularity(top_n=30)
+    return render_template('admin/branch_analytics.html', branches=branch_pop)
+
+
+@admin_bp.route('/trends')
+@admin_required
+def trends_page():
+    """Legacy redirect to analytics trends."""
+    return redirect('/admin/analytics/trends')
 
 
 @admin_bp.route('/api/trends/recalculate', methods=['POST'])

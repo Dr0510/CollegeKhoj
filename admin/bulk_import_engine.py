@@ -152,6 +152,7 @@ class BulkImportEngine:
         admission_type_id: int,
         academic_year_id: int,
         cap_round_id: int,
+        max_workers: int = 1,
     ):
         self.db = db_session
         self.job_id = job_id
@@ -159,6 +160,7 @@ class BulkImportEngine:
         self.admission_type_id = admission_type_id
         self.academic_year_id = academic_year_id
         self.cap_round_id = cap_round_id
+        self.max_workers = max_workers
 
         self.rows_processed = 0
         self.rows_imported = 0
@@ -206,7 +208,7 @@ class BulkImportEngine:
         from admin.pdf_engine_v2 import extract_pdf
 
         with cpu('extract_pdf (total)'):
-            extraction = extract_pdf(self.filepath, os.path.basename(self.filepath))
+            extraction = extract_pdf(self.filepath, os.path.basename(self.filepath), max_workers=self.max_workers)
         if extraction.get('error'):
             self._update_job(status='FAILED', error_message=extraction['error'])
             return {

@@ -4,61 +4,76 @@
 
 {% block content %}
 <div class="container-fluid px-0">
-    <div class="admin-card mb-4">
-        <div class="admin-card-body">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label small">Academic Year</label>
-                    <select name="year_id" class="form-select form-select-sm">
-                        <option value="">All Years</option>
-                        {% for y in years %}
-                        <option value="{{ y.id }}" {% if year_id == y.id %}selected{% endif %}>{{ y.academic_year }}</option>
-                        {% endfor %}
-                    </select>
+    <!-- Info Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-card-icon stat-yellow" style="margin-bottom: 0;">
+                    <i class="fas fa-trophy"></i>
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Filter</button>
+                <div>
+                    <div class="card-title" style="font-size: var(--font-base);">
+                        High-Demand Colleges
+                        <span class="card-subtitle">(cutoff above 90th percentile)</span>
+                    </div>
+                    <small class="text-muted">Latest year: {{ latest_year or 'N/A' }}</small>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <div class="admin-card">
-        <div class="admin-card-header d-flex justify-content-between align-items-center">
-            <span>College Rankings</span>
-            <small class="text-muted">{{ colleges|length }} colleges</small>
+    {% if popular %}
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-ranking-star"></i>
+                Top {{ popular|length }} Popular Colleges
+            </div>
         </div>
-        <div class="admin-card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
                         <tr>
-                            <th>Rank</th>
-                            <th>College Code</th>
-                            <th>College Name</th>
-                            <th>Avg Percentile</th>
-                            <th>Record Count</th>
+                            <th style="width: 50px;">Rank</th>
+                            <th>College</th>
+                            <th>Branch</th>
+                            <th style="text-align: right;">Cutoff Percentile</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for c in colleges %}
+                        {% for c in popular %}
                         <tr>
-                            <td><span class="badge bg-{% if loop.index <= 3 %}warning{% else %}secondary{% endif %} rounded-pill">{{ loop.index }}</span></td>
-                            <td><code>{{ c.college_code }}</code></td>
-                            <td>{{ c.college_name }}</td>
-                            <td><strong>{{ '%.2f'|format(c.avg_percentile) if c.avg_percentile else '--' }}</strong></td>
-                            <td>{{ c.record_count }}</td>
+                            <td>
+                                <span class="badge {% if loop.index <= 3 %}badge-warning{% else %}badge-neutral{% endif %}">
+                                    #{{ loop.index }}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>{{ c.college_name[:40] }}</strong>
+                                <br><small class="text-muted">{{ c.college_code }}</small>
+                            </td>
+                            <td>{{ c.branch_name or '—' }}</td>
+                            <td style="text-align: right;">
+                                <span class="badge badge-success" style="font-size: 0.8rem;">{{ c.cutoff_percentile }}</span>
+                            </td>
                         </tr>
-                        {% else %}
-                        <tr><td colspan="5" class="text-center py-5 text-muted">
-                            <i class="fas fa-trophy fa-2x mb-2"></i>
-                            <p>No analytics available yet</p>
-                        </td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body">
+            <div class="empty-state">
+                <i class="fas fa-trophy empty-state-icon"></i>
+                <div class="empty-state-title">No analytics data available yet</div>
+                <div class="empty-state-description">Upload cutoff data to see popular colleges</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

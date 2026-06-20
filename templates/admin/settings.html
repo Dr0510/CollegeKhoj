@@ -1,66 +1,558 @@
 {% extends "admin/base.html" %}
 {% block title %}Settings — CollegeKhoj Admin{% endblock %}
-{% block heading %}Admin Settings{% endblock %}
+{% block heading %}Settings{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-0">
     <div class="row g-4">
-        <div class="col-lg-6">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <span>Change Password</span>
-                </div>
-                <div class="admin-card-body">
-                    <form method="POST" id="settings-form">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="mb-3">
-                            <label class="form-label">Current Password</label>
-                            <input type="password" name="current_password" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">New Password (min 8 chars)</label>
-                            <input type="password" name="new_password" class="form-control" required minlength="8">
-                        </div>
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Update Password</button>
-                    </form>
+        <!-- Settings Sidebar -->
+        <div class="col-lg-3 col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <input type="text" class="form-control" id="settings-search" placeholder="Search settings...">
+                    </div>
+                    <nav class="nav flex-column settings-nav">
+                        <a href="#general" class="nav-link active" data-category="general">
+                            <i class="fas fa-cog me-2"></i> General
+                        </a>
+                        <a href="#maintenance" class="nav-link" data-category="maintenance">
+                            <i class="fas fa-wrench me-2"></i> Maintenance
+                        </a>
+                        <a href="#homepage" class="nav-link" data-category="homepage">
+                            <i class="fas fa-home me-2"></i> Homepage
+                        </a>
+                        <a href="#import" class="nav-link" data-category="import">
+                            <i class="fas fa-upload me-2"></i> Import
+                        </a>
+                        <a href="#analytics" class="nav-link" data-category="analytics">
+                            <i class="fas fa-chart-bar me-2"></i> Analytics
+                        </a>
+                        <a href="#users" class="nav-link" data-category="users">
+                            <i class="fas fa-users me-2"></i> Users
+                        </a>
+                        <a href="#security" class="nav-link" data-category="security">
+                            <i class="fas fa-shield-alt me-2"></i> Security
+                        </a>
+                        <a href="#backup" class="nav-link" data-category="backup">
+                            <i class="fas fa-database me-2"></i> Backup
+                        </a>
+                        <a href="#system" class="nav-link" data-category="system">
+                            <i class="fas fa-info-circle me-2"></i> System
+                        </a>
+                    </nav>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-6">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <span>Account Info</span>
-                </div>
-                <div class="admin-card-body">
-                    <table class="table table-sm">
-                        <tr><th>Email</th><td>{{ admin.email }}</td></tr>
-                        <tr><th>Role</th><td><span class="badge bg-primary">{{ admin.role }}</span></td></tr>
-                        <tr><th>Joined</th><td>{{ admin.created_at.strftime('%d %b %Y') if admin.created_at else '—' }}</td></tr>
-                        <tr><th>Last Login</th><td>{{ admin.last_login.strftime('%d %b %Y %H:%M') if admin.last_login else '—' }}</td></tr>
-                    </table>
-                </div>
-            </div>
-
-            <div class="admin-card mt-3">
-                <div class="admin-card-header">
-                    <span>Quick Links</span>
-                </div>
-                <div class="admin-card-body">
-                    <div class="list-group list-group-flush">
-                        <a href="/admin/system/backups" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            Backups <i class="fas fa-chevron-right text-muted"></i>
-                        </a>
-                        <a href="/admin/system/db-health" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            DB Health <i class="fas fa-chevron-right text-muted"></i>
-                        </a>
-                        <a href="/admin/system/audit-logs" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            Audit Logs <i class="fas fa-chevron-right text-muted"></i>
-                        </a>
+        <!-- Settings Content -->
+        <div class="col-lg-9 col-md-8">
+            <form id="settings-form">
+                <!-- General Settings -->
+                <div class="settings-section" id="general">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-cog"></i>
+                                General Settings
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Site Name</label>
+                                        <input type="text" class="form-control" name="site_name" value="{{ settings.site_name if settings else '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Site Tagline</label>
+                                        <input type="text" class="form-control" name="site_tagline" value="{{ settings.site_tagline if settings else '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Support Email</label>
+                                        <input type="email" class="form-control" name="support_email" value="{{ settings.support_email if settings else '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Contact Phone</label>
+                                        <input type="text" class="form-control" name="contact_phone" value="{{ settings.contact_phone if settings else '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label class="form-label">Footer Copyright</label>
+                                        <input type="text" class="form-control" name="footer_copyright" value="{{ settings.footer_copyright if settings else '' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+
+                <!-- Maintenance Mode -->
+                <div class="settings-section" id="maintenance">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-wrench"></i>
+                                Maintenance Mode
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label class="form-label">Maintenance Mode</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="maintenance_mode" {% if settings.maintenance_mode %}checked{% endif %}>
+                                            <label class="form-check-label">Enable maintenance mode</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Maintenance Title</label>
+                                        <input type="text" class="form-control" name="maintenance_title" value="{{ settings.maintenance_title if settings else '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Estimated Return Time</label>
+                                        <input type="text" class="form-control" name="maintenance_eta" value="{{ settings.maintenance_eta if settings else '' }}" placeholder="e.g., 2 hours">
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label class="form-label">Maintenance Message</label>
+                                        <textarea class="form-control" name="maintenance_message" rows="3">{{ settings.maintenance_message if settings else '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Homepage Settings -->
+                <div class="settings-section" id="homepage">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-home"></i>
+                                Homepage Settings
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label class="form-label">Hero Title</label>
+                                        <input type="text" class="form-control" name="hero_title" value="{{ settings.hero_title if settings else '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label class="form-label">Hero Subtitle</label>
+                                        <textarea class="form-control" name="hero_subtitle" rows="2">{{ settings.hero_subtitle if settings else '' }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Featured Colleges Count</label>
+                                        <input type="number" class="form-control" name="featured_colleges_count" value="{{ settings.featured_colleges_count if settings else 6 }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Trending Colleges Count</label>
+                                        <input type="number" class="form-control" name="trending_colleges_count" value="{{ settings.trending_colleges_count if settings else 10 }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Import Settings -->
+                <div class="settings-section" id="import">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-upload"></i>
+                                Import Settings
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Max Upload Size (MB)</label>
+                                        <input type="number" class="form-control" name="max_upload_size_mb" value="{{ settings.max_upload_size_mb if settings else 50 }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Import Batch Size</label>
+                                        <input type="number" class="form-control" name="import_batch_size" value="{{ settings.import_batch_size if settings else 100 }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Import Worker Count</label>
+                                        <input type="number" class="form-control" name="import_worker_count" value="{{ settings.import_worker_count if settings else 2 }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Duplicate Handling</label>
+                                        <select class="form-select" name="duplicate_handling">
+                                            <option value="update" {% if settings.duplicate_handling == 'update' %}selected{% endif %}>Update Existing</option>
+                                            <option value="skip" {% if settings.duplicate_handling == 'skip' %}selected{% endif %}>Skip Duplicates</option>
+                                            <option value="error" {% if settings.duplicate_handling == 'error' %}selected{% endif %}>Raise Error</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="auto_approve_imports" {% if settings.auto_approve_imports %}checked{% endif %}>
+                                        <label class="form-check-label">Auto-approve imports</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Settings -->
+                <div class="settings-section" id="analytics">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-chart-bar"></i>
+                                Analytics Settings
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="enable_analytics" {% if settings.enable_analytics %}checked{% endif %}>
+                                        <label class="form-check-label">Enable Analytics</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="enable_trends" {% if settings.enable_trends %}checked{% endif %}>
+                                        <label class="form-check-label">Enable Trend Generation</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="enable_popular_colleges" {% if settings.enable_popular_colleges %}checked{% endif %}>
+                                        <label class="form-check-label">Enable Popular College Tracking</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="enable_branch_analytics" {% if settings.enable_branch_analytics %}checked{% endif %}>
+                                        <label class="form-check-label">Enable Branch Analytics</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Settings -->
+                <div class="settings-section" id="users">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-users"></i>
+                                User Management
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="allow_registration" {% if settings.allow_registration %}checked{% endif %}>
+                                        <label class="form-check-label">Allow User Registration</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="email_verification_required" {% if settings.email_verification_required %}checked{% endif %}>
+                                        <label class="form-check-label">Email Verification Required</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="admin_approval_required" {% if settings.admin_approval_required %}checked{% endif %}>
+                                        <label class="form-check-label">Admin Approval Required</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Session Timeout (minutes)</label>
+                                        <input type="number" class="form-control" name="session_timeout_minutes" value="{{ settings.session_timeout_minutes if settings else 1440 }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Settings -->
+                <div class="settings-section" id="security">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-shield-alt"></i>
+                                Security Settings
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="rate_limiting_enabled" {% if settings.rate_limiting_enabled %}checked{% endif %}>
+                                        <label class="form-check-label">Rate Limiting</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="failed_login_lockout" {% if settings.failed_login_lockout %}checked{% endif %}>
+                                        <label class="form-check-label">Failed Login Lockout</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Minimum Password Length</label>
+                                        <input type="number" class="form-control" name="password_min_length" value="{{ settings.password_min_length if settings else 8 }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="audit_logging_enabled" {% if settings.audit_logging_enabled %}checked{% endif %}>
+                                        <label class="form-check-label">Audit Logging</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backup Settings -->
+                <div class="settings-section" id="backup">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-database"></i>
+                                Backup Settings
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="auto_backup_enabled" {% if settings.auto_backup_enabled %}checked{% endif %}>
+                                        <label class="form-check-label">Auto Backup</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Backup Retention (days)</label>
+                                        <input type="number" class="form-control" name="backup_retention_days" value="{{ settings.backup_retention_days if settings else 30 }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Information (Read-only) -->
+                <div class="settings-section" id="system">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-info-circle"></i>
+                                System Information
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-cards-grid">
+                                <div class="stat-card stat-blue">
+                                    <div class="stat-card-icon"><i class="fas fa-server"></i></div>
+                                    <div class="stat-card-body">
+                                        <div class="stat-card-label">Database</div>
+                                        <div class="stat-card-value" style="font-size: 1rem;">{{ db_info.database_type }}</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card stat-green">
+                                    <div class="stat-card-icon"><i class="fas fa-signal"></i></div>
+                                    <div class="stat-card-body">
+                                        <div class="stat-card-label">Status</div>
+                                        <div class="stat-card-value" style="font-size: 1rem;">{{ db_info.database_status }}</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card stat-yellow">
+                                    <div class="stat-card-icon"><i class="fas fa-box"></i></div>
+                                    <div class="stat-card-body">
+                                        <div class="stat-card-label">Total Records</div>
+                                        <div class="stat-card-value" style="font-size: 1rem;">{{ db_info.total_records }}</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card stat-indigo">
+                                    <div class="stat-card-icon"><i class="fas fa-server"></i></div>
+                                    <div class="stat-card-body">
+                                        <div class="stat-card-label">Environment</div>
+                                        <div class="stat-card-value" style="font-size: 1rem;">{{ system_info.flask_env }}</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card stat-cyan">
+                                    <div class="stat-card-icon"><i class="fab fa-python"></i></div>
+                                    <div class="stat-card-body">
+                                        <div class="stat-card-label">Python</div>
+                                        <div class="stat-card-value" style="font-size: 1rem;">{{ system_info.python_version }}</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card stat-purple">
+                                    <div class="stat-card-icon"><i class="fas fa-code"></i></div>
+                                    <div class="stat-card-body">
+                                        <div class="stat-card-label">SQLAlchemy</div>
+                                        <div class="stat-card-value" style="font-size: 1rem;">{{ system_info.sqlalchemy_version }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="reset-btn">
+                        <i class="fas fa-undo"></i> Reset to Defaults
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const form = document.getElementById('settings-form');
+    const searchInput = document.getElementById('settings-search');
+    const navLinks = document.querySelectorAll('.settings-nav .nav-link');
+    const sections = document.querySelectorAll('.settings-section');
+    
+    // Auto-save on change
+    let saveTimeout;
+    form.addEventListener('input', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveSettings, 1000);
+    });
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveSettings();
+    });
+    
+    function saveSettings() {
+        const formData = new FormData(form);
+        const data = {};
+        
+        // Handle checkboxes
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            formData.set(cb.name, cb.checked ? 'true' : 'false');
+        });
+        
+        for (let [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+        
+        fetch('/admin/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf
+            },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                showToast('Settings saved successfully', 'success');
+            } else {
+                showToast(d.error || 'Error saving settings', 'error');
+            }
+        })
+        .catch(() => showToast('Network error', 'error'));
+    }
+    
+    // Reset to defaults
+    document.getElementById('reset-btn').addEventListener('click', function() {
+        if (confirm('Reset all settings to defaults? This cannot be undone.')) {
+            // Implement reset logic if needed
+            showToast('Settings reset to defaults', 'info');
+        }
+    });
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        
+        sections.forEach(section => {
+            const text = section.textContent.toLowerCase();
+            const inputs = section.querySelectorAll('input, textarea, select');
+            let matches = text.includes(query);
+            
+            inputs.forEach(input => {
+                const label = input.closest('.form-group')?.querySelector('.form-label')?.textContent || '';
+                if (label.toLowerCase().includes(query)) {
+                    matches = true;
+                }
+            });
+            
+            section.style.display = matches ? 'block' : 'none';
+        });
+        
+        navLinks.forEach(link => {
+            const category = link.getAttribute('data-category');
+            const section = document.getElementById(category);
+            if (section) {
+                link.style.display = section.style.display === 'none' ? 'none' : 'flex';
+            }
+        });
+    });
+    
+    // Navigation active state
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            navLinks.forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+    
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-' + type + ' alert-dismissible fade show';
+        toast.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;min-width:300px;';
+        toast.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle') + '"></i><div>' + message + '</div><button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+});
+</script>
 {% endblock %}

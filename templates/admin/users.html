@@ -1,39 +1,151 @@
 {% extends "admin/base.html" %}
-{% block title %}Users — Admin{% endblock %}
+{% block title %}Users — CollegeKhoj Admin{% endblock %}
 {% block heading %}Users{% endblock %}
+
 {% block content %}
-<div class="stat-card" style="margin-bottom: 20px;">
-    <form method="GET" style="display: flex; gap: 12px;">
-        <input type="text" name="q" placeholder="Search by name or email…" value="{{ q }}" style="max-width: 400px;">
-        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Search</button>
-    </form>
+<div class="container-fluid px-0">
+    <!-- Search Bar -->
+    <div class="filter-bar">
+        <form method="GET" class="row gx-3 gy-2 flex-grow-1">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control form-control-sm" placeholder="Search by name or email…" value="{{ q or '' }}">
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
+                    {% if q %}<a href="/admin/users" class="btn btn-sm btn-outline"><i class="fas fa-times"></i></a>{% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-users"></i>
+                Manage Users
+                <span class="card-subtitle">{{ pagination.total }} total</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Verified</th>
+                            <th>Joined</th>
+                            <th class="td-actions-cell">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>{{ u.id }}</td>
+                            <td><strong>{{ u.display_name() }}</strong></td>
+                            <td>{{ u.email }}</td>
+                            <td>
+                                <span class="badge {% if u.role == 'admin' %}badge-warning{% else %}badge-info{% endif %}">
+                                    {{ u.role }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if u.is_verified %}badge-success{% else %}badge-warning{% endif %}">
+                                    {{ 'Yes' if u.is_verified else 'No' }}
+                                </span>
+                            </td>
+                            <td>{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+                            <td class="td-actions-cell">
+                                <div class="actions">
+                                    <button class="btn btn-sm btn-outline toggle-admin" data-id="{{ u.id }}">
+                                        <i class="fas fa-shield-halved"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="fas fa-users empty-state-icon"></i>
+                                    <div class="empty-state-title">No users found</div>
+                                    <div class="empty-state-description">Try adjusting your search criteria</div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination.pages > 1 %}
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.prev_num }}&q={{ q or '' }}">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% for p in pagination.iter_pages() %}
+                        {% if p %}
+                        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="?page={{ p }}&q={{ q or '' }}">{{ p }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.next_num }}&q={{ q or '' }}">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
 </div>
-<div class="table-wrap">
-    <table>
-        <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Verified</th><th>Joined</th><th>Actions</th></tr>
-        {% for u in users %}
-        <tr>
-            <td>{{ u.id }}</td><td>{{ u.display_name() }}</td><td>{{ u.email }}</td>
-            <td><span class="badge badge-{{ 'success' if u.role == 'admin' else 'info' }}">{{ u.role }}</span></td>
-            <td><span class="badge badge-{{ 'success' if u.is_verified else 'warning' }}">{{ 'Yes' if u.is_verified else 'No' }}</span></td>
-            <td>{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
-            <td><button class="btn btn-outline btn-sm" onclick="toggleAdmin({{ u.id }})"><i class="fas fa-shield"></i> Toggle Admin</button></td>
-        </tr>
-        {% else %}<tr><td colspan="7" style="text-align:center;color:var(--text-tertiary);">No users found</td></tr>{% endfor %}
-    </table>
-</div>
-{% if pagination.pages > 1 %}
-<div class="pagination">
-    {% if pagination.has_prev %}<a href="?page={{ pagination.prev_num }}&q={{ q }}">← Prev</a>{% endif %}
-    {% for p in pagination.iter_pages() %}{% if p %}<a href="?page={{ p }}&q={{ q }}" class="{{ 'current' if p == pagination.page }}">{{ p }}</a>{% endif %}{% endfor %}
-    {% if pagination.has_next %}<a href="?page={{ pagination.next_num }}&q={{ q }}">Next →</a>{% endif %}
-</div>{% endif %}
+{% endblock %}
+
+{% block scripts %}
 <script>
-function toggleAdmin(id) {
-    if (!confirm('Toggle admin role for this user?')) return;
-    fetch('/admin/users/' + id + '/toggle-admin', { method: 'POST' })
-    .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.ok){ showToast('Role updated to ' + d.role, 'success'); location.reload(); } else { showToast(d.error, 'error'); }});
-}
+document.addEventListener('DOMContentLoaded', function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-' + type + ' alert-dismissible fade show';
+        toast.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;min-width:250px;';
+        toast.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle') + '"></i><div>' + message + '</div><button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    document.querySelectorAll('.toggle-admin').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            if (!confirm('Toggle admin role for this user?')) return;
+            fetch('/admin/users/' + id + '/toggle-admin', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf }
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.ok) {
+                    showToast('Role updated to ' + d.role, 'success');
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    showToast(d.error || 'Error updating role', 'error');
+                }
+            })
+            .catch(() => showToast('Network error', 'error'));
+        });
+    });
+});
 </script>
 {% endblock %}

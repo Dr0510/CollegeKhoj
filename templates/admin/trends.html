@@ -4,87 +4,96 @@
 
 {% block content %}
 <div class="container-fluid px-0">
-    <div class="admin-card mb-4">
-        <div class="admin-card-body">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label small">Admission Type</label>
-                    <select name="admission_type_id" class="form-select form-select-sm">
-                        <option value="">All</option>
-                        {% for at in admission_types %}
-                        <option value="{{ at.id }}" {% if filters.admission_type_id == at.id %}selected{% endif %}>{{ at.code }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small">College</label>
-                    <select name="college_id" class="form-select form-select-sm">
-                        <option value="">All</option>
-                        {% for c in colleges %}
-                        <option value="{{ c.id }}" {% if filters.college_id == c.id %}selected{% endif %}>{{ c.college_name[:40] }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small">Branch</label>
-                    <select name="branch_id" class="form-select form-select-sm">
-                        <option value="">All</option>
-                        {% for b in branches %}
-                        <option value="{{ b.id }}" {% if filters.branch_id == b.id %}selected{% endif %}>{{ b.branch_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search me-1"></i> Filter</button>
-                </div>
-                <div class="col-md-1">
-                    <a href="/admin/analytics/trends" class="btn btn-sm btn-outline-secondary"><i class="fas fa-undo"></i></a>
-                </div>
-            </form>
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <form method="GET" class="row gx-3 gy-2 flex-grow-1">
+            <div class="col-md-3">
+                <select name="admission_type_id" class="form-select form-select-sm">
+                    <option value="">All Admission Types</option>
+                    {% for at in admission_types %}
+                    <option value="{{ at.id }}" {% if filters.admission_type_id == at.id %}selected{% endif %}>{{ at.code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="college_id" class="form-select form-select-sm">
+                    <option value="">All Colleges</option>
+                    {% for c in colleges %}
+                    <option value="{{ c.id }}" {% if filters.college_id == c.id %}selected{% endif %}>{{ c.college_name[:40] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="branch_id" class="form-select form-select-sm">
+                    <option value="">All Branches</option>
+                    {% for b in branches %}
+                    <option value="{{ b.id }}" {% if filters.branch_id == b.id %}selected{% endif %}>{{ b.branch_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100"><i class="fas fa-filter"></i> Filter</button>
+            </div>
+        </form>
+        <div class="filter-bar-actions">
+            <a href="/admin/analytics/trends" class="btn btn-sm btn-outline"><i class="fas fa-undo"></i> Reset</a>
         </div>
     </div>
 
-    <div class="admin-card">
-        <div class="admin-card-header d-flex justify-content-between align-items-center">
-            <span>College Cutoff Trends</span>
-            <small class="text-muted">{{ trends|length }} results</small>
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-chart-line"></i>
+                College Cutoff Trends
+                <span class="card-subtitle">{{ trends|length }} results</span>
+            </div>
         </div>
-        <div class="admin-card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
                         <tr>
                             <th>College</th>
                             <th>Branch</th>
                             <th>Category</th>
-                            <th>Trend (Year → Value)</th>
+                            <th>Trend History</th>
                             <th>Direction</th>
-                            <th>Diff</th>
+                            <th style="text-align: right;">Difference</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for t in trends %}
+                        {% set trend_class = 'badge-success' if t.direction == 'increasing' else 'badge-danger' if t.direction == 'decreasing' else 'badge-warning' %}
                         <tr>
-                            <td>{{ t.college_name[:30] }}</td>
+                            <td><strong>{{ t.college_name[:30] }}</strong></td>
                             <td>{{ t.branch_name[:20] }}</td>
-                            <td><span class="badge bg-info">{{ t.category }}</span></td>
-                            <td style="font-size:0.85rem;">
-                                {% for y in t.years %}
-                                {{ y }}: {{ t.trends.get(y|string, t.trends.get(y, '--')) }}{% if not loop.last %} → {% endif %}
-                                {% endfor %}
+                            <td><span class="badge badge-info">{{ t.category }}</span></td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    {% for y in t.years %}
+                                    <span class="badge badge-neutral" style="font-size: 0.65rem;">{{ y }}: {{ t.trends.get(y|string, t.trends.get(y, '--')) }}</span>
+                                    {% endfor %}
+                                </div>
                             </td>
                             <td>
-                                <span class="badge bg-{{ 'success' if t.direction == 'increasing' else 'danger' if t.direction == 'decreasing' else 'warning' }}">
+                                <span class="badge {{ trend_class }}">
                                     {{ t.direction }}
                                 </span>
                             </td>
-                            <td>{{ t.difference }}</td>
+                            <td style="text-align: right;">
+                                <strong>{{ t.difference }}</strong>
+                            </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="6" class="text-center py-5 text-muted">
-                            <i class="fas fa-chart-line fa-2x mb-2"></i>
-                            <p>No analytics available yet</p>
-                        </td></tr>
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="fas fa-chart-line empty-state-icon"></i>
+                                    <div class="empty-state-title">No analytics available yet</div>
+                                    <div class="empty-state-description">Upload cutoff data to see trend analysis</div>
+                                </div>
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>

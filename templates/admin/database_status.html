@@ -1,113 +1,462 @@
 {% extends "admin/base.html" %}
 {% block title %}Database Status — CollegeKhoj Admin{% endblock %}
-{% block heading %}Database Health{% endblock %}
+{% block heading %}Database Status{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-0">
-    <!-- Connection Status -->
-    <div class="admin-card mb-4">
-        <div class="admin-card-body">
-            <div class="d-flex align-items-center gap-3">
-                <span class="badge bg-{{ 'success' if status.database_connected else 'danger' }} p-3" style="font-size: 1.2rem;">
-                    <i class="fas {{ 'fa-check-circle' if status.database_connected else 'fa-times-circle' }}"></i>
-                </span>
-                <div>
-                    <h5 class="mb-1">Database Connection</h5>
-                    <p class="mb-0 text-muted">
-                        {% if status.database_connected %}
-                        Connected — {{ status.database_type }}
-                        {% else %}
-                        Disconnected — {{ status.get('error', 'Unknown error') }}
-                        {% endif %}
-                    </p>
+    <!-- Connection Status Banner -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-card-icon" style="background: {% if status.database_connected %}var(--color-success-light){% else %}var(--color-danger-light){% endif %}; color: {% if status.database_connected %}var(--color-success){% else %}var(--color-danger){% endif %};">
+                        <i class="fas {% if status.database_connected %}fa-check-circle{% else %}fa-times-circle{% endif %}" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-1">Database Connection</h5>
+                        <p class="mb-0 text-muted">
+                            {% if status.database_connected %}
+                            Connected — {{ status.database_type }}
+                            {% else %}
+                            Disconnected — {{ status.get('error', 'Unknown error') }}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="badge {% if status.health_color == 'success' %}badge-success{% elif status.health_color == 'warning' %}badge-warning{% else %}badge-danger{% endif %} badge-lg">
+                        <i class="fas fa-{% if status.health_color == 'success' %}check-circle{% elif status.health_color == 'warning' %}exclamation-triangle{% else %}times-circle{% endif %} me-1"></i>
+                        {{ status.health_status }}
+                    </span>
+                    <span class="badge badge-neutral">{{ status.query_response_time_ms }}ms</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="stat-card text-center">
-                <div class="stat-card-icon mx-auto" style="background: rgba(102,126,234,0.1); color: #667eea;">
-                    <i class="fas fa-database"></i>
-                </div>
-                <div class="stat-card-value">{{ status.total_cutoffs }}</div>
-                <div class="stat-card-label">Cutoff Records</div>
+    <!-- DATABASE OVERVIEW -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-database"></i>
+                Database Overview
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card text-center">
-                <div class="stat-card-icon mx-auto" style="background: rgba(52,211,153,0.1); color: #34d399;">
-                    <i class="fas fa-building"></i>
+        <div class="card-body">
+            <div class="stat-cards-grid">
+                <div class="stat-card stat-blue">
+                    <div class="stat-card-icon"><i class="fas fa-layer-group"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Type</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.database_type }}</div>
+                    </div>
                 </div>
-                <div class="stat-card-value">{{ status.total_colleges }}</div>
-                <div class="stat-card-label">Colleges</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card text-center">
-                <div class="stat-card-icon mx-auto" style="background: rgba(251,191,36,0.1); color: #fbbf24;">
-                    <i class="fas fa-code-branch"></i>
+                <div class="stat-card stat-indigo">
+                    <div class="stat-card-icon"><i class="fas fa-code-branch"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Version</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.database_version }}</div>
+                    </div>
                 </div>
-                <div class="stat-card-value">{{ status.total_branches }}</div>
-                <div class="stat-card-label">Branches</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card text-center">
-                <div class="stat-card-icon mx-auto" style="background: rgba(236,72,153,0.1); color: #ec4899;">
-                    <i class="fas fa-users"></i>
+                <div class="stat-card stat-green">
+                    <div class="stat-card-icon"><i class="fas fa-server"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Host</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.database_host }}</div>
+                    </div>
                 </div>
-                <div class="stat-card-value">{{ status.total_users }}</div>
-                <div class="stat-card-label">Users</div>
+                <div class="stat-card stat-yellow">
+                    <div class="stat-card-icon"><i class="fas fa-database"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Database</div>
+                        <div class="stat-card-value" style="font-size: 0.85rem; word-break: break-all;">{{ status.database_name }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-cyan">
+                    <div class="stat-card-icon"><i class="fas fa-link"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Connection URL</div>
+                        <div class="stat-card-value" style="font-size: 0.8rem; word-break: break-all; font-family: var(--font-mono);">{{ status.database_url_masked }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-purple">
+                    <div class="stat-card-icon"><i class="fas fa-globe"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Region</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.neon_region }}</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-6">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <span>Uploads & Imports</span>
-                </div>
-                <div class="admin-card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Total Uploads</span>
-                        <strong>{{ status.total_uploads }}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Last Import</span>
-                        <strong>{{ status.last_import_date or 'Never' }}</strong>
-                    </div>
-                </div>
+    <!-- SYSTEM INFORMATION -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-info-circle"></i>
+                System Information
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <span>System Info</span>
-                </div>
-                <div class="admin-card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Database Type</span>
-                        <strong>{{ status.database_type }}</strong>
+        <div class="card-body">
+            <div class="stat-cards-grid">
+                <div class="stat-card stat-blue">
+                    <div class="stat-card-icon"><i class="fas fa-server"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Flask Environment</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.flask_env }}</div>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Status</span>
-                        <strong class="text-{{ 'success' if status.database_connected else 'danger' }}">
-                            {{ 'Healthy' if status.database_connected else 'Error' }}
-                        </strong>
+                </div>
+                <div class="stat-card stat-green">
+                    <div class="stat-card-icon"><i class="fab fa-python"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Python Version</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.python_version }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-indigo">
+                    <div class="stat-card-icon"><i class="fas fa-code"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">SQLAlchemy</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.sqlalchemy_version }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-cyan">
+                    <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Current Time</div>
+                        <div class="stat-card-value" style="font-size: 0.9rem;">{{ status.current_time }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-yellow">
+                    <div class="stat-card-icon"><i class="fas fa-history"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Server Uptime</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.server_start_time }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-pink">
+                    <div class="stat-card-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Check Duration</div>
+                        <div class="stat-card-value" style="font-size: 1rem;">{{ status.total_check_time_ms }}ms</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- TABLE STATISTICS -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-table"></i>
+                Table Statistics
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Table</th>
+                            <th style="text-align: right;">Records</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Colleges</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.colleges if status.table_counts and status.table_counts.colleges is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Master data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Branches</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.branches if status.table_counts and status.table_counts.branches is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Master data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cutoff Records</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.cutoffs if status.table_counts and status.table_counts.cutoffs is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Admissions data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Categories</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.categories if status.table_counts and status.table_counts.categories is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Master data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Academic Years</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.academic_years if status.table_counts and status.table_counts.academic_years is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Reference data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CAP Rounds</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.cap_rounds if status.table_counts and status.table_counts.cap_rounds is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Reference data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Admission Types</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.admission_types if status.table_counts and status.table_counts.admission_types is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Reference data</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Users</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.users if status.table_counts and status.table_counts.users is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Accounts</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Upload Jobs</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-info">{{ status.table_counts.upload_jobs if status.table_counts and status.table_counts.upload_jobs is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Import jobs</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Audit Logs</strong></td>
+                            <td style="text-align: right;"><span class="badge badge-neutral">{{ status.table_counts.audit_logs if status.table_counts and status.table_counts.audit_logs is not none else 'N/A' }}</span></td>
+                            <td class="text-muted">Activity logs</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMPORT STATISTICS -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-upload"></i>
+                Import Statistics
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="stat-cards-grid">
+                <div class="stat-card stat-blue">
+                    <div class="stat-card-icon"><i class="fas fa-file-import"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Total Imports</div>
+                        <div class="stat-card-value">{{ status.total_imports if status.total_imports is not none else 'N/A' }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-green">
+                    <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Successful</div>
+                        <div class="stat-card-value">{{ status.successful_imports if status.successful_imports is not none else 'N/A' }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-red">
+                    <div class="stat-card-icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Failed</div>
+                        <div class="stat-card-value">{{ status.failed_imports if status.failed_imports is not none else 'N/A' }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-yellow">
+                    <div class="stat-card-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Pending</div>
+                        <div class="stat-card-value">{{ status.pending_imports if status.pending_imports is not none else 'N/A' }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-cyan">
+                    <div class="stat-card-icon"><i class="fas fa-database"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Rows Imported</div>
+                        <div class="stat-card-value">{{ status.rows_imported if status.rows_imported is not none else 'N/A' }}</div>
+                    </div>
+                </div>
+                <div class="stat-card stat-purple">
+                    <div class="stat-card-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-card-body">
+                        <div class="stat-card-label">Last Import</div>
+                        <div class="stat-card-value" style="font-size: 0.9rem;">{{ status.last_import_date if status.last_import_date else 'Never' }}</div>
+                    </div>
+                </div>
+            </div>
+            {% if status.last_import_status and status.last_import_status != 'N/A' %}
+            <div class="d-flex align-items-center gap-2 mt-3">
+                <i class="fas fa-info-circle text-muted"></i>
+                <span class="text-sm text-muted">Status: </span>
+                {% if status.last_import_status == 'Success' %}
+                    <span class="badge badge-success">{{ status.last_import_status }}</span>
+                {% elif status.last_import_status == 'In Progress' %}
+                    <span class="badge badge-warning">{{ status.last_import_status }}</span>
+                {% elif status.last_import_status == 'Failed' %}
+                    <span class="badge badge-danger">{{ status.last_import_status }}</span>
+                {% else %}
+                    <span class="badge badge-neutral">{{ status.last_import_status }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- DATABASE STORAGE -->
+    <div class="admin-grid-2 mb-4">
+        <!-- Database Size -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-hdd"></i>
+                    Database Size
+                </div>
+            </div>
+            <div class="card-body">
+                {% if status.database_size and status.database_size != 'N/A (SQLite)' %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted">Total Size</span>
+                    <strong class="text-primary" style="font-size: 1.25rem;">{{ status.database_size }}</strong>
+                </div>
+                <div class="progress mt-3" style="height: 10px;">
+                    {% set size_bytes = status.database_size_bytes | default(0) | float %}
+                    {% set mb = size_bytes / (1024 * 1024) %}
+                    {% set pct = [mb / 500 * 100, 100] | min %}
+                    <div class="progress-bar" role="progressbar" style="width: {{ pct }}%;" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <p class="text-xs text-muted mt-2 mb-0">Progress bar relative to 500MB</p>
+                {% else %}
+                <div class="empty-state" style="padding: var(--space-6);">
+                    <i class="fas fa-hdd empty-state-icon"></i>
+                    <div class="empty-state-title">Size unavailable</div>
+                    <div class="empty-state-description">Database size information is only available for PostgreSQL databases</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Largest Tables -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-sort-amount-down"></i>
+                    Largest Tables
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if status.largest_tables and status.largest_tables|length > 0 %}
+                <div class="table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Table</th>
+                                <th style="text-align: right;">Rows</th>
+                                <th style="text-align: right;">Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for table in status.largest_tables %}
+                            <tr>
+                                <td><strong>{{ table.name }}</strong></td>
+                                <td style="text-align: right;">{{ table.rows }}</td>
+                                <td style="text-align: right;" class="text-muted">{{ table.size_kb }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding: var(--space-6);">
+                    <i class="fas fa-table empty-state-icon"></i>
+                    <div class="empty-state-title">No table metrics</div>
+                    <div class="empty-state-description">Table size information is only available for PostgreSQL databases</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- CONNECTION POOL & HEALTH -->
+    <div class="admin-grid-2 mb-4">
+        <!-- Connection Pool -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-plug"></i>
+                    Connection Pool
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Pool Status</span>
+                    <span class="badge {% if status.pool_status == 'Active' %}badge-success{% else %}badge-neutral{% endif %}">{{ status.pool_status or 'N/A' }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Pool Size</span>
+                    <strong>{{ status.connection_pool_size }}</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Pool Timeout</span>
+                    <strong>{{ status.pool_timeout }}s</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Pool Recycle</span>
+                    <strong>{{ status.pool_recycle }}s</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Indicators -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-heart-pulse"></i>
+                    Health Indicators
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Database Reachable</span>
+                    {% if status.database_connected %}
+                        <span class="badge badge-success"><i class="fas fa-check me-1"></i>Yes</span>
+                    {% else %}
+                        <span class="badge badge-danger"><i class="fas fa-times me-1"></i>No</span>
+                    {% endif %}
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Query Response</span>
+                    <strong>{{ status.query_response_time_ms }}ms</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Total Check Time</span>
+                    <strong>{{ status.total_check_time_ms }}ms</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Health Status</span>
+                    {% if status.health_status == 'Healthy' %}
+                        <span class="badge badge-success">Healthy</span>
+                    {% elif status.health_status == 'Warning' %}
+                        <span class="badge badge-warning">Warning</span>
+                    {% else %}
+                        <span class="badge badge-danger">Problem</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WARNINGS (if any) -->
+    {% if status.warnings and status.warnings|length > 0 %}
+    <div class="alert alert-warning mb-4">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <div>
+            <strong>Health Warnings</strong>
+            <ul class="mb-0 mt-2">
+                {% for warning in status.warnings %}
+                <li>{{ warning }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
 
     {% if status.error %}
     <div class="alert alert-danger mt-4">
-        <h6><i class="fas fa-exclamation-triangle me-1"></i> Error</h6>
-        <p class="mb-0 small">{{ status.error }}</p>
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <div>
+            <strong>Error</strong>
+            <p class="mb-0 small">{{ status.error }}</p>
+        </div>
     </div>
     {% endif %}
 </div>

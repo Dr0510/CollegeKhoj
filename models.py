@@ -405,6 +405,7 @@ class User(db.Model):
     verification_code_expiry = Column(DateTime, nullable=True)
     reset_token = Column(String(100), nullable=True)
     reset_token_expiry = Column(DateTime, nullable=True)
+    status = Column(String(20), default='active', nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_login = Column(DateTime, default=datetime.utcnow, nullable=True)
 
@@ -756,6 +757,53 @@ class ApprovalRequest(db.Model):
 
     approver = relationship("User", foreign_keys=[approved_by])
     rejecter = relationship("User", foreign_keys=[rejected_by])
+
+
+class SystemSetting(db.Model):
+    """Key-value store for application settings."""
+    __tablename__ = 'system_settings'
+    __table_args__ = {'schema': 'public'}
+    
+    id = Column(Integer, primary_key=True)
+    key = Column(String(100), unique=True, nullable=False, index=True)
+    value = Column(Text, nullable=True)
+    category = Column(String(50), nullable=False, index=True)
+    data_type = Column(String(20), nullable=False, default='string')
+    description = Column(String(500), nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @staticmethod
+    def get(key, default=None):
+        """Get setting value with type conversion."""
+        setting = SystemSetting.query.filter_by(key=key).first()
+        if not setting:
+            return default
+        return setting.typed_value()
+    
+    def typed_value(self):
+        """Convert stored string to appropriate Python type."""
+        if self.data_type == 'boolean':
+            return self.value.lower() in ('true', '1', 'yes')
+        elif self.data_type == 'int':
+            try:
+                return int(self.value)
+            except (ValueError, TypeError):
+                return 0
+        elif self.data_type == 'json':
+            try:
+                import json
+                return json.loads(self.value) if self.value else {}
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return self.value
+    
+    def set_value(self, val):
+        """Store value as string with type info."""
+        import json
+        if self.data_type == 'json':
+            self.value = json.dumps(val)
+        else:
+            self.value = str(val) if val is not None else ''
 
 
 class BulkActionBackup(db.Model):

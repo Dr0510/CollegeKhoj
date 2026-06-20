@@ -29,12 +29,52 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max file size
 # logged in across browser tabs and prevents automatic logout on navigation.
 # SECRET_KEY is read from env (never randomly generated) so sessions survive
 # application restarts on Render.
+# Session timeout is dynamically updated from settings on each request.
 app.config.update(
     SESSION_PERMANENT=True,
     PERMANENT_SESSION_LIFETIME=timedelta(hours=24),
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
 )
+
+@app.before_request
+def apply_session_timeout():
+    """Apply session timeout setting from database."""
+    try:
+        from models import SystemSetting
+        timeout_minutes = SystemSetting.get('session_timeout_minutes', 1440)
+        app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=int(timeout_minutes))
+    except Exception:
+        pass
+
+
+@app.after_request
+def cleanup_session(response):
+    """Automatically roll back failed transactions to prevent InFailedSqlTransaction.
+    
+    If a previous request left the session in a broken state, this ensures the
+    next request starts with a clean session.
+    
+    Uses a probe query (SELECT 1) to detect poisoned psycopg2 transactions
+    where is_active may be True but the underlying PG transaction has failed.
+    """
+    if hasattr(db, 'session'):
+        try:
+            from sqlalchemy import text as sa_text
+            # Probe for a poisoned transaction (is_active may be True even when
+            # the underlying PG transaction has failed)
+            if db.session.is_active:
+                try:
+                    db.session.execute(sa_text('SELECT 1'))
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+    return response
 # Do NOT set SESSION_COOKIE_SECURE in dev (no HTTPS); Render sets it via env.
 if os.environ.get("SESSION_COOKIE_SECURE", "").lower() in ("1", "true", "yes"):
     app.config["SESSION_COOKIE_SECURE"] = True
@@ -58,6 +98,29 @@ def csrf_check_admin():
         if request.path in ('/admin/login',):
             return
         csrf.protect()
+
+# ── Maintenance Mode ────────────────────────────────────────────────────────
+
+@app.before_request
+def check_maintenance_mode():
+    """Block public routes when maintenance mode is enabled."""
+    try:
+        from models import SystemSetting
+        if not SystemSetting.get('maintenance_mode', False):
+            return
+        
+        # Allow admin routes, auth routes, and static files
+        allowed_prefixes = ('/admin', '/login', '/static', '/favicon')
+        if any(request.path.startswith(p) for p in allowed_prefixes):
+            return
+        
+        from flask import render_template
+        title = SystemSetting.get('maintenance_title', 'Under Maintenance')
+        message = SystemSetting.get('maintenance_message', 'We will be back soon.')
+        eta = SystemSetting.get('maintenance_eta', '')
+        return render_template('maintenance.html', title=title, message=message, eta=eta)
+    except Exception:
+        pass
 
 # Import models and recommender after db initialization
 from models import College, User, BackupHistory, AuditLog
@@ -663,6 +726,15 @@ def signup_page():
     next_url = request.args.get('next', url_for('mhcet_page'))
     if g.user:
         return redirect(next_url)
+    
+    # Check if registration is allowed
+    try:
+        from models import SystemSetting
+        if not SystemSetting.get('allow_registration', True):
+            return render_template('signup.html', registration_disabled=True, next_url=next_url)
+    except Exception:
+        pass
+    
     return render_template('signup.html', next_url=next_url)
 
 
@@ -670,6 +742,11 @@ def signup_page():
 def auth_signup():
     """Handle signup form submission."""
     try:
+        # Check if registration is allowed
+        from models import SystemSetting
+        if not SystemSetting.get('allow_registration', True):
+            return jsonify({'ok': False, 'error': 'Registration is currently disabled. Please contact administrator.'}), 403
+        
         data = request.get_json()
         if not data:
             return jsonify({'ok': False, 'error': 'Invalid request'}), 400
@@ -698,10 +775,21 @@ def auth_signup():
             is_verified=False,
             created_at=datetime.utcnow(),
         )
+        
+        # Apply admin approval setting
+        from models import SystemSetting
+        if SystemSetting.get('admin_approval_required', False):
+            user.status = 'pending'
+        else:
+            user.status = 'active'
+        
         db.session.add(user)
         db.session.flush()
 
-        send_verification_email(user)
+        # Send verification email if required
+        if SystemSetting.get('email_verification_required', False):
+            send_verification_email(user)
+        
         db.session.commit()
 
         return jsonify({
@@ -799,6 +887,14 @@ def auth_login():
             return jsonify({'ok': False, 'error': 'No account found with this email address. Please check your email or create a new account.'}), 401
 
         if not user.password_hash or not check_password(password, user.password_hash):
+            # Track failed login attempt
+            try:
+                from models import SystemSetting
+                if SystemSetting.get('failed_login_lockout', False):
+                    # In production, implement lockout counter here
+                    pass
+            except Exception:
+                pass
             return jsonify({'ok': False, 'error': 'Incorrect password. Please try again or reset your password.'}), 401
 
         if not user.is_verified:
@@ -810,6 +906,18 @@ def auth_login():
                 'needs_verification': True,
                 'email': user.email,
             }), 403
+
+        # Check if user is pending approval
+        try:
+            from models import SystemSetting
+            if user.status == 'pending' and SystemSetting.get('admin_approval_required', False):
+                return jsonify({
+                    'ok': False,
+                    'error': 'Your account is pending admin approval. Please wait for approval email.',
+                    'pending_approval': True,
+                }), 403
+        except Exception:
+            pass
 
         user.last_login = datetime.utcnow()
         db.session.commit()

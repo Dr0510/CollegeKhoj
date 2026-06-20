@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Maintenance — CollegeKhoj{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/css/styles/tokens.css">
+    <link rel="stylesheet" href="/static/css/styles/globals.css">
+    <link rel="stylesheet" href="/static/css/styles/components.css">
+</head>
+<body>
+    <div class="admin-wrapper">
+        <main class="admin-page-content" style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+            <div class="card" style="max-width: 600px; width: 100%; text-align: center; padding: 3rem;">
+                <div class="stat-card-icon" style="background: var(--color-warning-light); color: var(--color-warning); margin: 0 auto 2rem; width: 80px; height: 80px; font-size: 2rem;">
+                    <i class="fas fa-wrench"></i>
+                </div>
+                <h1 style="font-size: 2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 1rem;">
+                    {{ title }}
+                </h1>
+                <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 2rem; line-height: 1.6;">
+                    {{ message }}
+                </p>
+                {% if eta %}
+                <div class="alert alert-info" style="text-align: left; margin-bottom: 2rem;">
+                    <i class="fas fa-clock me-2"></i>
+                    <div>
+                        <strong>Estimated Return Time:</strong><br>
+                        <span>{{ eta }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                <p style="font-size: 0.9rem; color: var(--text-tertiary);">
+                    Please check back later. We apologize for the inconvenience.
+                </p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

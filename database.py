@@ -145,7 +145,7 @@ def ensure_schema():
             AdmissionType, AcademicYear, CapRound, College, Branch,
             Cutoff, UploadJob, User, BackupHistory, AuditLog, LoginHistory,
             CollegeCutoff, CAPCutoff, UploadedFile, ImportJob,
-            Category, CollegeAdmissionType,
+            Category, CollegeAdmissionType, SystemSetting,
         )
         _fix_column_mismatches()
         logger.info("[DB] db.create_all() complete")
@@ -155,7 +155,7 @@ def ensure_schema():
         AdmissionType, AcademicYear, CapRound, College, Branch,
         Cutoff, UploadJob, User, BackupHistory, AuditLog, LoginHistory,
         CollegeCutoff, CAPCutoff, UploadedFile, ImportJob,
-        Category, CollegeAdmissionType,
+        Category, CollegeAdmissionType, SystemSetting,
     )
 
     created_count = 0
@@ -177,6 +177,8 @@ def ensure_schema():
         BackupHistory, AuditLog, LoginHistory,
         # 7. Legacy tables (no FK dependencies)
         UploadedFile, CollegeCutoff, CAPCutoff, ImportJob,
+        # 8. Application settings
+        SystemSetting,
     ]
 
     for model_class in model_classes:
@@ -233,15 +235,43 @@ def create_default_admin():
     from models import User
     from sqlalchemy.exc import ProgrammingError, OperationalError
 
+    logger.info("[DB][DIAG] create_default_admin started")
+
+    try:
+        # Emergency recovery: rollback any broken transaction before querying
+        logger.info("[DB][DIAG] Attempting pre-query rollback")
+        db.session.rollback()
+        logger.info("[DB][DIAG] Pre-query rollback successful")
+    except Exception as e:
+        logger.warning(f"[DB][DIAG] Pre-query rollback failed: {e}")
+
+    # Session state diagnostics
+    try:
+        logger.info(f"[DB][DIAG] Session state: is_active={db.session.is_active}, is_modified={db.session.is_modified}")
+        if db.session.is_active:
+            try:
+                from sqlalchemy import text as diag_text
+                db.session.execute(diag_text('SELECT 1'))
+                logger.info("[DB][DIAG] Session probe query succeeded")
+            except Exception as e:
+                logger.error(f"[DB][DIAG] Session probe query FAILED: {e}")
+    except Exception as e:
+        logger.error(f"[DB][DIAG] Could not check session state: {e}")
+
     try:
         # Check if users table exists first
+        logger.info("[DB][DIAG] Querying for existing admin user")
         existing = User.query.filter(User.role == 'admin').first()
+        logger.info(f"[DB][DIAG] Admin query result: {'found' if existing else 'NOT FOUND'}")
         if existing:
             logger.info(f"[DB] Admin user already exists: {existing.email}")
             return existing
     except (ProgrammingError, OperationalError) as e:
         # Table doesn't exist yet — log and retry after ensure_schema runs
         logger.warning(f"[DB] Cannot query admin user — table may not exist yet: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"[DB][DIAG] Unexpected exception during admin query: {type(e).__name__}: {e}")
         return None
 
     # No admin found — create one
@@ -250,6 +280,7 @@ def create_default_admin():
 
     try:
         from app import hash_password
+        logger.info(f"[DB][DIAG] Creating new admin user: {admin_email}")
         admin = User(
             email=admin_email,
             first_name='Admin',
@@ -258,7 +289,9 @@ def create_default_admin():
             is_verified=True,
             password_hash=hash_password(admin_password),
         )
+        logger.info("[DB][DIAG] Adding admin to session")
         db.session.add(admin)
+        logger.info("[DB][DIAG] Committing admin creation")
         db.session.commit()
         logger.info(f"[DB] Created default admin: {admin_email}")
         return admin
@@ -336,6 +369,15 @@ def _fix_column_mismatches():
             ('auto_created_colleges', 'INTEGER DEFAULT 0', True),
             ('auto_created_branches', 'INTEGER DEFAULT 0', True),
             ('accuracy_percentage', 'INTEGER DEFAULT 0', True),
+        ],
+        'system_settings': [
+            ('id', 'SERIAL PRIMARY KEY', False),
+            ('key', 'VARCHAR(100) UNIQUE NOT NULL', False),
+            ('value', 'TEXT', True),
+            ('category', 'VARCHAR(50) NOT NULL', False),
+            ('data_type', "VARCHAR(20) DEFAULT 'string'", False),
+            ('description', 'VARCHAR(500)', True),
+            ('updated_at', 'TIMESTAMP DEFAULT NOW()', True),
         ],
     }
 
