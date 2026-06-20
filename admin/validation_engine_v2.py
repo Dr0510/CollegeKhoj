@@ -117,6 +117,8 @@ def validate_rows(
     # ── In-session caches to avoid repeated DB hits ──────────────────────────
     college_id_cache: Dict[str, Optional[int]] = {}   # college_code → id
     branch_id_cache:  Dict[str, Optional[int]] = {}   # canonical_name → id
+    _newly_healed_colleges: Set[str] = set()          # codes of colleges just created
+    _newly_healed_branches: Set[str] = set()          # names of branches just created
 
     for raw_row in parsed_rows:
         row = dict(raw_row)   # work on a copy
@@ -141,6 +143,9 @@ def validate_rows(
         else:
             if college_code not in college_id_cache:
                 college_name = str(row.get("college_name", "")).strip()
+                # Check BEFORE get_or_create to determine if this is truly new
+                from models import College
+                was_already_in_db = College.query.filter_by(college_code=college_code).first() is not None
                 cid = get_or_create_college(college_code, college_name)
                 if cid is None:
                     errors.append(
@@ -148,13 +153,11 @@ def validate_rows(
                         f"and auto-creation failed"
                     )
                 else:
-                    # Track whether this was a newly-healed college
-                    from models import College
-                    existing_in_db = College.query.filter_by(id=cid).first()
-                    # If it was just created this session it won't have cutoffs yet;
-                    # we use a simple proxy: if the DB row was flushed with no
-                    # upload_job reference it's new.  The exact count is tracked
-                    # by self_healing logging, so we just cache the id here.
+                    # Count only BRAND NEW colleges (ones not previously in DB)
+                    if not was_already_in_db and college_code not in _newly_healed_colleges:
+                        _newly_healed_colleges.add(college_code)
+                        result.healed_colleges += 1
+                        logger.info(f"[Validation] Healing tracked: +1 college (id={cid}, code={college_code})")
                     college_id_cache[college_code] = cid
             cid = college_id_cache.get(college_code)
             if cid is not None:
@@ -171,8 +174,16 @@ def validate_rows(
         else:
             canonical = normalize_branch(raw_branch)
             if canonical not in branch_id_cache:
+                # Check BEFORE get_or_create to determine if this is truly new
+                from models import Branch
+                branch_was_in_db = Branch.query.filter_by(branch_name=canonical).first() is not None
                 bid = get_or_create_branch(canonical)
                 branch_id_cache[canonical] = bid
+                # Count only BRAND NEW branches
+                if bid is not None and not branch_was_in_db and canonical not in _newly_healed_branches:
+                    _newly_healed_branches.add(canonical)
+                    result.healed_branches += 1
+                    logger.info(f"[Validation] Healing tracked: +1 branch (id={bid}, name={canonical})")
             bid = branch_id_cache.get(canonical)
             if bid is None:
                 errors.append(f"Branch '{raw_branch}' could not be resolved")

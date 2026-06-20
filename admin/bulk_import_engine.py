@@ -134,6 +134,7 @@ class BulkImportEngine:
             admission_type_id=self.admission_type_id,
             academic_year_id=self.academic_year_id,
             cap_round_id=self.cap_round_id,
+            existing_job_ids=[self.job_id],  # Exclude THIS job from duplicate check
         )
 
         logger.info(
@@ -225,11 +226,16 @@ class BulkImportEngine:
         self._cancelled = True
 
     def _batch_insert(self, rows: List[Dict]):
-        """Insert valid rows in batches with UPSERT."""
+        """Insert valid rows in batches using bulk UPSERT (ON CONFLICT DO UPDATE).
+
+        Performance: single SQL statement per batch instead of N per-row queries.
+        Each row is still wrapped in a savepoint so a single constraint violation
+        does NOT rollback the entire batch.
+        """
         from models import Cutoff
 
         batch = []
-        for i, row in enumerate(rows):
+        for row in rows:
             rec = {
                 'admission_type_id': self.admission_type_id,
                 'college_id': row['college_id'],
@@ -245,6 +251,11 @@ class BulkImportEngine:
                 'upload_job_id': self.job_id if self.job_id else None,
             }
 
+            # ── Include stage if extracted (Stage-I, Stage-II) ────────────
+            stage = row.get('stage', row.get('round_stage', ''))
+            if stage:
+                rec['stage'] = str(stage).strip()
+
             # ── Detailed per-row logging ──────────────────────────────────
             logger.debug(
                 f"[Job {self.job_id}] Row {self.rows_processed}: "
@@ -255,7 +266,8 @@ class BulkImportEngine:
                 f"category={row.get('category','')} "
                 f"rank={row.get('rank')} "
                 f"percentile={row.get('percentile')} "
-                f"choice_code={row.get('choice_code', row.get('course_code',''))}"
+                f"choice_code={row.get('choice_code', row.get('course_code',''))} "
+                f"stage={rec.get('stage','')}"
             )
 
             batch.append(rec)

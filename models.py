@@ -190,6 +190,9 @@ class Cutoff(db.Model):
     cutoff_percentile = Column(Numeric(6, 2), nullable=True)
     cutoff_rank = Column(Integer, nullable=True)
 
+    # Stage tracking (Stage-I, Stage-II, etc.)
+    stage = Column(String(20), nullable=True, index=True)
+
     # Source tracking
     source_pdf = Column(String(500), nullable=True)
     upload_job_id = Column(Integer, ForeignKey('public.upload_jobs.id'), nullable=True, index=True)
